@@ -1,0 +1,125 @@
+---
+import { db } from "../lib/db";
+import { students, responses } from "../../db/schema";
+import { inArray } from "drizzle-orm";
+
+interface Props {
+    teamNumber: number;
+    memberIds: number[];
+    justification: string;
+}
+
+const { teamNumber, memberIds, justification } = Astro.props;
+
+const memberData = await db.query.students.findMany({
+    where: inArray(students.id, memberIds),
+});
+
+const memberResponses = await db.query.responses.findMany({
+    where: inArray(responses.studentId, memberIds),
+});
+
+const membersWithSkills = memberData.map((m) => {
+    const resp = memberResponses.find((r) => r.studentId === m.id);
+    if (!resp) return { ...m, topSkills: [] };
+
+    const allSkills = [
+        ...Object.entries(resp.skillsNarrative).map(([k, v]) => ({
+            name: k,
+            val: v,
+            cat: "Narrative",
+        })),
+        ...Object.entries(resp.skillsTechnical).map(([k, v]) => ({
+            name: k,
+            val: v,
+            cat: "Technical",
+        })),
+        ...Object.entries(resp.skillsManagement).map(([k, v]) => ({
+            name: k,
+            val: v,
+            cat: "Management",
+        })),
+    ];
+
+    const topSkills = allSkills.sort((a, b) => b.val - a.val).slice(0, 3);
+    return { ...m, topSkills };
+});
+---
+
+<div
+    class="bg-white shadow rounded-lg border border-gray-200 overflow-hidden flex flex-col h-full"
+>
+    <div
+        class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center"
+    >
+        <h3 class="text-lg font-bold text-gray-900">Team {teamNumber}</h3>
+        <span
+            class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium"
+            >{memberIds.length} Members</span
+        >
+    </div>
+
+    <div class="p-6 flex-grow">
+        <ul class="space-y-4 mb-6">
+            {
+                membersWithSkills.map((member) => (
+                    <li class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">
+                            {member.name}
+                        </span>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            {member.topSkills.map((skill) => (
+                                <span
+                                    class={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                        skill.cat === "Narrative"
+                                            ? "bg-orange-50 border-orange-200 text-orange-700"
+                                            : skill.cat === "Technical"
+                                              ? "bg-blue-50 border-blue-200 text-blue-700"
+                                              : "bg-green-50 border-green-200 text-green-700"
+                                    }`}
+                                >
+                                    {skill.name} ({skill.val})
+                                </span>
+                            ))}
+                        </div>
+                    </li>
+                ))
+            }
+        </ul>
+
+        <div class="bg-gray-50 rounded p-3 border border-gray-100">
+            <h4
+                class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
+            >
+                Algorithm Justification
+            </h4>
+            <p
+                class="text-xs text-gray-600 leading-relaxed whitespace-pre-line line-clamp-4 hover:line-clamp-none transition-all cursor-default"
+            >
+                {justification}
+            </p>
+        </div>
+    </div>
+
+    <div class="px-6 py-3 bg-gray-50 border-t border-gray-200 mt-auto">
+        <button
+            class="text-sm text-blue-600 font-medium hover:text-blue-800 flex items-center justify-center w-full gap-2 transition-colors"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                ></path>
+            </svg>
+            Edit Team
+        </button>
+    </div>
+</div>

@@ -1,0 +1,468 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Create Project">
+    <div class="max-w-3xl mx-auto">
+        <div class="md:flex md:items-center md:justify-between mb-8">
+            <div class="flex-1 min-w-0">
+                <h2
+                    class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl"
+                >
+                    Create New Project
+                </h2>
+            </div>
+        </div>
+
+        <form
+            id="create-project-form"
+            action="/api/admin/create-project"
+            method="POST"
+            class="space-y-8 bg-white shadow sm:rounded-lg overflow-hidden"
+        >
+            <div class="p-6 space-y-6">
+                <!-- Project Details -->
+                <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                    <div class="sm:col-span-4">
+                        <label
+                            for="name"
+                            class="block text-sm font-medium text-gray-700"
+                            >Project Name</label
+                        >
+                        <input
+                            type="text"
+                            name="name"
+                            id="name"
+                            required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                    </div>
+
+                    <div class="sm:col-span-3">
+                        <label
+                            for="configType"
+                            class="block text-sm font-medium text-gray-700"
+                            >Configuration Mode</label
+                        >
+                        <select
+                            id="configType"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        >
+                            <option value="fixed">Fixed Number of Teams</option>
+                            <option value="size"
+                                >Target Team Size (e.g. 3-4 people)</option
+                            >
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-3" id="numTeamsContainer">
+                        <label
+                            for="numTeams"
+                            class="block text-sm font-medium text-gray-700"
+                            >Number of Teams</label
+                        >
+                        <input
+                            type="number"
+                            name="numTeams"
+                            id="numTeams"
+                            min="2"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                    </div>
+
+                    <div class="sm:col-span-3 hidden" id="targetSizeContainer">
+                        <label
+                            for="targetTeamSize"
+                            class="block text-sm font-medium text-gray-700"
+                            >Target Size (People per group)</label
+                        >
+                        <input
+                            type="number"
+                            name="targetTeamSize"
+                            id="targetTeamSize"
+                            min="2"
+                            placeholder="e.g. 4"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                    </div>
+
+                    <div
+                        class="sm:col-span-6 bg-blue-50 border border-blue-100 rounded-lg p-4"
+                        id="distributionPreview"
+                    >
+                        <div
+                            class="flex items-center gap-2 text-blue-700 font-medium mb-1"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><path
+                                    d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                                ></path><circle cx="9" cy="7" r="4"
+                                ></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"
+                                ></path><path d="M16 3.13a4 4 0 0 1 0 7.75"
+                                ></path></svg
+                            >
+                            Team Distribution Preview
+                        </div>
+                        <p class="text-sm text-blue-600" id="previewText">
+                            Enter students and team settings to see the preview.
+                        </p>
+                    </div>
+
+                    <div class="sm:col-span-6">
+                        <label
+                            for="description"
+                            class="block text-sm font-medium text-gray-700"
+                            >Description</label
+                        >
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows={3}
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="Briefly describe the project goals..."
+                        ></textarea>
+                    </div>
+
+                    <div class="sm:col-span-6">
+                        <span
+                            class="block text-sm font-medium text-gray-700 mb-2"
+                            >Project Type</span
+                        >
+                        <div class="flex flex-wrap gap-4">
+                            {
+                                [
+                                    "balanced",
+                                    "technical",
+                                    "narrative",
+                                    "management",
+                                ].map((type) => (
+                                    <label class="relative flex items-center cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="projectType"
+                                            value={type}
+                                            checked={type === "balanced"}
+                                            class="sr-only peer"
+                                        />
+                                        <div class="px-4 py-2 border rounded-full text-sm font-medium border-gray-200 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition-colors capitalize">
+                                            {type}
+                                        </div>
+                                    </label>
+                                ))
+                            }
+                        </div>
+                    </div>
+
+                    <div class="sm:col-span-4">
+                        <label
+                            for="adminEmail"
+                            class="block text-sm font-medium text-gray-700"
+                            >Admin Email (for notifications)</label
+                        >
+                        <input
+                            type="email"
+                            name="adminEmail"
+                            id="adminEmail"
+                            required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 pt-6">
+                    <h3
+                        class="text-lg font-medium leading-6 text-gray-900 mb-4"
+                    >
+                        Student Roster
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div class="flex gap-4 mb-4">
+                            <button
+                                type="button"
+                                id="tab-manual"
+                                class="px-4 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600"
+                                >Manual Entry</button
+                            >
+                            <button
+                                type="button"
+                                id="tab-csv"
+                                class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700"
+                                >CSV Upload</button
+                            >
+                        </div>
+
+                        <div id="manual-entry-container">
+                            <label
+                                for="studentList"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >Enter names (one per line)</label
+                            >
+                            <textarea
+                                id="studentList"
+                                name="studentList"
+                                rows={10}
+                                class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
+                                placeholder="John Doe
+Jane Smith
+..."></textarea>
+                            <p class="mt-2 text-xs text-gray-400">
+                                Note: Manual entry assumes no emails. Emails can
+                                be added later in the Monitor page.
+                            </p>
+                        </div>
+
+                        <div id="csv-upload-container" class="hidden">
+                            <div
+                                class="flex items-center justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md"
+                            >
+                                <div class="space-y-1 text-center">
+                                    <svg
+                                        class="mx-auto h-12 w-12 text-gray-400"
+                                        stroke="currentColor"
+                                        fill="none"
+                                        viewBox="0 0 48 48"
+                                        aria-hidden="true"
+                                    >
+                                        <path
+                                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"></path>
+                                    </svg>
+                                    <div class="flex text-sm text-gray-600">
+                                        <label
+                                            for="csv-file"
+                                            class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                                        >
+                                            <span>Upload a CSV file</span>
+                                            <input
+                                                id="csv-file"
+                                                type="file"
+                                                accept=".csv"
+                                                class="sr-only"
+                                            />
+                                        </label>
+                                    </div>
+                                    <p class="text-xs text-gray-500">
+                                        CSV format: name, email
+                                    </p>
+                                </div>
+                            </div>
+                            <div id="csv-preview" class="mt-4 hidden">
+                                <h4
+                                    class="text-sm font-medium text-gray-700 mb-2"
+                                >
+                                    CSV Data Preview (<span id="csv-count"
+                                        >0</span
+                                    > students found)
+                                </h4>
+                                <div
+                                    class="max-h-40 overflow-y-auto border border-gray-200 rounded text-xs"
+                                >
+                                    <table
+                                        class="min-w-full divide-y divide-gray-200"
+                                    >
+                                        <tbody
+                                            id="csv-preview-body"
+                                            class="bg-white divide-y divide-gray-200"
+                                        ></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Hidden field for JSON student data from CSV */}
+                        <input
+                            type="hidden"
+                            name="studentsJson"
+                            id="studentsJson"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+                <button
+                    type="submit"
+                    class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                    Create Project
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"
+        is:inline></script>
+    <script is:inline>
+        const tabManual = document.getElementById("tab-manual");
+        const tabCsv = document.getElementById("tab-csv");
+        const manualContainer = document.getElementById(
+            "manual-entry-container",
+        );
+        const csvContainer = document.getElementById("csv-upload-container");
+        const csvFileInput = document.getElementById("csv-file");
+        const studentsJsonInput = document.getElementById("studentsJson");
+        const csvPreview = document.getElementById("csv-preview");
+        const csvPreviewBody = document.getElementById("csv-preview-body");
+        const csvCount = document.getElementById("csv-count");
+        const configType = document.getElementById("configType");
+        const numTeamsContainer = document.getElementById("numTeamsContainer");
+        const targetSizeContainer = document.getElementById(
+            "targetSizeContainer",
+        );
+        const numTeamsInput = document.getElementById("numTeams");
+        const targetSizeInput = document.getElementById("targetTeamSize");
+
+        // Initialize
+        numTeamsInput.setAttribute("required", "");
+
+        configType.addEventListener("change", (e) => {
+            if (e.target.value === "fixed") {
+                numTeamsContainer.classList.remove("hidden");
+                targetSizeContainer.classList.add("hidden");
+                numTeamsInput.setAttribute("required", "");
+                targetSizeInput.removeAttribute("required");
+                targetSizeInput.value = "";
+            } else {
+                numTeamsContainer.classList.add("hidden");
+                targetSizeContainer.classList.remove("hidden");
+                targetSizeInput.setAttribute("required", "");
+                numTeamsInput.removeAttribute("required");
+                numTeamsInput.value = "";
+            }
+            updatePreview();
+        });
+
+        const studentListInput = document.getElementById("studentList");
+        const previewText = document.getElementById("previewText");
+
+        function updatePreview() {
+            let studentCount = 0;
+            if (!csvContainer.classList.contains("hidden")) {
+                const parsed = studentsJsonInput.value
+                    ? JSON.parse(studentsJsonInput.value)
+                    : [];
+                studentCount = parsed.length;
+            } else {
+                studentCount = studentListInput.value
+                    .split("\n")
+                    .map((n) => n.trim())
+                    .filter((n) => n.length > 0).length;
+            }
+
+            if (studentCount === 0) {
+                previewText.innerHTML = "Waiting for student list...";
+                return;
+            }
+
+            let numTeams = 0;
+            const mode = configType.value;
+
+            if (mode === "fixed") {
+                numTeams = parseInt(numTeamsInput.value);
+            } else {
+                const targetSize = parseInt(targetSizeInput.value);
+                if (targetSize >= 2) {
+                    numTeams = Math.max(
+                        2,
+                        Math.round(studentCount / targetSize),
+                    );
+                }
+            }
+
+            if (!numTeams || numTeams < 2) {
+                previewText.innerHTML = `Found <b>${studentCount}</b> students. Please enter valid team settings.`;
+                return;
+            }
+
+            const baseSize = Math.floor(studentCount / numTeams);
+            const extra = studentCount % numTeams;
+
+            if (baseSize < 1) {
+                previewText.innerHTML = `<b>Warning:</b> Too many teams for <b>${studentCount}</b> students. Some teams will be empty.`;
+                return;
+            }
+
+            let message = `Distribution for <b>${studentCount}</b> students into <b>${numTeams}</b> teams:<br/>`;
+            if (extra === 0) {
+                message += `• All <b>${numTeams}</b> teams will have <b>${baseSize}</b> members.`;
+            } else {
+                message += `• <b>${extra}</b> teams of <b>${baseSize + 1}</b> members.<br/>`;
+                message += `• <b>${numTeams - extra}</b> teams of <b>${baseSize}</b> members.`;
+            }
+
+            previewText.innerHTML = message;
+        }
+
+        numTeamsInput.addEventListener("input", updatePreview);
+        targetSizeInput.addEventListener("input", updatePreview);
+        studentListInput.addEventListener("input", updatePreview);
+
+        tabManual.addEventListener("click", () => {
+            tabManual.className =
+                "px-4 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600";
+            tabCsv.className =
+                "px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700";
+            manualContainer.classList.remove("hidden");
+            csvContainer.classList.add("hidden");
+            updatePreview();
+        });
+
+        tabCsv.addEventListener("click", () => {
+            tabCsv.className =
+                "px-4 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600";
+            tabManual.className =
+                "px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700";
+            csvContainer.classList.remove("hidden");
+            manualContainer.classList.add("hidden");
+            updatePreview();
+        });
+
+        csvFileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                complete: (results) => {
+                    const students = results.data
+                        .filter((row) => row.name)
+                        .map((row) => ({
+                            name: row.name,
+                            email: row.email || "",
+                        }));
+
+                    studentsJsonInput.value = JSON.stringify(students);
+                    csvCount.textContent = students.length;
+
+                    csvPreviewBody.innerHTML = "";
+                    students.slice(0, 10).forEach((s) => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `<td class="px-3 py-1 font-medium">${s.name}</td><td class="px-3 py-1 text-gray-500">${s.email}</td>`;
+                        csvPreviewBody.appendChild(tr);
+                    });
+
+                    if (students.length > 10) {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `<td colspan="2" class="px-3 py-1 text-gray-400 text-center italic">... and ${students.length - 10} more</td>`;
+                        csvPreviewBody.appendChild(tr);
+                    }
+
+                    csvPreview.classList.remove("hidden");
+                    updatePreview();
+                },
+            });
+        });
+    </script>
+</AdminLayout>

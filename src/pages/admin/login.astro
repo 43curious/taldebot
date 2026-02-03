@@ -1,0 +1,85 @@
+---
+export const prerender = false;
+import Layout from "../../layouts/Layout.astro";
+
+let error = "";
+
+if (Astro.request.method === "POST") {
+    try {
+        const formData = await Astro.request.formData();
+        const password = formData.get("password");
+
+        if (password === "admin123") {
+            // Hardcoded for MVP
+            Astro.cookies.set("admin_session", "active", { path: "/" });
+            return Astro.redirect("/admin/dashboard");
+        } else {
+            error = "Invalid password";
+        }
+    } catch (e) {
+        error = "Form submission failed. Please try again.";
+        console.error("Form parsing error:", e);
+    }
+}
+---
+
+<Layout title="Admin Login">
+    <main class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div
+            class="max-w-md w-full bg-white rounded-xl shadow-lg p-8 border border-gray-200"
+        >
+            <div class="text-center mb-8">
+                <div
+                    class="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4"
+                >
+                    T
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">Admin Access</h1>
+                <p class="text-sm text-gray-500">
+                    Please enter the administrator password
+                </p>
+            </div>
+
+            <form method="POST" class="space-y-6">
+                <div>
+                    <label
+                        for="password"
+                        class="block text-sm font-medium text-gray-700"
+                        >Password</label
+                    >
+                    <input
+                        type="password"
+                        name="password"
+                        id="password"
+                        required
+                        class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all"
+                        autofocus
+                    />
+                </div>
+
+                {
+                    error && (
+                        <div class="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium">
+                            {error}
+                        </div>
+                    )
+                }
+
+                <button
+                    type="submit"
+                    class="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-md active:scale-95"
+                >
+                    Login
+                </button>
+            </form>
+
+            <div class="mt-8 text-center pt-6 border-t border-gray-100">
+                <a
+                    href="/"
+                    class="text-sm text-gray-400 hover:text-blue-600 transition-colors"
+                    >Back to Home</a
+                >
+            </div>
+        </div>
+    </main>
+</Layout>

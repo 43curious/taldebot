@@ -1,0 +1,570 @@
+---
+export const prerender = false;
+import Layout from "../../../layouts/Layout.astro";
+import { db } from "../../../lib/db";
+import { projects, students } from "../../../../db/schema";
+import { eq } from "drizzle-orm";
+import { SkillSlider } from "../../../components/SkillSlider";
+import { MultiSelect } from "../../../components/MultiSelect";
+
+const { projectId } = Astro.params;
+const pid = parseInt(projectId || "");
+
+if (isNaN(pid)) {
+    return Astro.redirect("/");
+}
+
+const project = await db.query.projects.findFirst({
+    where: eq(projects.id, pid),
+});
+
+if (!project) {
+    return Astro.redirect("/");
+}
+
+const url = new URL(Astro.request.url);
+const initialStudentId = url.searchParams.get("studentId");
+
+const allStudents = await db.query.students.findMany({
+    where: eq(students.projectId, pid),
+    orderBy: (students, { asc }) => [asc(students.name)],
+});
+
+const activeStudents = allStudents.filter((s) => !s.isExcluded);
+---
+
+<Layout title={`Form: ${project.name}`}>
+    <main class="max-w-3xl mx-auto px-4 py-12">
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-blue-600 px-8 py-10 text-white">
+                <h1 class="text-3xl font-bold mb-2">TaldeBOT</h1>
+                <p class="text-blue-100 text-lg">{project.name}</p>
+                <p class="text-blue-100/80 text-sm mt-4">
+                    Team formation survey. Please answer honestly to help us
+                    create the best possible teams.
+                </p>
+            </div>
+
+            <!-- Form -->
+            <form
+                id="student-form"
+                action="/api/student/submit-form"
+                method="POST"
+                class="p-8 space-y-12"
+            >
+                <input type="hidden" name="projectId" value={pid} />
+
+                <!-- Progress Indicator (Controlled by JS) -->
+                <div class="flex items-center gap-2 mb-8" id="progress-bar">
+                    <div
+                        class="h-1 flex-1 bg-blue-600 rounded-full transition-all duration-300"
+                        style="width: 25%"
+                    >
+                    </div>
+                    <div
+                        class="h-1 flex-1 bg-gray-200 rounded-full transition-all duration-300"
+                    >
+                    </div>
+                    <div
+                        class="h-1 flex-1 bg-gray-200 rounded-full transition-all duration-300"
+                    >
+                    </div>
+                    <div
+                        class="h-1 flex-1 bg-gray-200 rounded-full transition-all duration-300"
+                    >
+                    </div>
+                </div>
+
+                <!-- Section 1: Identification -->
+                <section id="section-1" class="section-active">
+                    <h2
+                        class="text-xl font-semibold mb-6 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
+                            >1</span
+                        >
+                        Who are you?
+                    </h2>
+                    <div class="space-y-6">
+                        <div>
+                            <label
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >Select your name</label
+                            >
+                            <select
+                                name="studentId"
+                                id="studentSelect"
+                                required
+                                class="w-full border border-gray-300 rounded-md bg-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="">Choose from list...</option>
+                                {
+                                    activeStudents.map((s) => (
+                                        <option
+                                            value={s.id}
+                                            disabled={s.hasCompleted}
+                                            selected={
+                                                initialStudentId ===
+                                                String(s.id)
+                                            }
+                                        >
+                                            {s.name}{" "}
+                                            {s.hasCompleted
+                                                ? "(Already completed)"
+                                                : ""}
+                                        </option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >Academic Email</label
+                            >
+                            <div class="flex rounded-md shadow-sm">
+                                <input
+                                    type="text"
+                                    name="emailPrefix"
+                                    id="emailPrefix"
+                                    required
+                                    placeholder="your.name"
+                                    class="flex-1 border border-r-0 border-gray-300 rounded-l-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                />
+                                <span
+                                    class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm"
+                                >
+                                    @alumni.mondragon.edu
+                                </span>
+                            </div>
+                            <input type="hidden" name="email" id="fullEmail" />
+                        </div>
+
+                        <div
+                            class="bg-blue-50/50 p-4 rounded-lg border border-blue-100"
+                        >
+                            <div class="flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input
+                                        id="terms"
+                                        name="terms"
+                                        type="checkbox"
+                                        required
+                                        class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded cursor-pointer"
+                                    />
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label
+                                        for="terms"
+                                        class="font-medium text-gray-700 cursor-pointer"
+                                    >
+                                        I accept the <button
+                                            type="button"
+                                            id="openDisclaimer"
+                                            class="text-blue-600 hover:underline"
+                                            >Terms & Conditions</button
+                                        >
+                                    </label>
+                                    <p class="text-gray-500">
+                                        I agree to the processing of my academic
+                                        data for group formation.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Disclaimer Modal -->
+                    <div id="disclaimerModal" class="fixed inset-0 z-50 hidden">
+                        <div
+                            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        >
+                        </div>
+                        <div
+                            class="absolute inset-x-4 top-1/2 -translate-y-1/2 md:max-w-lg md:mx-auto bg-white rounded-2xl shadow-2xl p-6 md:p-8"
+                        >
+                            <h3 class="text-xl font-bold text-gray-900 mb-4">
+                                Uso de Datos Formativos
+                            </h3>
+                            <div class="prose prose-sm text-gray-600 mb-6">
+                                <p>
+                                    Los datos recogidos en esta encuesta se
+                                    utilizarán exclusivamente para la formación
+                                    de grupos equilibrados en este proyecto.
+                                </p>
+                                <p>
+                                    <strong>¿Qué guardamos?</strong> Tus habilidades
+                                    autoevaluadas, tus preferencias de compañeros
+                                    y tu correo académico.
+                                </p>
+                                <p>
+                                    No se compartirán con terceros externos a la
+                                    institución y serán eliminados o
+                                    anonimizados una vez finalizado el proceso
+                                    de asignación de equipos.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                id="closeDisclaimer"
+                                class="w-full py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button
+                            type="button"
+                            id="btn-next-1"
+                            data-next="2"
+                            class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled
+                        >
+                            Next Section
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Section 2: Group Dynamics -->
+                <section id="section-2" class="hidden">
+                    <h2
+                        class="text-xl font-semibold mb-6 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
+                            >2</span
+                        >
+                        Group Dynamics
+                    </h2>
+                    <MultiSelect
+                        client:load
+                        options={allStudents}
+                        name="comfort"
+                        maxSelections={3}
+                        label="Comfort Zone"
+                        placeholder="Who are your friends / who do you feel most comfortable with?"
+                    />
+                    <MultiSelect
+                        client:load
+                        options={allStudents}
+                        name="preferWith"
+                        maxSelections={3}
+                        label="New Collaborations"
+                        placeholder="Who would you like to work with?"
+                    />
+                    <MultiSelect
+                        client:load
+                        options={allStudents}
+                        name="preferAvoid"
+                        maxSelections={2}
+                        label="Restrictions"
+                        placeholder="Who would you prefer to avoid?"
+                    />
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            data-prev="1"
+                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            data-next="3"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+                        >
+                            Next Section
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Section 3: Professional Skills -->
+                <section id="section-3" class="hidden">
+                    <h2
+                        class="text-xl font-semibold mb-6 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
+                            >3</span
+                        >
+                        Professional Skills
+                    </h2>
+
+                    <div class="space-y-8">
+                        <div>
+                            <h3
+                                class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
+                            >
+                                Narrative Block
+                            </h3>
+                            <SkillSlider
+                                client:load
+                                label="Creativity"
+                                name="narrative_creativity"
+                                description="Ability to generate original ideas and storytelling concepts."
+                            />
+                            <SkillSlider
+                                client:load
+                                label="Writing"
+                                name="narrative_writing"
+                                description="Drafting scripts, descriptions, and structural documents."
+                            />
+                            <SkillSlider
+                                client:load
+                                label="References"
+                                name="narrative_references"
+                                description="Knowledge of existing works and cultural context."
+                            />
+                            <SkillSlider
+                                client:load
+                                label="Communication"
+                                name="narrative_communication"
+                                description="Expressing ideas clearly to the team."
+                            />
+                        </div>
+
+                        <div>
+                            <h3
+                                class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2 text-right"
+                            >
+                                Technical Block
+                            </h3>
+                            <SkillSlider
+                                client:load
+                                label="Camera"
+                                name="technical_camera"
+                            />
+                            <SkillSlider
+                                client:load
+                                label="Sound"
+                                name="technical_sound"
+                            />
+                            <SkillSlider
+                                client:load
+                                label="Editing"
+                                name="technical_editing"
+                            />
+                        </div>
+
+                        <div>
+                            <h3
+                                class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
+                            >
+                                Management Block
+                            </h3>
+                            <SkillSlider
+                                client:load
+                                label="Planning"
+                                name="management_planning"
+                            />
+                            <SkillSlider
+                                client:load
+                                label="Production"
+                                name="management_production"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            data-prev="2"
+                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            data-next="4"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+                        >
+                            Next Section
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Section 4: Personal Skills -->
+                <section id="section-4" class="hidden">
+                    <h2
+                        class="text-xl font-semibold mb-6 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
+                            >4</span
+                        >
+                        Personal & Soft Skills
+                    </h2>
+
+                    <SkillSlider
+                        client:load
+                        label="Leadership"
+                        name="soft_leadership"
+                    />
+                    <SkillSlider
+                        client:load
+                        label="Listening"
+                        name="soft_listening"
+                    />
+                    <SkillSlider
+                        client:load
+                        label="Proactivity"
+                        name="soft_proactivity"
+                    />
+                    <SkillSlider
+                        client:load
+                        label="Teamwork"
+                        name="soft_teamwork"
+                    />
+                    <SkillSlider
+                        client:load
+                        label="Motivation"
+                        name="soft_motivation"
+                    />
+                    <SkillSlider
+                        client:load
+                        label="Conflict Resolution"
+                        name="soft_conflict"
+                    />
+
+                    <div class="mt-8 border-t pt-8">
+                        <label class="flex items-start gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                required
+                                class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span class="text-sm text-gray-600">
+                                I agree to the <strong
+                                    >Terms and Conditions</strong
+                                > and confirm that the information provided is accurate
+                                and will be used for group formation purposes.
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            data-prev="3"
+                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-8 py-3 bg-blue-600 text-white rounded-md font-bold hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl active:scale-95"
+                        >
+                            Submit Form
+                        </button>
+                    </div>
+                </section>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        const sections = document.querySelectorAll<HTMLElement>("section");
+        const progressBars = document.querySelectorAll<HTMLElement>(
+            "#progress-bar > div",
+        );
+
+        document.querySelectorAll("[data-next]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const nextId = btn.getAttribute("data-next");
+                if (nextId) showSection(nextId);
+            });
+        });
+
+        document.querySelectorAll("[data-prev]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const prevId = btn.getAttribute("data-prev");
+                if (prevId) showSection(prevId);
+            });
+        });
+
+        function showSection(id: string) {
+            sections.forEach((s) => s.classList.add("hidden"));
+            const targetSection = document.getElementById(`section-${id}`);
+            if (targetSection) targetSection.classList.remove("hidden");
+
+            const idx = parseInt(id) - 1;
+            progressBars.forEach((bar, i) => {
+                if (i <= idx) {
+                    bar.classList.add("bg-blue-600");
+                    bar.classList.remove("bg-gray-200");
+                } else {
+                    bar.classList.remove("bg-blue-600");
+                    bar.classList.add("bg-gray-200");
+                }
+            });
+
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        // Section 1 Validation & Modal Logic
+        const studentSelect = document.getElementById(
+            "studentSelect",
+        ) as HTMLSelectElement;
+        const emailPrefix = document.getElementById(
+            "emailPrefix",
+        ) as HTMLInputElement;
+        const fullEmail = document.getElementById(
+            "fullEmail",
+        ) as HTMLInputElement;
+        const termsCheckbox = document.getElementById(
+            "terms",
+        ) as HTMLInputElement;
+        const btnNext1 = document.getElementById(
+            "btn-next-1",
+        ) as HTMLButtonElement;
+        const disclaimerModal = document.getElementById(
+            "disclaimerModal",
+        ) as HTMLElement;
+        const openDisclaimer = document.getElementById(
+            "openDisclaimer",
+        ) as HTMLElement;
+        const closeDisclaimer = document.getElementById(
+            "closeDisclaimer",
+        ) as HTMLElement;
+
+        function validateSection1() {
+            const hasName = studentSelect.value !== "";
+            const hasEmail = emailPrefix.value.trim().length > 0;
+            const hasTerms = termsCheckbox.checked;
+
+            btnNext1.disabled = !(hasName && hasEmail && hasTerms);
+            fullEmail.value =
+                emailPrefix.value.trim() + "@alumni.mondragon.edu";
+        }
+
+        studentSelect?.addEventListener("change", validateSection1);
+        emailPrefix?.addEventListener("input", validateSection1);
+        termsCheckbox?.addEventListener("change", validateSection1);
+
+        openDisclaimer?.addEventListener("click", () => {
+            disclaimerModal.classList.remove("hidden");
+        });
+
+        closeDisclaimer?.addEventListener("click", () => {
+            disclaimerModal.classList.add("hidden");
+        });
+
+        // Close modal on outside click
+        disclaimerModal?.addEventListener("click", (e) => {
+            if (
+                e.target === disclaimerModal ||
+                (e.target as HTMLElement).classList.contains("bg-black/50")
+            ) {
+                disclaimerModal.classList.add("hidden");
+            }
+        });
+
+        // Initialize validation
+        validateSection1();
+    </script>
+</Layout>

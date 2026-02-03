@@ -1,0 +1,149 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { db } from "../../lib/db";
+import { projects, students } from "../../../db/schema";
+import { sql, eq } from "drizzle-orm";
+
+const allProjects = await db.query.projects.findMany({
+    orderBy: (projects, { desc }) => [desc(projects.createdAt)],
+});
+
+// Fetch completion stats for each project
+const projectStats = await Promise.all(
+    allProjects.map(async (p) => {
+        const result = await db
+            .select({
+                total: sql<number>`count(*)`,
+                completed: sql<number>`sum(case when ${students.hasCompleted} = 1 then 1 else 0 end)`,
+            })
+            .from(students)
+            .where(eq(students.projectId, p.id));
+
+        return {
+            ...p,
+            totalStudents: result[0]?.total || 0,
+            completedStudents: result[0]?.completed || 0,
+            percentage: result[0]?.total
+                ? Math.round((result[0].completed / result[0].total) * 100)
+                : 0,
+        };
+    }),
+);
+---
+
+<AdminLayout title="Dashboard">
+    <div class="md:flex md:items-center md:justify-between mb-8">
+        <div class="flex-1 min-w-0">
+            <h2
+                class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate"
+            >
+                Projects
+            </h2>
+        </div>
+        <div class="mt-4 flex md:mt-0 md:ml-4">
+            <a
+                href="/admin/create-project"
+                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+                Create New Project
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {
+            projectStats.map((project) => (
+                <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <span
+                                class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    project.status === "active"
+                                        ? "bg-green-100 text-green-800"
+                                        : project.status === "setup"
+                                          ? "bg-blue-100 text-blue-800"
+                                          : "bg-gray-100 text-gray-800"
+                                }`}
+                            >
+                                {(project.status || "setup").toUpperCase()}
+                            </span>
+                            <span class="text-xs text-gray-500">
+                                {project.createdAt
+                                    ? new Date(
+                                          project.createdAt,
+                                      ).toLocaleDateString()
+                                    : "Date unknown"}
+                            </span>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-1 flex justify-between items-center">
+                            <span>{project.name}</span>
+                            <span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-500">
+                                ID: {project.id}
+                            </span>
+                        </h3>
+                        <p class="text-sm text-gray-500 line-clamp-2 mb-4 h-10">
+                            {project.description}
+                        </p>
+
+                        <div class="mb-4">
+                            <div class="flex justify-between text-xs font-medium text-gray-700 mb-1">
+                                <span>Completion Progress</span>
+                                <span>
+                                    {project.completedStudents} /{" "}
+                                    {project.totalStudents} (
+                                    {project.percentage}%)
+                                </span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                    class="bg-blue-600 h-2 rounded-full transition-all"
+                                    style={`width: ${project.percentage}%`}
+                                />
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-gray-100 grid grid-cols-2 gap-2">
+                            <a
+                                href={`/admin/monitor/${project.id}`}
+                                class="inline-flex justify-center items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50 transition-colors"
+                            >
+                                Monitor
+                            </a>
+                            <a
+                                href={`/admin/teams/${project.id}`}
+                                class="inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                            >
+                                View Teams
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            ))
+        }
+
+        {
+            projectStats.length === 0 && (
+                <div class="col-span-full py-20 bg-white rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-12 w-12 text-gray-400 mb-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width={1}
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                        />
+                    </svg>
+                    <p class="text-gray-500 text-lg">
+                        No projects yet. Create your first one to get started!
+                    </p>
+                </div>
+            )
+        }
+    </div>
+</AdminLayout>

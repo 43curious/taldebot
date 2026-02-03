@@ -1,0 +1,38 @@
+{
+  "name": "taldebot-v2",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.5.2",
+    "@astrojs/react": "^4.4.2",
+    "@astrojs/tailwind": "^6.0.2",
+    "astro": "^5.17.1",
+    "better-sqlite3": "^12.6.2",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.1",
+    "lucide-react": "^0.563.0",
+    "nodemailer": "^7.0.13",
+    "papaparse": "^5.5.3",
+    "react": "^19.2.4",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dom": "^19.2.4",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^3.4.19",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/nodemailer": "^7.0.9",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "drizzle-kit": "^0.31.8"
+  }
+}

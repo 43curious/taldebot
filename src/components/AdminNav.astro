@@ -1,0 +1,59 @@
+---
+const { currentPath } = Astro.props;
+---
+
+<nav class="bg-white border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <div class="flex items-center">
+                <a
+                    href="/admin/dashboard"
+                    class="flex-shrink-0 flex items-center gap-2"
+                >
+                    <div
+                        class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold"
+                    >
+                        T
+                    </div>
+                    <span
+                        class="text-xl font-bold text-gray-900 tracking-tight"
+                        >TaldeBOT <span class="text-blue-600">Admin</span
+                        ></span
+                    >
+                </a>
+                <div class="hidden sm:ml-8 sm:flex sm:space-x-8">
+                    <a
+                        href="/admin/dashboard"
+                        class={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${currentPath === "/admin/dashboard" ? "border-blue-500 text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"}`}
+                    >
+                        Dashboard
+                    </a>
+                    <a
+                        href="/admin/create-project"
+                        class={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${currentPath === "/admin/create-project" ? "border-blue-500 text-gray-900" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"}`}
+                    >
+                        Create Project
+                    </a>
+                </div>
+            </div>
+            <div class="flex items-center">
+                <button class="text-gray-500 hover:text-gray-700 p-2">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width={2}
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                        ></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>

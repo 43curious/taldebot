@@ -1,0 +1,88 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Welcome">
+	<main
+		class="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-800 text-white"
+	>
+		<div class="max-w-5xl mx-auto px-4 py-24 md:py-32">
+			<div class="text-center">
+				<div
+					class="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm border border-white/20"
+				>
+					<span class="text-4xl font-bold">T</span>
+				</div>
+				<h1
+					class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6"
+				>
+					Talde<span class="text-blue-200">BOT</span>
+				</h1>
+				<p
+					class="text-xl md:text-2xl text-blue-100 max-w-2xl mx-auto mb-12"
+				>
+					Intelligent university team formation. Making collaborations
+					smoother, one algorithm at a time.
+				</p>
+
+				<div
+					class="flex flex-col sm:flex-row items-center justify-center gap-4"
+				>
+					<a
+						href="/admin/login"
+						class="w-full sm:w-auto px-8 py-4 bg-white text-blue-700 rounded-xl font-bold text-lg shadow-xl hover:bg-blue-50 transition-all hover:scale-105"
+					>
+						Administrator Login
+					</a>
+					<button
+						onclick="document.getElementById('student-access').scrollIntoView({ behavior: 'smooth' })"
+						class="w-full sm:w-auto px-8 py-4 bg-blue-500 text-white rounded-xl font-bold text-lg border border-blue-400 hover:bg-blue-400 transition-all"
+					>
+						I am a Student
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="student-access" class="bg-white text-gray-900 py-24">
+			<div class="max-w-4xl mx-auto px-4 text-center">
+				<h2 class="text-3xl font-bold mb-4 text-gray-900">
+					Student Access
+				</h2>
+				<p class="text-gray-600 mb-12">
+					Please enter the Project ID provided by your instructor to
+					access your recruitment form.
+				</p>
+
+				<div class="max-w-md mx-auto">
+					<div class="flex gap-2">
+						<input
+							type="number"
+							id="project-id-input"
+							placeholder="Enter Project ID (e.g. 1)"
+							class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+						/>
+						<button
+							onclick="const id = document.getElementById('project-id-input').value; if(id) window.location.href = `/student/form/${id}`"
+							class="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+						>
+							Go
+						</button>
+					</div>
+					<p class="mt-4 text-sm text-gray-400">
+						Sample Project ID might be 1 if you just seeded the
+						database.
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<footer
+			class="py-12 px-4 text-center text-blue-200/50 text-sm border-t border-white/10 bg-indigo-900"
+		>
+			<p>
+				&copy; {new Date().getFullYear()} TaldeBOT Team Formation System
+			</p>
+		</footer>
+	</main>
+</Layout>
