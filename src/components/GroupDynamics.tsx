@@ -14,9 +14,24 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
     const [comfort, setComfort] = useState<number[]>([]);
     const [preferWith, setPreferWith] = useState<number[]>([]);
     const [preferAvoid, setPreferAvoid] = useState<number[]>([]);
+    const [selfId, setSelfId] = useState<number | null>(null);
 
-    // If I choose someone in my comfort zone, they cannot be in preferWith or preferAvoid
-    // Basically, any selected ID is excluded from OTHER categories.
+    React.useEffect(() => {
+        const handleStudentSelected = (e: any) => {
+            setSelfId(e.detail.studentId);
+
+            // Clear selections if they happen to be the selfId (safety check)
+            const sid = e.detail.studentId;
+            setComfort(prev => prev.filter(id => id !== sid));
+            setPreferWith(prev => prev.filter(id => id !== sid));
+            setPreferAvoid(prev => prev.filter(id => id !== sid));
+        };
+
+        window.addEventListener('student-selected', handleStudentSelected);
+        return () => window.removeEventListener('student-selected', handleStudentSelected);
+    }, []);
+
+    const baseExclusions = selfId !== null ? [selfId] : [];
 
     return (
         <div className="space-y-6">
@@ -28,7 +43,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
                 placeholder="Norekin sentitzen zara erosoen lanean?"
                 value={comfort}
                 onChange={setComfort}
-                excludedIds={[...preferWith, ...preferAvoid]}
+                excludedIds={[...baseExclusions, ...preferWith, ...preferAvoid]}
                 variant="green"
             />
 
@@ -40,7 +55,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
                 placeholder="Norekin gustatuko litzaizuke proiektu honetan lan egitea?"
                 value={preferWith}
                 onChange={setPreferWith}
-                excludedIds={[...comfort, ...preferAvoid]}
+                excludedIds={[...baseExclusions, ...comfort, ...preferAvoid]}
                 variant="teal"
             />
 
@@ -52,7 +67,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
                 placeholder="Norekin nahiko zenuke EZ lan egin?"
                 value={preferAvoid}
                 onChange={setPreferAvoid}
-                excludedIds={[...comfort, ...preferWith]}
+                excludedIds={[...baseExclusions, ...comfort, ...preferWith]}
                 variant="red"
             />
         </div>

@@ -2,86 +2,423 @@
 import Layout from "../layouts/Layout.astro";
 ---
 
-<Layout title="TaldeBOT - Taldeak Eratzeko Sistema Adimentsua">
-	<main class="min-h-screen bg-slate-50 text-slate-900 overflow-hidden relative selection:bg-teal-500/30">
+<Layout title="TaldeBOT">
+	<main
+		class="min-h-screen bg-slate-50 text-slate-900 overflow-hidden relative selection:bg-teal-500/30"
+	>
 		<!-- Subtle Background Accents -->
-		<div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-600/5 rounded-full blur-[120px] pointer-events-none"></div>
-		<div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-600/5 rounded-full blur-[120px] pointer-events-none"></div>
+		<div
+			class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-600/5 rounded-full blur-[120px] pointer-events-none"
+		>
+		</div>
+		<div
+			class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-600/5 rounded-full blur-[120px] pointer-events-none"
+		>
+		</div>
 
 		<!-- Nav Bar -->
-		<nav class="fixed top-0 left-0 w-full z-50 px-6 py-6 flex justify-center">
-			<div class="w-full max-w-6xl flex justify-between items-center px-4">
+		<nav
+			class="fixed top-0 left-0 w-full z-50 px-6 py-6 flex justify-center"
+		>
+			<div
+				class="w-full max-w-6xl flex justify-between items-center px-4"
+			>
 				<div class="flex items-center gap-2 group cursor-default">
-					<div class="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center font-bold text-white text-lg shadow-lg shadow-teal-600/20 group-hover:rotate-6 transition-transform">
-						T
+					<div
+						class="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-teal-600/20 group-hover:bg-teal-500 transition-all overflow-hidden"
+					>
+						<svg
+							class="w-7 h-7 logo-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<circle
+								cx="12"
+								cy="8"
+								r="3"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"></circle>
+							<path
+								d="M15.2679 8C15.5332 7.54063 15.97 7.20543 16.4824 7.06815C16.9947 6.93086 17.5406 7.00273 18 7.26795C18.4594 7.53317 18.7946 7.97 18.9319 8.48236C19.0691 8.99472 18.9973 9.54063 18.7321 10C18.4668 10.4594 18.03 10.7946 17.5176 10.9319C17.0053 11.0691 16.4594 10.9973 16 10.7321C15.5406 10.4668 15.2054 10.03 15.0681 9.51764C14.9309 9.00528 15.0027 8.45937 15.2679 8L15.2679 8Z"
+								stroke="currentColor"
+								stroke-width="2"></path>
+							<path
+								d="M5.26795 8C5.53317 7.54063 5.97 7.20543 6.48236 7.06815C6.99472 6.93086 7.54063 7.00273 8 7.26795C8.45937 7.53317 8.79457 7.97 8.93185 8.48236C9.06914 8.99472 8.99727 9.54063 8.73205 10C8.46683 10.4594 8.03 10.7946 7.51764 10.9319C7.00528 11.0691 6.45937 10.9973 6 10.7321C5.54063 10.4668 5.20543 10.03 5.06815 9.51764C4.93086 9.00528 5.00273 8.45937 5.26795 8L5.26795 8Z"
+								stroke="currentColor"
+								stroke-width="2"></path>
+							<path
+								d="M16.8816 18L15.9013 18.1974L16.0629 19H16.8816V18ZM20.7202 16.9042L21.6627 16.5699L20.7202 16.9042ZM14.7808 14.7105L14.176 13.9142L13.0194 14.7927L14.2527 15.5597L14.7808 14.7105ZM19.8672 17H16.8816V19H19.8672V17ZM19.7777 17.2384C19.7707 17.2186 19.7642 17.181 19.7725 17.1354C19.7804 17.0921 19.7982 17.0593 19.8151 17.0383C19.8474 16.9982 19.874 17 19.8672 17V19C21.0132 19 22.1414 17.9194 21.6627 16.5699L19.7777 17.2384ZM17 15C18.6416 15 19.4027 16.1811 19.7777 17.2384L21.6627 16.5699C21.1976 15.2588 19.9485 13 17 13V15ZM15.3857 15.5069C15.7702 15.2148 16.282 15 17 15V13C15.8381 13 14.9028 13.3622 14.176 13.9142L15.3857 15.5069ZM14.2527 15.5597C15.2918 16.206 15.7271 17.3324 15.9013 18.1974L17.8619 17.8026C17.644 16.7204 17.0374 14.9364 15.309 13.8614L14.2527 15.5597Z"
+								fill="currentColor"></path>
+							<path
+								d="M9.21918 14.7105L9.7473 15.5597L10.9806 14.7927L9.82403 13.9142L9.21918 14.7105ZM3.2798 16.9041L4.22227 17.2384L4.22227 17.2384L3.2798 16.9041ZM7.11835 18V19H7.93703L8.09867 18.1974L7.11835 18ZM7.00001 15C7.71803 15 8.22986 15.2148 8.61433 15.5069L9.82403 13.9142C9.09723 13.3621 8.1619 13 7.00001 13V15ZM4.22227 17.2384C4.59732 16.1811 5.35842 15 7.00001 15V13C4.0515 13 2.80238 15.2587 2.33733 16.5699L4.22227 17.2384ZM4.13278 17C4.126 17 4.15264 16.9982 4.18486 17.0383C4.20176 17.0593 4.21961 17.0921 4.22748 17.1354C4.2358 17.181 4.22931 17.2186 4.22227 17.2384L2.33733 16.5699C1.85864 17.9194 2.98677 19 4.13278 19V17ZM7.11835 17H4.13278V19H7.11835V17ZM8.09867 18.1974C8.27289 17.3324 8.70814 16.206 9.7473 15.5597L8.69106 13.8614C6.96257 14.9363 6.356 16.7203 6.13804 17.8026L8.09867 18.1974Z"
+								fill="currentColor"></path>
+							<path
+								d="M12 14C15.5715 14 16.5919 16.5512 16.8834 18.0089C16.9917 18.5504 16.5523 19 16 19H8C7.44772 19 7.00829 18.5504 7.11659 18.0089C7.4081 16.5512 8.42846 14 12 14Z"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"></path>
+						</svg>
 					</div>
-					<span class="font-bold text-2xl tracking-tight text-slate-800">Talde<span class="text-teal-600">BOT</span></span>
+					<span
+						class="font-bold text-2xl tracking-tight text-slate-800"
+						>Talde<span class="text-teal-600">BOT</span></span
+					>
 				</div>
-				
-				<a 
-					href="/admin/login" 
+
+				<a
+					href="/admin/login"
 					class="text-sm font-semibold text-slate-500 hover:text-teal-600 transition-colors flex items-center gap-2 group py-2 px-4 rounded-lg hover:bg-teal-50"
 				>
 					Admin Sarbidea
-					<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"
+						></path></svg
+					>
 				</a>
 			</div>
 		</nav>
 
 		<!-- Hero Section -->
-		<div class="relative min-h-screen flex flex-col items-center justify-center px-4 pt-20">
-			<div class="w-full max-w-6xl flex flex-col items-center justify-center">
+		<div
+			class="relative min-h-screen flex flex-col items-center justify-center px-4 pt-20"
+		>
+			<div
+				class="w-full max-w-6xl flex flex-col items-center justify-center"
+			>
 				<div class="w-full text-center slide-up">
 					<!-- Header -->
 					<div class="mb-14">
-						<h1 class="text-6xl md:text-8xl font-black tracking-tighter mb-6 text-slate-900">
+						<h1
+							class="text-6xl md:text-8xl font-black tracking-tighter mb-6 text-slate-900"
+						>
 							Talde<span class="text-teal-600">BOT</span>
 						</h1>
-						<p class="text-2xl italic text-slate-500 leading-relaxed max-w-xl mx-auto">
+						<p
+							class="text-2xl italic text-slate-500 leading-relaxed max-w-xl mx-auto"
+						>
 							Taldeak sortzen, denok bat egiteko.
 						</p>
 					</div>
 
 					<!-- Code Input -->
 					<div class="max-w-xl mx-auto relative group">
-						<div class="absolute -inset-1 rounded-2xl blur opacity-15 group-focus-within:opacity-30 transition-all duration-500"></div>
-						<div class="relative flex p-2 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50">
-							<input
-								type="text"
-								id="project-id-input"
-								placeholder="Sartu zure proiektuaren kodea..."
-								maxlength="5"
-								class="flex-1 bg-transparent border-none outline-none px-6 py-4 text-slate-900 text-lg placeholder:text-slate-400 selection:bg-teal-100 italic"
-							/>
+						<div class="flex flex-col items-center gap-8">
+							<div class="flex gap-3" id="otp-container">
+								<input
+									type="text"
+									maxlength="1"
+									placeholder="1"
+									class="otp-input w-14 h-18 md:w-16 md:h-20 bg-white border-2 border-slate-200 rounded-2xl text-3xl font-black text-center text-slate-900 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all shadow-lg shadow-slate-200/50"
+								/>
+								<input
+									type="text"
+									maxlength="1"
+									placeholder="2"
+									class="otp-input w-14 h-18 md:w-16 md:h-20 bg-white border-2 border-slate-200 rounded-2xl text-3xl font-black text-center text-slate-900 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all shadow-lg shadow-slate-200/50"
+								/>
+								<input
+									type="text"
+									maxlength="1"
+									placeholder="3"
+									class="otp-input w-14 h-18 md:w-16 md:h-20 bg-white border-2 border-slate-200 rounded-2xl text-3xl font-black text-center text-slate-900 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all shadow-lg shadow-slate-200/50"
+								/>
+								<input
+									type="text"
+									maxlength="1"
+									placeholder="4"
+									class="otp-input w-14 h-18 md:w-16 md:h-20 bg-white border-2 border-slate-200 rounded-2xl text-3xl font-black text-center text-slate-900 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all shadow-lg shadow-slate-200/50"
+								/>
+								<span
+									class="flex items-center text-slate-300 font-thin text-4xl"
+									>-</span
+								>
+								<input
+									type="text"
+									maxlength="1"
+									placeholder="A"
+									class="otp-input w-14 h-18 md:w-16 md:h-20 bg-white border-2 border-slate-200 rounded-2xl text-3xl font-black text-center text-teal-600 border-teal-100 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all shadow-lg shadow-teal-100/50"
+								/>
+							</div>
+
 							<button
-								onclick="const input = document.getElementById('project-id-input'); const code = input.value.trim().toUpperCase(); if(/^[0-9]{4}[A-Z]$/.test(code)) { window.location.href = `/student/form/${code}`; } else { alert('Kodeak 4 zenbaki eta letra bat izan behar du (adib. 1234A)'); }"
-								class="px-10 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-lg shadow-teal-600/30 transition-all active:scale-95 flex items-center gap-2"
+								id="hasi-button"
+								class="px-12 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-black text-xl shadow-xl shadow-teal-600/30 transition-all active:scale-95 flex items-center gap-3 opacity-0 pointer-events-none translate-y-4 duration-300"
 							>
-							Hasi
+								Hasi
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="w-6 h-6"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="3"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><path d="M5 12h14"></path><path
+										d="m12 5 7 7-7 7"></path></svg
+								>
 							</button>
 						</div>
+
+						<p
+							id="error-message"
+							class="mt-4 text-red-500 font-bold text-sm opacity-0 h-0 overflow-hidden transition-all duration-300"
+						>
+							This code doesn't exist
+						</p>
+
 						<p class="mt-8 text-sm text-slate-400 font-medium px-4">
-							Zure irakasleak emango dizu profil hau osatzeko beharrezko kodea (5 karaktere).
+							Sartu irakasleak emandako kodea.
 						</p>
 					</div>
+
+					<script>
+						const inputs = document.querySelectorAll(
+							".otp-input",
+						) as NodeListOf<HTMLInputElement>;
+						const button = document.getElementById(
+							"hasi-button",
+						) as HTMLButtonElement;
+						const errorMessage =
+							document.getElementById("error-message");
+
+						// Check for error in URL
+						const urlParams = new URLSearchParams(
+							window.location.search,
+						);
+						if (urlParams.get("error") === "not_found") {
+							if (errorMessage) {
+								errorMessage.classList.remove(
+									"opacity-0",
+									"h-0",
+								);
+								errorMessage.classList.add("h-auto", "mt-4");
+							}
+							// Clear URL param without reload
+							window.history.replaceState(
+								{},
+								document.title,
+								window.location.pathname,
+							);
+						}
+
+						function hideError() {
+							if (
+								errorMessage &&
+								!errorMessage.classList.contains("opacity-0")
+							) {
+								errorMessage.classList.add("opacity-0");
+								setTimeout(() => {
+									errorMessage.classList.add("h-0");
+									errorMessage.classList.remove(
+										"h-auto",
+										"mt-4",
+									);
+								}, 300);
+							}
+						}
+
+						inputs.forEach((input, index) => {
+							// Ensure cursor is always at the end on focus
+							input.addEventListener("focus", () => {
+								hideError();
+								setTimeout(() => {
+									input.setSelectionRange(
+										input.value.length,
+										input.value.length,
+									);
+								}, 0);
+							});
+
+							// Filter input: only numbers for first 4, letter for last
+							input.addEventListener("input", (e) => {
+								hideError();
+
+								const target = e.target as HTMLInputElement;
+								const val = target.value.toUpperCase();
+								target.value = val;
+
+								if (index < 4) {
+									if (!/^[0-9]?$/.test(val)) {
+										target.value = "";
+										return;
+									}
+								} else {
+									if (!/^[A-Z]?$/.test(val)) {
+										target.value = "";
+										return;
+									}
+								}
+
+								if (val && index < inputs.length - 1) {
+									inputs[index + 1].focus();
+								}
+
+								checkFullCode();
+							});
+
+							// Handle backspace
+							input.addEventListener("keydown", (e: Event) => {
+								const keyboardEvent = e as KeyboardEvent;
+								if (keyboardEvent.key === "Backspace") {
+									if (!input.value && index > 0) {
+										const prevInput = inputs[index - 1];
+										prevInput.focus();
+									}
+								}
+							});
+
+							// Paste support
+							input.addEventListener("paste", (e: Event) => {
+								e.preventDefault();
+								const pasteEvent = e as ClipboardEvent;
+								const data =
+									pasteEvent.clipboardData
+										?.getData("text")
+										.toUpperCase()
+										.replace(/[^0-9A-Z]/g, "") || "";
+								if (data.length > 0) {
+									const chars = data.split("").slice(0, 5);
+									chars.forEach((char, i) => {
+										if (inputs[i]) {
+											// Basic validation for paste
+											if (i < 4 && !/^[0-9]$/.test(char))
+												return;
+											if (
+												i === 4 &&
+												!/^[A-Z]$/.test(char)
+											)
+												return;
+											inputs[i].value = char;
+										}
+									});
+									const nextFocus = Math.min(
+										chars.length,
+										inputs.length - 1,
+									);
+									inputs[nextFocus].focus();
+									checkFullCode();
+								}
+							});
+						});
+
+						function checkFullCode() {
+							const fullCode = Array.from(inputs)
+								.map((i) => i.value)
+								.join("");
+							const isValid = /^[0-9]{4}[A-Z]$/.test(fullCode);
+
+							if (button) {
+								if (isValid) {
+									button.classList.remove(
+										"opacity-0",
+										"pointer-events-none",
+										"translate-y-4",
+									);
+								} else {
+									button.classList.add(
+										"opacity-0",
+										"pointer-events-none",
+										"translate-y-4",
+									);
+								}
+							}
+						}
+
+						if (button) {
+							button.addEventListener("click", () => {
+								const fullCode = Array.from(inputs)
+									.map((i) => i.value)
+									.join("");
+								if (/^[0-9]{4}[A-Z]$/.test(fullCode)) {
+									window.location.href = `/student/form/${fullCode}`;
+								}
+							});
+						}
+					</script>
 				</div>
 			</div>
 		</div>
 
+		<!-- Corner Glow Effects -->
+		<div
+			class="fixed top-0 left-0 w-[40vw] h-[40vw] rounded-full bg-teal-500/10 blur-[100px] pointer-events-none opacity-0 transition-opacity duration-300 corner-glow"
+			data-corner="tl"
+		>
+		</div>
+		<div
+			class="fixed top-0 right-0 w-[40vw] h-[40vw] rounded-full bg-teal-500/10 blur-[100px] pointer-events-none opacity-0 transition-opacity duration-300 corner-glow"
+			data-corner="tr"
+		>
+		</div>
+		<div
+			class="fixed bottom-0 left-0 w-[40vw] h-[40vw] rounded-full bg-teal-500/10 blur-[100px] pointer-events-none opacity-0 transition-opacity duration-300 corner-glow"
+			data-corner="bl"
+		>
+		</div>
+		<div
+			class="fixed bottom-0 right-0 w-[40vw] h-[40vw] rounded-full bg-teal-500/10 blur-[100px] pointer-events-none opacity-0 transition-opacity duration-300 corner-glow"
+			data-corner="br"
+		>
+		</div>
+
 		<!-- Footer -->
-		<footer class="absolute bottom-0 left-0 w-full flex justify-center py-10">
-			<div class="w-full max-w-6xl px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 border-t border-slate-200 pt-8">
+		<footer
+			class="absolute bottom-0 left-0 w-full flex justify-center py-10"
+		>
+			<div
+				class="w-full max-w-6xl px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 border-t border-slate-200 pt-8"
+			>
 				<p class="text-[10px] font-bold tracking-[0.3em] uppercase">
-					&copy; {new Date().getFullYear()} TaldeBOT &bull; Intelligent Systems &bull; MU
+					&copy; {new Date().getFullYear()} TaldeBOT &bull; MU
 				</p>
-				<div class="flex gap-6 text-[10px] font-bold tracking-widest uppercase">
-					<span class="text-slate-300">Pribatutasuna</span>
-					<span class="text-slate-300">Baldintzak</span>
+				<div
+					class="flex gap-6 text-[10px] font-bold tracking-widest uppercase"
+				>
+					<a
+						href="/pribatutasuna"
+						class="text-slate-400 hover:text-teal-600 transition-colors"
+						>Pribatutasuna</a
+					>
 				</div>
 			</div>
 		</footer>
 	</main>
 </Layout>
+
+<script>
+	// Corner Glow Effect
+	const glows = document.querySelectorAll(".corner-glow");
+	const threshold = 400;
+
+	window.addEventListener("mousemove", (e) => {
+		const { clientX: x, clientY: y } = e;
+		const { innerWidth: w, innerHeight: h } = window;
+
+		glows.forEach((glow) => {
+			const corner = glow.getAttribute("data-corner");
+			let dist = 0;
+
+			if (corner === "tl") dist = Math.hypot(x, y);
+			if (corner === "tr") dist = Math.hypot(w - x, y);
+			if (corner === "bl") dist = Math.hypot(x, h - y);
+			if (corner === "br") dist = Math.hypot(w - x, h - y);
+
+			const opacity = Math.max(0, 1 - dist / threshold);
+			(glow as HTMLElement).style.opacity = opacity.toString();
+		});
+	});
+</script>
 
 <style>
 	.slide-up {
@@ -105,7 +442,11 @@ import Layout from "../layouts/Layout.astro";
 		-webkit-appearance: none;
 		margin: 0;
 	}
-	input[type=number] {
+	input[type="number"] {
 		-moz-appearance: textfield;
+	}
+
+	.otp-input:focus::placeholder {
+		color: transparent;
 	}
 </style>

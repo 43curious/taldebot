@@ -1,0 +1,166 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Pribatutasuna - TaldeBOT">
+    <main
+        class="min-h-screen bg-slate-50 text-slate-900 overflow-hidden relative selection:bg-teal-500/30"
+    >
+        <!-- Subtle Background Accents -->
+        <div
+            class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-600/5 rounded-full blur-[120px] pointer-events-none"
+        >
+        </div>
+        <div
+            class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-600/5 rounded-full blur-[120px] pointer-events-none"
+        >
+        </div>
+
+        <!-- Nav Bar -->
+        <nav
+            class="fixed top-0 left-0 w-full z-50 px-6 py-6 flex justify-center"
+        >
+            <div
+                class="w-full max-w-6xl flex justify-between items-center px-4"
+            >
+                <a href="/" class="flex items-center gap-2 group">
+                    <div
+                        class="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center font-bold text-white text-lg shadow-lg shadow-teal-600/20 group-hover:rotate-6 transition-transform"
+                    >
+                        T
+                    </div>
+                    <span
+                        class="font-bold text-2xl tracking-tight text-slate-800"
+                        >Talde<span class="text-teal-600">BOT</span></span
+                    >
+                </a>
+
+                <a
+                    href="/admin/login"
+                    class="text-sm font-semibold text-slate-500 hover:text-teal-600 transition-colors flex items-center gap-2 group py-2 px-4 rounded-lg hover:bg-teal-50"
+                >
+                    Admin Sarbidea
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"
+                        ></path></svg
+                    >
+                </a>
+            </div>
+        </nav>
+
+        <!-- Content Section -->
+        <div
+            class="relative min-h-screen flex flex-col items-center pt-32 pb-20 px-4"
+        >
+            <div
+                class="w-full max-w-2xl bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8 md:p-12 slide-up"
+            >
+                <h1
+                    class="text-4xl font-black tracking-tighter mb-8 text-slate-900 border-b border-slate-100 pb-6"
+                >
+                    Pribatutasuna eta <span class="text-teal-600"
+                        >Datuen Erabilera</span
+                    >
+                </h1>
+
+                <div
+                    class="prose prose-slate prose-lg max-w-none space-y-6 text-slate-600 leading-relaxed font-medium"
+                >
+                    <p>
+                        Inkesta honetan jasotako datuak proiektu honetan talde
+                        orekatuak osatzeko soilik erabiliko dira.
+                    </p>
+
+                    <div
+                        class="bg-teal-50/50 rounded-xl p-6 border border-teal-100/50"
+                    >
+                        <h2 class="text-teal-800 font-bold text-xl mb-4">
+                            Zer gorde dugu?
+                        </h2>
+                        <ul
+                            class="list-disc list-inside space-y-2 text-teal-900/80"
+                        >
+                            <li>Zure gaitasun autoebaluatuak</li>
+                            <li>Zure kideen hobespenak</li>
+                            <li>Zure posta elektroniko akademikoa</li>
+                        </ul>
+                    </div>
+
+                    <p>
+                        Ez dira erakundetik kanpoko hirugarrenekin partekatuko
+                        eta taldeak esleitzeko prozesua amaitutakoan ezabatu edo
+                        anonimizatu egingo dira.
+                    </p>
+
+                    <p class="pt-8 text-sm text-slate-400 italic">
+                        Azken eguneratzea: {
+                            new Date().toLocaleDateString("eu-ES", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                            })
+                        }
+                    </p>
+                </div>
+
+                <div class="mt-12">
+                    <a
+                        href="/"
+                        class="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-lg shadow-teal-600/30 transition-all active:scale-95"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-4 h-4"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            ><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"
+                            ></path></svg
+                        >
+                        Itzuli hasierara
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="w-full flex justify-center py-10">
+            <div
+                class="w-full max-w-6xl px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 border-t border-slate-200 pt-8"
+            >
+                <p class="text-[10px] font-bold tracking-[0.3em] uppercase">
+                    &copy; {new Date().getFullYear()} TaldeBOT &bull; Intelligent
+                    Systems &bull; MU
+                </p>
+            </div>
+        </footer>
+    </main>
+</Layout>
+
+<style>
+    .slide-up {
+        animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>

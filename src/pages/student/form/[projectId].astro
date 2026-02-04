@@ -18,7 +18,7 @@ const project = await db.query.projects.findFirst({
 });
 
 if (!project) {
-    return Astro.redirect("/");
+    return Astro.redirect("/?error=not_found");
 }
 
 const url = new URL(Astro.request.url);
@@ -41,12 +41,26 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
             <div class="bg-teal-600 px-8 py-10 text-white">
                 <div class="flex items-center gap-2 justify-between">
                     <h1 class="text-3xl font-bold mb-2">TaldeBOT</h1>
-                    <p class="text-teal-100 px-2 text-2xl font-bold">{project.name}</p>
+                    <p class="text-teal-100 px-2 text-2xl font-bold">
+                        {project.name}
+                    </p>
                 </div>
                 <div id="survey-header-content">
-                    <h2 id="header-title" class="text-xl font-semibold text-teal-50 transition-all duration-300">Ongi etorri</h2>
-                    <p id="header-description" class="text-teal-100/80 text-sm mt-2 transition-all duration-300 leading-relaxed whitespace-pre-line">
-                        Kaixo! TaldeBOT-i zure talde ideala diseinatzen lagunduko dion profila osatzear zaude. Ez dugu zu 'sailkatu' nahi, klaseko puzzleari zer pieza gehitzen dizkiozun ulertu nahi dugu, zure taldea ahalik eta orekatuena, kementsuena eta produktiboena izan dadin.
+                    <h2
+                        id="header-title"
+                        class="text-xl font-semibold text-teal-50 transition-all duration-300"
+                    >
+                        Ongi etorri
+                    </h2>
+                    <p
+                        id="header-description"
+                        class="text-teal-100/80 text-sm mt-2 transition-all duration-300 leading-relaxed whitespace-pre-line"
+                    >
+                        Kaixo! TaldeBOT-i zure talde ideala diseinatzen
+                        lagunduko dion profila osatzear zaude. Ez dugu zu
+                        'sailkatu' nahi, klaseko puzzleari zer pieza gehitzen
+                        dizkiozun ulertu nahi dugu, zure taldea ahalik eta
+                        orekatuena, kementsuena eta produktiboena izan dadin.
                     </p>
                 </div>
             </div>
@@ -104,7 +118,8 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                 required
                                 class="w-full border border-slate-300 rounded-md bg-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                             >
-                                <option value="">Aukeratu zerrendatik...</option>
+                                <option value="">Aukeratu zerrendatik...</option
+                                >
                                 {
                                     activeStudents.map((s) => (
                                         <option
@@ -174,7 +189,8 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                         > onartzen ditut
                                     </label>
                                     <p class="text-slate-500">
-                                        Nire datu akademikoak taldeak osatzeko erabiltzea onartzen dut.
+                                        Nire datu akademikoak taldeak osatzeko
+                                        erabiltzea onartzen dut.
                                     </p>
                                 </div>
                             </div>
@@ -190,18 +206,27 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         <div
                             class="absolute inset-x-4 top-1/2 -translate-y-1/2 md:max-w-lg md:mx-auto bg-white rounded-2xl shadow-2xl p-6 md:p-8"
                         >
-                             <h3 class="text-xl font-bold text-gray-900 mb-4">
+                            <h3 class="text-xl font-bold text-gray-900 mb-4">
                                 Datuen Erabilera
                             </h3>
-                            <div class="prose prose-sm text-gray-600 mb-6 font-medium">
+                            <div
+                                class="prose prose-sm text-gray-600 mb-6 font-medium"
+                            >
                                 <p>
-                                    Inkesta honetan jasotako datuak proiektu honetan talde orekatuak osatzeko soilik erabiliko dira.
+                                    Inkesta honetan jasotako datuak proiektu
+                                    honetan talde orekatuak osatzeko soilik
+                                    erabiliko dira.
                                 </p>
                                 <p>
-                                    <strong>Zer gorde dugu?</strong> Zure gaitasun autoebaluatuak, zure kideen hobespenak eta zure posta elektroniko akademikoa.
+                                    <strong>Zer gorde dugu?</strong> Zure gaitasun
+                                    autoebaluatuak, zure kideen hobespenak eta zure
+                                    posta elektroniko akademikoa.
                                 </p>
                                 <p>
-                                    Ez dira erakundetik kanpoko hirugarrenekin partekatuko eta taldeak esleitzeko prozesua amaitutakoan ezabatu edo anonimizatu egingo dira.
+                                    Ez dira erakundetik kanpoko hirugarrenekin
+                                    partekatuko eta taldeak esleitzeko prozesua
+                                    amaitutakoan ezabatu edo anonimizatu egingo
+                                    dira.
                                 </p>
                             </div>
                             <button
@@ -306,7 +331,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             <h3
                                 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
                             >
-                            Teknika Blokea
+                                Teknika Blokea
                             </h3>
                             <SkillSlider
                                 client:load
@@ -413,9 +438,9 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                 class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                             />
                             <span class="text-sm text-gray-600">
-                                <strong
-                                    >Baldintzak eta baldintzak</strong
-                                > onartzen ditut eta emandako informazioa zuzena dela eta taldeak osatzeko erabiliko dela berresten dut.
+                                <strong>Baldintzak eta baldintzak</strong> onartzen
+                                ditut eta emandako informazioa zuzena dela eta taldeak
+                                osatzeko erabiliko dela berresten dut.
                             </span>
                         </label>
                     </div>
@@ -448,35 +473,56 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
 
         document.querySelectorAll("[data-next]").forEach((btn) => {
             btn.addEventListener("click", () => {
-                const currentId = btn.closest('section')?.id.replace('section-', '');
+                const currentId = btn
+                    .closest("section")
+                    ?.id.replace("section-", "");
                 const nextId = btn.getAttribute("data-next");
 
                 // Validation for Section 2 (Group Dynamics)
                 if (currentId === "2") {
-                    const comfort = (document.getElementsByName("comfort")[0] as HTMLInputElement)?.value;
-                    const preferWith = (document.getElementsByName("preferWith")[0] as HTMLInputElement)?.value;
-                    const preferAvoid = (document.getElementsByName("preferAvoid")[0] as HTMLInputElement)?.value;
+                    const comfort = (
+                        document.getElementsByName(
+                            "comfort",
+                        )[0] as HTMLInputElement
+                    )?.value;
+                    const preferWith = (
+                        document.getElementsByName(
+                            "preferWith",
+                        )[0] as HTMLInputElement
+                    )?.value;
+                    const preferAvoid = (
+                        document.getElementsByName(
+                            "preferAvoid",
+                        )[0] as HTMLInputElement
+                    )?.value;
 
-                    const isAllEmpty = comfort === "[]" && preferWith === "[]" && preferAvoid === "[]";
-                    
+                    const isAllEmpty =
+                        comfort === "[]" &&
+                        preferWith === "[]" &&
+                        preferAvoid === "[]";
+
                     if (isAllEmpty) {
-                        const confirmed = window.confirm("Seguru zaude ezer aukeratu gabe jarraitu nahi duzula? Horrek zure talde-erabakiak baldintza ditzake."
-);
+                        const confirmed = window.confirm(
+                            "Seguru zaude ezer aukeratu gabe jarraitu nahi duzula? Horrek zure talde-erabakiak baldintza ditzake.",
+                        );
                         if (!confirmed) return;
                     }
                 }
 
                 // Validation for Section 3 (Professional Skills)
                 if (currentId === "3") {
-                    const sliders = document.querySelectorAll<HTMLInputElement>('input[type="range"]');
+                    const sliders = document.querySelectorAll<HTMLInputElement>(
+                        'input[type="range"]',
+                    );
                     let allDefault = true;
-                    sliders.forEach(slider => {
+                    sliders.forEach((slider) => {
                         if (slider.value !== "5") allDefault = false;
                     });
 
                     if (allDefault) {
-                        const confirmed = window.confirm("Seguru zaude gaitasunik aldatu gabe jarraitu nahi duzula? Batez besteko maila (5) onartuko da atal guztietan."
-);
+                        const confirmed = window.confirm(
+                            "Seguru zaude gaitasunik aldatu gabe jarraitu nahi duzula? Batez besteko maila (5) onartuko da atal guztietan.",
+                        );
                         if (!confirmed) return;
                     }
                 }
@@ -495,14 +541,17 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
         const headerTitle = document.getElementById("header-title");
         const headerDescription = document.getElementById("header-description");
 
-        const headerContent = {
+        const headerContent: Record<
+            string,
+            { title: string; description: string }
+        > = {
             "1": {
                 title: "Has gaitezen",
-                description: `Kaixo! TaldeBOT-i zure talde ideala diseinatzen lagunduko dion profila osatzear zaude. Ez dugu zu 'sailkatu' nahi, klaseko puzzleari zer pieza gehitzen dizkiozun ulertu nahi dugu, zure taldea ahalik eta orekatuena, kementsuena eta produktiboena izan dadin. Hori lortzeko, erabateko zintzotasuna eskatzen dizugu: hemen ez dago erantzun zuzenik edo okerrik, beraz, erantzun zintzotasunez dakizunari buruz eta benetan nola sentitzen zaren. Zure gardentasuna funtsezkoa da balio gehien ematen duzun eta lanean hobekien sentitzen zaren tokia esleitu ahal izateko. Eskerrik asko zure denboragatik!`
+                description: `Kaixo! TaldeBOT-i zure talde ideala diseinatzen lagunduko dion profila osatzear zaude. Ez dugu zu 'sailkatu' nahi, klaseko puzzleari zer pieza gehitzen dizkiozun ulertu nahi dugu, zure taldea ahalik eta orekatuena, kementsuena eta produktiboena izan dadin. Hori lortzeko, erabateko zintzotasuna eskatzen dizugu: hemen ez dago erantzun zuzenik edo okerrik, beraz, erantzun zintzotasunez dakizunari buruz eta benetan nola sentitzen zaren. Zure gardentasuna funtsezkoa da balio gehien ematen duzun eta lanean hobekien sentitzen zaren tokia esleitu ahal izateko. Eskerrik asko zure denboragatik!`,
             },
             "2": {
                 title: "Talde Kudeaketa",
-                description: `Atal honek zure lan-ingurune ideala diseinatzen laguntzen digu. Jende berriarekin elkarlanean has zaitezen nahi dugu, baina ziurtatuz beti duzula konfiantzazko 'aingura' bat eta blokeorik gabeko giroa. Zure lehentasunak eta segurtasun-zirkuluak adieraztean, TaldeBOTek harremanak batzen dituen eta proiektuan zentratu zaitezkeen talde bat konfiguratzea ahalbidetzen duzu, taldeko giroa babestuta dagoela jakinda.`
+                description: `Atal honek zure lan-ingurune ideala diseinatzen laguntzen digu. Jende berriarekin elkarlanean has zaitezen nahi dugu, baina ziurtatuz beti duzula konfiantzazko 'aingura' bat eta blokeorik gabeko giroa. Zure lehentasunak eta segurtasun-zirkuluak adieraztean, TaldeBOTek harremanak batzen dituen eta proiektuan zentratu zaitezkeen talde bat konfiguratzea ahalbidetzen duzu, taldeko giroa babestuta dagoela jakinda.`,
             },
             "3": {
                 title: "Gaitasun Profesionalak",
@@ -516,12 +565,12 @@ Izan zintzoa zure egungo mailarekin.
 5etik 7ra: Erraztasunez moldatzen naiz eta modu autonomoan lan egin dezaket.
 8tik 10era: Domeinu handia dut eta beste batzuk mentorizatu ditzaket.
 
-Gogoratu: Talde perfektua ez da kide guztiak 10 dutenak, arlo bakoitzean aditua den norbait duena baizik.`
+Gogoratu: Talde perfektua ez da kide guztiak 10 dutenak, arlo bakoitzean aditua den norbait duena baizik.`,
             },
             "4": {
                 title: "Gaitasun Pertsonalak",
-                description: `Azkenik, kontatu iezaguzu zure jarrerari eta soft skillei buruz. Horrek taldeak dinamika orekatua eta motibatzailea duela ziurtatzen lagunduko digu. Hemen taldearen 'motorra' ebaluatzen dugu. Zure jarrera zure teknika bezain garrantzitsua da. Si eres una persona que prefiere escuchar antes que mandar, o si eres quien siempre motiva cuando el ánimo baja, refléjalo aquí. TaldeBOTek zure nortasuna osatuko duten kideak bilatuko ditu, talkarik egon ez dadin eta lan-fluxua konstantea izan dadin, bermatuz atalen batean ahulagoa bazara, taldean beti izango duzula norbait laguntzeko eta balantza orekatzeko.`
-            }
+                description: `Azkenik, kontatu iezaguzu zure jarrerari eta soft skillei buruz. Horrek taldeak dinamika orekatua eta motibatzailea duela ziurtatzen lagunduko digu. Hemen taldearen 'motorra' ebaluatzen dugu. Zure jarrera zure teknika bezain garrantzitsua da. Si eres una persona que prefiere escuchar antes que mandar, o si eres quien siempre motiva cuando el ánimo baja, refléjalo aquí. TaldeBOTek zure nortasuna osatuko duten kideak bilatuko ditu, talkarik egon ez dadin eta lan-fluxua konstantea izan dadin, bermatuz atalen batean ahulagoa bazara, taldean beti izango duzula norbait laguntzeko eta balantza orekatzeko.`,
+            },
         };
 
         function showSection(id: string) {
@@ -533,10 +582,11 @@ Gogoratu: Talde perfektua ez da kide guztiak 10 dutenak, arlo bakoitzean aditua 
             if (headerTitle && headerDescription && headerContent[id]) {
                 headerTitle.style.opacity = "0";
                 headerDescription.style.opacity = "0";
-                
+
                 setTimeout(() => {
                     headerTitle.textContent = headerContent[id].title;
-                    headerDescription.textContent = headerContent[id].description;
+                    headerDescription.textContent =
+                        headerContent[id].description;
                     headerTitle.style.opacity = "1";
                     headerDescription.style.opacity = "1";
                 }, 150);
@@ -590,6 +640,15 @@ Gogoratu: Talde perfektua ez da kide guztiak 10 dutenak, arlo bakoitzean aditua 
             btnNext1.disabled = !(hasName && hasEmail && hasTerms);
             fullEmail.value =
                 emailPrefix.value.trim() + "@alumni.mondragon.edu";
+
+            // Dispatch event for other components to know who "self" is
+            if (hasName) {
+                window.dispatchEvent(
+                    new CustomEvent("student-selected", {
+                        detail: { studentId: parseInt(studentSelect.value) },
+                    }),
+                );
+            }
         }
 
         studentSelect?.addEventListener("change", validateSection1);
