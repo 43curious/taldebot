@@ -39,13 +39,13 @@ const completionRate = activeStudents.length
                     <li>
                         <a
                             href="/admin/dashboard"
-                            class="text-sm text-gray-500 hover:text-gray-700"
-                            >Projects</a
+                            class="text-sm font-bold text-slate-400 hover:text-teal-600 transition-colors"
+                            >Proiektuak</a
                         >
                     </li>
                     <li>
                         <svg
-                            class="h-5 w-5 text-gray-400"
+                            class="h-5 w-5 text-slate-300"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                             ><path
@@ -54,26 +54,26 @@ const completionRate = activeStudents.length
                                 clip-rule="evenodd"></path></svg
                         >
                     </li>
-                    <li class="text-sm font-medium text-gray-700">
+                    <li class="text-sm font-bold text-slate-900">
                         {project.name}
                     </li>
                 </ol>
             </nav>
             <h2
-                class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl flex items-center gap-3"
+                class="text-3xl font-black leading-7 text-slate-900 tracking-tight flex items-center gap-3"
             >
-                Project Monitoring
+                Monitorizazioa
                 <span
-                    class="text-sm font-mono bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100"
-                    >ID: {project.id}</span
+                    class="text-xs font-bold bg-teal-100 text-teal-700 px-2.5 py-1 rounded-lg border border-teal-200 uppercase tracking-wider"
+                    >KODEA: {project.accessCode}</span
                 >
                 <span
-                    class="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded border border-gray-200"
+                    class="text-xs font-bold bg-slate-100 text-slate-500 px-2.5 py-1 rounded-lg border border-slate-200 uppercase tracking-wider"
                 >
                     {
                         project.numTeams
-                            ? `${project.numTeams} Teams`
-                            : `~${project.targetTeamSize} per Team`
+                            ? `${project.numTeams} Talde`
+                            : `${project.targetTeamSize} taldeko`
                     }
                 </span>
             </h2>
@@ -81,9 +81,9 @@ const completionRate = activeStudents.length
         <div class="mt-4 flex md:mt-0 md:ml-4 gap-3">
             <a
                 href={`/admin/teams/${project.id}`}
-                class={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${completionRate > 50 ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"}`}
+                class={`inline-flex items-center px-6 py-2.5 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white transition-all active:scale-95 ${completionRate > 50 ? "bg-teal-600 hover:bg-teal-700 shadow-teal-600/20" : "bg-slate-300 cursor-not-allowed"}`}
             >
-                Generate Teams
+                Taldeak Sortu
             </a>
         </div>
     </div>
@@ -92,29 +92,29 @@ const completionRate = activeStudents.length
         <!-- Left Column: Stats & Pending -->
         <div class="lg:col-span-2 space-y-8">
             <!-- Stats Card -->
-            <div class="bg-white p-6 shadow rounded-lg border border-gray-200">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-medium text-gray-900">
-                        Completion Status
+            <div class="bg-white p-8 shadow-xl shadow-slate-200/50 rounded-2xl border border-slate-200/60 transition-all">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-lg font-bold text-slate-900">
+                        Inkestaren Egoera
                     </h3>
-                    <span class="text-2xl font-bold text-blue-600"
+                    <span class="text-3xl font-black text-teal-600"
                         >{completed.length} / {allStudents.length}</span
                     >
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
+                <div class="w-full bg-slate-100 rounded-full h-4 mb-5 border border-slate-200/50 overflow-hidden">
                     <div
-                        class="bg-blue-600 h-4 rounded-full transition-all"
+                        class="bg-teal-600 h-4 rounded-full transition-all duration-700"
                         style={`width: ${completionRate}%`}
                     >
                     </div>
                 </div>
-                <div class="flex justify-between text-sm text-gray-500">
-                    <span>{completionRate}% Complete</span>
+                <div class="flex justify-between text-sm text-gray-500 font-medium">
+                    <span>%{completionRate} beteta</span>
                     {
                         completionRate < 100 ? (
-                            <span>Waiting for {pending.length} students</span>
+                            <span>{pending.length} ikasleren zain</span>
                         ) : (
-                            <span>Ready to generate!</span>
+                            <span>Gaituta sortzeko!</span>
                         )
                     }
                 </div>
@@ -122,60 +122,59 @@ const completionRate = activeStudents.length
 
             <!-- Pending Students -->
             <div
-                class="bg-white shadow rounded-lg border border-gray-200 overflow-hidden"
+                class="bg-white shadow-xl shadow-slate-200/50 rounded-3xl border border-slate-200/60 overflow-hidden"
             >
                 <div
-                    class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center"
+                    class="px-8 py-5 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center"
                 >
-                    <h3 class="text-lg font-medium text-gray-900">
-                        Pending Responses ({pending.length})
+                    <h3 class="text-lg font-bold text-slate-900">
+                        Erantzun gabeak ({pending.length})
                     </h3>
                     <button
-                        class="text-sm text-blue-600 font-medium hover:text-blue-800"
-                        >Send Reminders to All</button
+                        class="text-xs font-bold text-teal-600 uppercase tracking-widest hover:text-teal-700 transition-colors"
+                        >Guztiei gogorarazi</button
                     >
                 </div>
                 <ul class="divide-y divide-gray-200">
                     {
                         pending.map((student) => (
-                            <li class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-bold">
+                            <li class="px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black border border-slate-200 transition-all group-hover:bg-teal-50 group-hover:text-teal-600 group-hover:border-teal-100">
                                         {student.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <p class="text-sm font-medium text-gray-900">
+                                        <p class="text-sm font-bold text-slate-900">
                                             {student.name}
                                         </p>
-                                        <p class="text-xs text-gray-500">
+                                        <p class="text-xs font-medium text-slate-400">
                                             {student.email ||
-                                                "No email provided"}
+                                                "Email gabe"}
                                         </p>
                                     </div>
                                 </div>
-                                <div class="flex gap-2">
-                                    <button class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-white text-gray-600">
-                                        Remind
+                                <div class="flex gap-3">
+                                    <button class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border border-slate-200 rounded-xl hover:bg-white text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-all">
+                                        Gogorarazi
                                     </button>
                                     <div class="relative dropdown-container">
                                         <button
                                             onclick="toggleDropdown(this)"
-                                            class="px-3 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200 text-gray-700 dropdown-trigger"
+                                            class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-slate-100 rounded-xl hover:bg-slate-200 text-slate-600 transition-all dropdown-trigger"
                                         >
-                                            Options
                                         </button>
-                                        <div class="absolute right-0 bottom-full mb-2 hidden bg-white border border-gray-200 rounded shadow-lg p-2 w-40 z-10 dropdown-menu">
+                                        <div class="absolute right-0 bottom-full mb-3 hidden bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 w-48 z-10 dropdown-menu overflow-hidden">
                                             <a
-                                                href={`/student/form/${pid}?studentId=${student.id}`}
-                                                class="block w-full text-left px-2 py-1 text-xs hover:bg-blue-50 text-gray-700 rounded"
+                                                href={`/student/form/${project.accessCode}?studentId=${student.id}`}
+                                                class="flex items-center gap-2 w-full text-left px-4 py-3 text-xs font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 rounded-xl transition-colors"
                                             >
-                                                Fill for Student
+                                                Inkesta Bete
                                             </a>
                                             <button
                                                 onclick={`excludeStudent(${student.id}, true)`}
-                                                class="block w-full text-left px-2 py-1 text-xs hover:bg-red-50 text-red-600 rounded"
+                                                class="flex items-center gap-2 w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                                             >
-                                                Mark as Absent
+                                                Absent markatu
                                             </button>
                                         </div>
                                     </div>
@@ -194,8 +193,8 @@ const completionRate = activeStudents.length
                                         <p class="text-sm font-medium text-gray-500 line-through">
                                             {student.name}
                                         </p>
-                                        <p class="text-xs text-red-400">
-                                            Absent / Excluded
+                                        <p class="text-xs text-red-400 font-bold uppercase tracking-tighter">
+                                            Absent / Kanporatua
                                         </p>
                                     </div>
                                 </div>
@@ -204,7 +203,7 @@ const completionRate = activeStudents.length
                                         onclick={`excludeStudent(${student.id}, false)`}
                                         class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-white text-gray-600 bg-white"
                                     >
-                                        Restore
+                                        Berrezarri
                                     </button>
                                 </div>
                             </li>
@@ -213,7 +212,7 @@ const completionRate = activeStudents.length
                     {
                         pending.length === 0 && (
                             <li class="px-6 py-12 text-center text-gray-500 italic">
-                                All students have completed the form!
+                                Ikasle guztiek osatu dute inkesta!
                             </li>
                         )
                     }
@@ -224,11 +223,11 @@ const completionRate = activeStudents.length
         <!-- Right Column: Completed -->
         <div class="space-y-8">
             <div
-                class="bg-white shadow rounded-lg border border-gray-200 overflow-hidden"
+                class="bg-white shadow-xl shadow-slate-200/50 rounded-3xl border border-slate-200/60 overflow-hidden"
             >
-                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <h3 class="text-lg font-medium text-gray-900">
-                        Successfully Completed ({completed.length})
+                <div class="px-8 py-5 border-b border-slate-100 bg-slate-50/80">
+                    <h3 class="text-lg font-bold text-slate-900">
+                        Osatuak ({completed.length})
                     </h3>
                 </div>
                 <ul
@@ -262,7 +261,7 @@ const completionRate = activeStudents.length
                     {
                         completed.length === 0 && (
                             <li class="px-6 py-8 text-center text-gray-500 text-sm">
-                                Waiting for first response...
+                                Lehenengo erantzunaren zain...
                             </li>
                         )
                     }
@@ -276,8 +275,8 @@ const completionRate = activeStudents.length
             if (
                 !confirm(
                     exclude
-                        ? "Mark this student as absent? They will be distributed in a way that minimizes their impact on teams."
-                        : "Restore this student?",
+                        ? "Ikasle hau absent bezala markatu? Taldeak osatzean eragin txikiena izan dezan banatuko da."
+                        : "Ikasle hau berrezarri?",
                 )
             )
                 return;
@@ -290,11 +289,11 @@ const completionRate = activeStudents.length
                 if (res.ok) {
                     window.location.reload();
                 } else {
-                    alert("Error updating student status");
+                    alert("Errorea ikaslearen egoera eguneratzean");
                 }
             } catch (e) {
                 console.error(e);
-                alert("Network error");
+                alert("Sare errorea");
             }
         }
 

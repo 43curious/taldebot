@@ -27,17 +27,17 @@ const membersWithSkills = memberData.map((m) => {
         ...Object.entries(resp.skillsNarrative).map(([k, v]) => ({
             name: k,
             val: v,
-            cat: "Narrative",
+            cat: "Narratiba",
         })),
         ...Object.entries(resp.skillsTechnical).map(([k, v]) => ({
             name: k,
             val: v,
-            cat: "Technical",
+            cat: "Teknika",
         })),
         ...Object.entries(resp.skillsManagement).map(([k, v]) => ({
             name: k,
             val: v,
-            cat: "Management",
+            cat: "Kudeaketa",
         })),
     ];
 
@@ -47,15 +47,15 @@ const membersWithSkills = memberData.map((m) => {
 ---
 
 <div
-    class="bg-white shadow rounded-lg border border-gray-200 overflow-hidden flex flex-col h-full"
+    class="bg-white shadow-lg shadow-slate-200/50 rounded-2xl border border-slate-200/60 overflow-hidden flex flex-col h-full"
 >
     <div
-        class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center"
+        class="px-6 py-4 bg-slate-50 border-b border-slate-200/60 flex justify-between items-center"
     >
-        <h3 class="text-lg font-bold text-gray-900">Team {teamNumber}</h3>
+        <h3 class="text-lg font-bold text-slate-900">Taldea {teamNumber}</h3>
         <span
-            class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium"
-            >{memberIds.length} Members</span
+            class="text-[10px] bg-teal-100 text-teal-800 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider"
+            >{memberIds.length} Kide</span
         >
     </div>
 
@@ -64,18 +64,18 @@ const membersWithSkills = memberData.map((m) => {
             {
                 membersWithSkills.map((member) => (
                     <li class="flex flex-col">
-                        <span class="text-sm font-bold text-gray-900">
+                        <span class="text-sm font-bold text-slate-800">
                             {member.name}
                         </span>
-                        <div class="flex flex-wrap gap-1 mt-1">
+                        <div class="flex flex-wrap gap-1 mt-1.5">
                             {member.topSkills.map((skill) => (
                                 <span
-                                    class={`text-[10px] px-1.5 py-0.5 rounded border ${
-                                        skill.cat === "Narrative"
-                                            ? "bg-orange-50 border-orange-200 text-orange-700"
-                                            : skill.cat === "Technical"
-                                              ? "bg-blue-50 border-blue-200 text-blue-700"
-                                              : "bg-green-50 border-green-200 text-green-700"
+                                    class={`text-[9px] font-bold uppercase tracking-tight px-1.5 py-0.5 rounded border ${
+                                        skill.cat === "Narratiba"
+                                            ? "bg-orange-50 border-orange-100 text-orange-700"
+                                            : skill.cat === "Teknika"
+                                              ? "bg-teal-50 border-teal-100 text-teal-700"
+                                              : "bg-green-50 border-green-100 text-green-700"
                                     }`}
                                 >
                                     {skill.name} ({skill.val})
@@ -87,23 +87,23 @@ const membersWithSkills = memberData.map((m) => {
             }
         </ul>
 
-        <div class="bg-gray-50 rounded p-3 border border-gray-100">
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
             <h4
-                class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
+                class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-2"
             >
-                Algorithm Justification
+                Algoritmoaren Azalpena
             </h4>
             <p
-                class="text-xs text-gray-600 leading-relaxed whitespace-pre-line line-clamp-4 hover:line-clamp-none transition-all cursor-default"
+                class="text-xs text-slate-500 leading-relaxed whitespace-pre-line line-clamp-4 hover:line-clamp-none transition-all cursor-default"
             >
                 {justification}
             </p>
         </div>
     </div>
 
-    <div class="px-6 py-3 bg-gray-50 border-t border-gray-200 mt-auto">
+    <div class="px-6 py-4 bg-slate-50 border-t border-slate-200/60 mt-auto">
         <button
-            class="text-sm text-blue-600 font-medium hover:text-blue-800 flex items-center justify-center w-full gap-2 transition-colors"
+            class="text-xs text-teal-600 font-bold uppercase tracking-widest hover:text-teal-700 flex items-center justify-center w-full gap-2 transition-all p-2 hover:bg-teal-50 rounded-lg active:scale-95"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -115,11 +115,11 @@ const membersWithSkills = memberData.map((m) => {
                 <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    stroke-width={2}
+                    stroke-width={2.5}
                     d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                 ></path>
             </svg>
-            Edit Team
+            Taldea Editatu
         </button>
     </div>
 </div>

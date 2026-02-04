@@ -49,6 +49,7 @@ export const POST: APIRoute = async ({ params, request, redirect }) => {
                     },
                     preferWith: resp.preferWith,
                     preferAvoid: resp.preferAvoid,
+                    comfort: resp.comfort,
                     isExcluded: student.isExcluded || false,
                 };
             } else {
@@ -64,6 +65,7 @@ export const POST: APIRoute = async ({ params, request, redirect }) => {
                     },
                     preferWith: [],
                     preferAvoid: [],
+                    comfort: [],
                     isExcluded: student.isExcluded || false,
                 };
             }

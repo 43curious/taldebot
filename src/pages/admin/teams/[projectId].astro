@@ -31,13 +31,13 @@ const projectTeams = await db.query.teams.findMany({
                     <li>
                         <a
                             href="/admin/dashboard"
-                            class="text-sm text-gray-500 hover:text-gray-700"
-                            >Projects</a
+                            class="text-sm font-bold text-slate-400 hover:text-teal-600 transition-colors"
+                            >Proiektuak</a
                         >
                     </li>
                     <li>
                         <svg
-                            class="h-5 w-5 text-gray-400"
+                            class="h-5 w-5 text-slate-300"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                             ><path
@@ -46,13 +46,13 @@ const projectTeams = await db.query.teams.findMany({
                                 clip-rule="evenodd"></path></svg
                         >
                     </li>
-                    <li class="text-sm font-medium text-gray-700">
+                    <li class="text-sm font-bold text-slate-900">
                         {project.name}
                     </li>
                 </ol>
             </nav>
-            <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl">
-                Team Assignments
+            <h2 class="text-3xl font-black leading-7 text-slate-900 tracking-tight">
+                Taldeen Esleipena
             </h2>
         </div>
         <div class="mt-4 flex flex-wrap md:mt-0 md:ml-4 gap-3">
@@ -62,22 +62,22 @@ const projectTeams = await db.query.teams.findMany({
             >
                 <button
                     type="submit"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    class="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest active:scale-95"
                 >
-                    Regenerate
+                    Berritu
                 </button>
             </form>
             <a
                 href={`/api/admin/export-teams?projectId=${pid}`}
-                class="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 uppercase tracking-tighter"
+                class="inline-flex items-center px-4 py-2 bg-white border border-teal-600 rounded-xl shadow-sm text-xs font-bold text-teal-600 hover:bg-teal-50 transition-all uppercase tracking-widest active:scale-95"
             >
-                CSV Export
+                Esportatu CSV
             </a>
             <button
                 onclick="window.print()"
-                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                class="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest active:scale-95"
             >
-                Print View
+                Inprimatzeko Bista
             </button>
             <form
                 action={`/api/admin/send-notifications?projectId=${pid}`}
@@ -85,9 +85,9 @@ const projectTeams = await db.query.teams.findMany({
             >
                 <button
                     type="submit"
-                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 uppercase tracking-tighter"
+                    class="inline-flex items-center px-6 py-2 bg-teal-600 border border-transparent rounded-xl shadow-lg shadow-teal-600/20 text-xs font-bold text-white hover:bg-teal-700 transition-all uppercase tracking-widest active:scale-95"
                 >
-                    Notify Team
+                    TALDEAK JAKINARAZI
                 </button>
             </form>
         </div>
@@ -108,22 +108,24 @@ const projectTeams = await db.query.teams.findMany({
 
         {
             projectTeams.length === 0 && (
-                <div class="col-span-full py-20 bg-white rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-12 w-12 text-gray-400 mb-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width={1}
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                        />
-                    </svg>
-                    <p class="text-gray-500 text-lg">No teams generated yet.</p>
+                <div class="col-span-full py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center">
+                    <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 text-slate-300">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-8 w-8"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width={1.5}
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                            />
+                        </svg>
+                    </div>
+                    <p class="text-slate-500 font-bold text-lg">Ez dago talderik sortuta oraindik.</p>
                     <form
                         action={`/api/admin/generate-teams?projectId=${pid}`}
                         method="POST"
@@ -131,9 +133,9 @@ const projectTeams = await db.query.teams.findMany({
                     >
                         <button
                             type="submit"
-                            class="text-blue-600 font-bold hover:underline"
+                            class="text-teal-600 font-bold hover:underline transition-all active:scale-95"
                         >
-                            Click here to generate teams now
+                            Klik egin hemen taldeak sortzeko
                         </button>
                     </form>
                 </div>

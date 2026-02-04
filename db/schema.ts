@@ -11,6 +11,7 @@ export const projects = sqliteTable('projects', {
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   status: text('status').$type<'setup' | 'active' | 'completed'>().default('setup'),
   adminEmail: text('admin_email'),
+  accessCode: text('access_code').unique(),
 });
 
 export const students = sqliteTable('students', {
@@ -69,4 +70,14 @@ export const teamHistory = sqliteTable('team_history', {
   projectId: integer('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   student1Id: integer('student1_id').notNull(),
   student2Id: integer('student2_id').notNull(),
+});
+
+export const users = sqliteTable('users', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  username: text('username').notNull().unique(),
+  hashedPassword: text('hashed_password').notNull(),
+  role: text('role').$type<'master' | 'admin'>().notNull().default('admin'),
+  fullName: text('full_name'),
+  email: text('email'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });

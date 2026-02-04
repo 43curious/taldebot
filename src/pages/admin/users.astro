@@ -1,0 +1,164 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { db } from "../../lib/db";
+import { users } from "../../../db/schema";
+import { hashPassword } from "../../lib/auth";
+import { eq } from "drizzle-orm";
+
+// Auth check
+const session = Astro.cookies.get("admin_session");
+if (!session || session.value !== "active") {
+    return Astro.redirect("/admin/login");
+}
+
+let error = "";
+let success = "";
+
+// Handle POST actions (Create/Delete)
+if (Astro.request.method === "POST") {
+    try {
+        const formData = await Astro.request.formData();
+        const action = formData.get("action");
+
+        if (action === "create") {
+            const username = formData.get("username")?.toString() || "";
+            const password = formData.get("password")?.toString() || "";
+            const fullName = formData.get("fullName")?.toString() || "";
+            const email = formData.get("email")?.toString() || "";
+
+            if (!username || !password) {
+                error = "Erabiltzailea eta pasahitza beharrezkoak dira";
+            } else {
+                const existing = await db.query.users.findFirst({
+                    where: eq(users.username, username),
+                });
+
+                if (existing) {
+                    error = "Erabiltzaile izena existitzen da dagoeneko";
+                } else {
+                    const hashedPassword = await hashPassword(password);
+                    await db.insert(users).values({
+                        username,
+                        hashedPassword,
+                        fullName,
+                        email,
+                    });
+                    success = "Erabiltzailea ongi sortu da";
+                }
+            }
+        } else if (action === "delete") {
+            const userId = parseInt(formData.get("userId")?.toString() || "0");
+            
+            // Prevent deleting the last admin or yourself if we had a more complex auth
+            // For now, just delete
+            if (userId) {
+                await db.delete(users).where(eq(users.id, userId));
+                success = "Erabiltzailea ongi ezabatu da";
+            }
+        }
+    } catch (e) {
+        error = "Errorea gertatu da. Saiatu berriro.";
+        console.error("User management error:", e);
+    }
+}
+
+// Fetch all users
+const allUsers = await db.query.users.findMany({
+    orderBy: (users, { desc }) => [desc(users.createdAt)],
+});
+---
+
+<AdminLayout title="Erabiltzaileen Kudeaketa">
+    <main class="py-10">
+        <div class="mb-10">
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight">Erabiltzaileen Kudeaketa</h1>
+            <p class="mt-2 text-sm text-slate-500 font-medium">
+                Administratzaile kontuak eta sarbide-baimenak kudeatu.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <!-- Create User Form -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 p-8">
+                    <h2 class="text-lg font-bold text-slate-900 mb-6">Administratzaile Berria</h2>
+                    <form method="POST" class="space-y-5">
+                        <input type="hidden" name="action" value="create" />
+                        <div>
+                            <label for="username" class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Erabiltzailea</label>
+                            <input type="text" name="username" id="username" required class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm" />
+                        </div>
+                        <div>
+                            <label for="password" class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Pasahitza</label>
+                            <input type="password" name="password" id="password" required class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm" />
+                        </div>
+                        <div>
+                            <label for="fullName" class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Izen-abizenak</label>
+                            <input type="text" name="fullName" id="fullName" class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm" />
+                        </div>
+                        <div>
+                            <label for="email" class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Email</label>
+                            <input type="email" name="email" id="email" class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm" />
+                        </div>
+
+                        {error && <p class="text-red-600 text-xs font-bold bg-red-50 p-3 rounded-lg border border-red-100">{error}</p>}
+                        {success && <p class="text-teal-600 text-xs font-bold bg-teal-50 p-3 rounded-lg border border-teal-100">{success}</p>}
+
+                        <button type="submit" class="w-full inline-flex justify-center py-3 px-4 border border-transparent shadow-lg shadow-teal-600/20 text-sm font-bold rounded-xl text-white bg-teal-600 hover:bg-teal-700 transition-all active:scale-95">
+                            Admin-a Sortu
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Users List -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
+                    <table class="min-w-full divide-y divide-slate-100">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Erabiltzailea</th>
+                                <th class="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Rola</th>
+                                <th class="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Sortua</th>
+                                <th class="px-6 py-4 text-right text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Ekintzak</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-100">
+                            {allUsers.map((user) => (
+                                <tr class="hover:bg-slate-50/50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 font-black border border-teal-100">
+                                                {user.username.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-bold text-slate-900">{user.username}</div>
+                                                <div class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{user.email || 'Email gabe'}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class={`px-2.5 py-1 inline-flex text-[10px] leading-5 font-bold rounded-full uppercase tracking-tighter ${user.role === 'master' ? 'bg-indigo-100 text-indigo-700' : 'bg-teal-100 text-teal-700'}`}>
+                                            {user.role}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-medium">
+                                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <form method="POST" class="inline" onsubmit="return confirm('Seguru zaude administratzaile hau ezabatu nahi duzula?')">
+                                            <input type="hidden" name="action" value="delete" />
+                                            <input type="hidden" name="userId" value={user.id} />
+                                            <button type="submit" class="text-red-500 hover:text-red-700 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all">Ezabatu</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</AdminLayout>

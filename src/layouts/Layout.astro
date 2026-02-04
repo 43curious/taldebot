@@ -7,10 +7,10 @@ const { title } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="eu">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="description" content="TaldeBOT - Team Formation System" />
+		<meta name="description" content="TaldeBOT - Taldeak Eratzeko Sistema" />
 		<meta name="viewport" content="width=device-width" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
@@ -19,14 +19,34 @@ const { title } = Astro.props;
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 	</head>
-	<body class="bg-gray-50 text-gray-900 font-['Inter',sans-serif]">
+	<body class="bg-slate-50 text-slate-900 font-['Inter',sans-serif] selection:bg-teal-500/20">
 		<slot />
 	</body>
 </html>
 <style is:global>
 	:root {
-		--accent: 37, 99, 235;
-		--accent-light: 96, 165, 250;
-		--accent-dark: 30, 58, 138;
+		--accent: 13, 148, 136; /* teal-600 */
+		--accent-light: 45, 212, 191; /* teal-400 */
+		--accent-dark: 17, 94, 89; /* teal-800 */
+	}
+
+	html {
+		scroll-behavior: smooth;
+	}
+
+	/* Custom Scrollbar */
+	::-webkit-scrollbar {
+		width: 10px;
+	}
+	::-webkit-scrollbar-track {
+		background: #f8fafc;
+	}
+	::-webkit-scrollbar-thumb {
+		background: #cbd5e1;
+		border-radius: 5px;
+		border: 2px solid #f8fafc;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		background: #94a3b8;
 	}
 </style>

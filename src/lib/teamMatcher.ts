@@ -9,6 +9,7 @@ export interface StudentData {
     };
     preferWith: number[];
     preferAvoid: number[];
+    comfort: number[];
     isExcluded: boolean;
 }
 
@@ -157,6 +158,19 @@ export function createTeams(
                         score += 50; // Slight preference to being the first absent student in a team
                         reasons.push("Absent distribution: First absent student in team");
                     }
+                }
+
+                // COMFORT ZONE INVERSE FILTER
+                const comfortMatches = team.members.filter(m => student.comfort.includes(m.id)).length;
+                if (comfortMatches === 0) {
+                    score -= 500; // PESO_AISLAMIENTO
+                    reasons.push("Comfort Zone: Isolation penalty (0 known members)");
+                } else if (comfortMatches === 1) {
+                    score += 100; // PESO_ANCLAJE
+                    reasons.push("Comfort Zone: Anchorage success (1 known member, ideal for expansion)");
+                } else if (comfortMatches >= 2) {
+                    score -= 50;  // PESO_EXCESO
+                    reasons.push(`Comfort Zone: Overlap penalty (${comfortMatches} known members)`);
                 }
             }
 

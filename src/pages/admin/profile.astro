@@ -1,0 +1,75 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { db } from "../../lib/db";
+import { users } from "../../../db/schema";
+import { hashPassword } from "../../lib/auth";
+import { eq } from "drizzle-orm";
+
+// Auth check
+const session = Astro.cookies.get("admin_session");
+if (!session || session.value !== "active") {
+    return Astro.redirect("/admin/login");
+}
+
+// For this simplified version, we just assume the first user or we could store user id in session
+// Since we have a 'master' or initial admin, let's just fetch the current one
+// In a real app, you'd get the ID from the session cookie
+const currentUser = await db.query.users.findFirst(); 
+
+let error = "";
+let success = "";
+
+if (Astro.request.method === "POST") {
+    try {
+        const formData = await Astro.request.formData();
+        const username = formData.get("username")?.toString();
+        const password = formData.get("password")?.toString();
+
+        if (currentUser) {
+            const updates: any = {};
+            if (username) updates.username = username;
+            if (password) updates.hashedPassword = await hashPassword(password);
+
+            await db.update(users)
+                .set(updates)
+                .where(eq(users.id, currentUser.id));
+            
+            success = "Profila ongi eguneratu da";
+        }
+    } catch (e) {
+        error = "Eguneratzeak huts egin du. Saiatu berriro.";
+        console.error("Profile update error:", e);
+    }
+}
+---
+
+<AdminLayout title="Nire Profila">
+    <main class="py-10 flex justify-center">
+        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 p-10 max-w-2xl w-full">
+            <h1 class="text-3xl font-black text-slate-900 mb-2">Administratzailearen Profila</h1>
+            <p class="text-slate-500 font-medium mb-10 text-sm">Kudeatu zure sarbide-kredentzialak eta hobespenak.</p>
+            
+            <form method="POST" class="space-y-8">
+                <div>
+                    <label for="username" class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Erabiltzaile Izena</label>
+                    <input type="text" name="username" id="username" value={currentUser?.username} required class="block w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-base font-medium" />
+                </div>
+
+                <div>
+                    <label for="password" class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Pasahitz Berria (hutsik utzi oraingoa mantentzeko)</label>
+                    <input type="password" name="password" id="password" class="block w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-base font-medium" />
+                </div>
+
+                {error && <p class="text-red-600 text-xs font-bold bg-red-50 p-4 rounded-xl border border-red-100">{error}</p>}
+                {success && <p class="text-teal-600 text-xs font-bold bg-teal-50 p-4 rounded-xl border border-teal-100">{success}</p>}
+
+                <div class="pt-6">
+                    <button type="submit" class="w-full py-4 px-6 bg-teal-600 text-white rounded-2xl font-bold hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/30 active:scale-[0.98]">
+                        Profila Eguneratu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+</AdminLayout>

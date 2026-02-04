@@ -11,11 +11,11 @@ const currentPath = Astro.url.pathname;
 ---
 
 <Layout title={title}>
-    <div class="min-h-screen bg-gray-50">
+    <div class="min-h-screen bg-slate-50">
         <AdminNav currentPath={currentPath} />
         <div class="py-10">
             <main>
-                <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
                     <slot />
                 </div>
             </main>

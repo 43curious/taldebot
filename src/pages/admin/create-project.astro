@@ -3,15 +3,16 @@ export const prerender = false;
 import AdminLayout from "../../layouts/AdminLayout.astro";
 ---
 
-<AdminLayout title="Create Project">
-    <div class="max-w-3xl mx-auto">
-        <div class="md:flex md:items-center md:justify-between mb-8">
+<AdminLayout title="Proiektua Sortu">
+    <div class="max-w-4xl mx-auto">
+        <div class="md:flex md:items-center md:justify-between mb-10">
             <div class="flex-1 min-w-0">
                 <h2
-                    class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl"
+                    class="text-3xl font-black text-slate-900 tracking-tight"
                 >
-                    Create New Project
+                    Proiektu Berria Konfiguratu
                 </h2>
+                <p class="mt-2 text-slate-500 font-medium">Zehaztu taldeak osatzeko oinarrizko parametroak.</p>
             </div>
         </div>
 
@@ -19,215 +20,94 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
             id="create-project-form"
             action="/api/admin/create-project"
             method="POST"
-            class="space-y-8 bg-white shadow sm:rounded-lg overflow-hidden"
+            class="space-y-0 bg-white shadow-2xl shadow-slate-200/50 rounded-3xl border border-slate-200/60 overflow-hidden"
         >
-            <div class="p-6 space-y-6">
+            <div class="p-8 space-y-10">
                 <!-- Project Details -->
-                <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                    <div class="sm:col-span-4">
+                <div class="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6 mb-10">
+                    <div class="sm:col-span-3">
                         <label
                             for="name"
-                            class="block text-sm font-medium text-gray-700"
-                            >Project Name</label
+                            class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
+                            >Proiektuaren Izena</label
                         >
                         <input
                             type="text"
                             name="name"
                             id="name"
                             required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="Ej. Proyecto Final 2024"
+                            class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
                         />
                     </div>
 
                     <div class="sm:col-span-3">
                         <label
-                            for="configType"
-                            class="block text-sm font-medium text-gray-700"
-                            >Configuration Mode</label
-                        >
-                        <select
-                            id="configType"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        >
-                            <option value="fixed">Fixed Number of Teams</option>
-                            <option value="size"
-                                >Target Team Size (e.g. 3-4 people)</option
-                            >
-                        </select>
-                    </div>
-
-                    <div class="sm:col-span-3" id="numTeamsContainer">
-                        <label
-                            for="numTeams"
-                            class="block text-sm font-medium text-gray-700"
-                            >Number of Teams</label
-                        >
-                        <input
-                            type="number"
-                            name="numTeams"
-                            id="numTeams"
-                            min="2"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
-                    </div>
-
-                    <div class="sm:col-span-3 hidden" id="targetSizeContainer">
-                        <label
-                            for="targetTeamSize"
-                            class="block text-sm font-medium text-gray-700"
-                            >Target Size (People per group)</label
-                        >
-                        <input
-                            type="number"
-                            name="targetTeamSize"
-                            id="targetTeamSize"
-                            min="2"
-                            placeholder="e.g. 4"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
-                    </div>
-
-                    <div
-                        class="sm:col-span-6 bg-blue-50 border border-blue-100 rounded-lg p-4"
-                        id="distributionPreview"
-                    >
-                        <div
-                            class="flex items-center gap-2 text-blue-700 font-medium mb-1"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-5 w-5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                ><path
-                                    d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                                ></path><circle cx="9" cy="7" r="4"
-                                ></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"
-                                ></path><path d="M16 3.13a4 4 0 0 1 0 7.75"
-                                ></path></svg
-                            >
-                            Team Distribution Preview
-                        </div>
-                        <p class="text-sm text-blue-600" id="previewText">
-                            Enter students and team settings to see the preview.
-                        </p>
-                    </div>
-
-                    <div class="sm:col-span-6">
-                        <label
-                            for="description"
-                            class="block text-sm font-medium text-gray-700"
-                            >Description</label
-                        >
-                        <textarea
-                            id="description"
-                            name="description"
-                            rows={3}
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                            placeholder="Briefly describe the project goals..."
-                        ></textarea>
-                    </div>
-
-                    <div class="sm:col-span-6">
-                        <span
-                            class="block text-sm font-medium text-gray-700 mb-2"
-                            >Project Type</span
-                        >
-                        <div class="flex flex-wrap gap-4">
-                            {
-                                [
-                                    "balanced",
-                                    "technical",
-                                    "narrative",
-                                    "management",
-                                ].map((type) => (
-                                    <label class="relative flex items-center cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="projectType"
-                                            value={type}
-                                            checked={type === "balanced"}
-                                            class="sr-only peer"
-                                        />
-                                        <div class="px-4 py-2 border rounded-full text-sm font-medium border-gray-200 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition-colors capitalize">
-                                            {type}
-                                        </div>
-                                    </label>
-                                ))
-                            }
-                        </div>
-                    </div>
-
-                    <div class="sm:col-span-4">
-                        <label
                             for="adminEmail"
-                            class="block text-sm font-medium text-gray-700"
-                            >Admin Email (for notifications)</label
+                            class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
+                            >Administratzailearen Emaila</label
                         >
                         <input
                             type="email"
                             name="adminEmail"
                             id="adminEmail"
                             required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="admin@ejemplo.com"
+                            class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
                         />
                     </div>
                 </div>
 
-                <div class="border-t border-gray-200 pt-6">
+                <!-- Student Roster -->
+                <div class="border-t border-slate-100 pt-8">
                     <h3
-                        class="text-lg font-medium leading-6 text-gray-900 mb-4"
+                        class="text-lg font-bold text-slate-900 mb-6"
                     >
-                        Student Roster
+                        Ikasleen Zerrenda
                     </h3>
 
-                    <div class="space-y-4">
-                        <div class="flex gap-4 mb-4">
+                    <div class="space-y-6">
+                        <div class="flex gap-6 mb-6 border-b border-slate-100">
                             <button
                                 type="button"
                                 id="tab-manual"
-                                class="px-4 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600"
-                                >Manual Entry</button
+                                class="pb-3 px-2 text-sm font-bold border-b-2 border-teal-600 text-teal-600 transition-all"
+                                >Eskuz sartu</button
                             >
                             <button
                                 type="button"
                                 id="tab-csv"
-                                class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700"
-                                >CSV Upload</button
+                                class="pb-3 px-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all"
+                                >CSV igo</button
                             >
                         </div>
 
                         <div id="manual-entry-container">
                             <label
                                 for="studentList"
-                                class="block text-sm font-medium text-gray-700 mb-1"
-                                >Enter names (one per line)</label
+                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3"
+                                >Ikasleen izenak (bat lerro bakoitzeko)</label
                             >
                             <textarea
                                 id="studentList"
                                 name="studentList"
-                                rows={10}
-                                class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
-                                placeholder="John Doe
-Jane Smith
+                                rows={8}
+                                class="block w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm font-mono leading-relaxed"
+                                placeholder="Juan Pérez
+María García
 ..."></textarea>
-                            <p class="mt-2 text-xs text-gray-400">
-                                Note: Manual entry assumes no emails. Emails can
-                                be added later in the Monitor page.
+                            <p class="mt-3 text-xs text-slate-400 font-medium">
+                                Posta elektronikoak geroago editatu daitezke monitorizazio panelean.
                             </p>
                         </div>
 
                         <div id="csv-upload-container" class="hidden">
                             <div
-                                class="flex items-center justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md"
+                                class="flex items-center justify-center p-10 border-2 border-slate-200 border-dashed rounded-2xl bg-slate-50/50 hover:bg-slate-50 hover:border-teal-300 transition-all group cursor-pointer"
                             >
-                                <div class="space-y-1 text-center">
+                                <div class="space-y-2 text-center">
                                     <svg
-                                        class="mx-auto h-12 w-12 text-gray-400"
+                                        class="mx-auto h-12 w-12 text-slate-300 group-hover:text-teal-400 transition-colors"
                                         stroke="currentColor"
                                         fill="none"
                                         viewBox="0 0 48 48"
@@ -239,12 +119,12 @@ Jane Smith
                                             stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                     </svg>
-                                    <div class="flex text-sm text-gray-600">
+                                    <div class="flex text-sm text-slate-600">
                                         <label
                                             for="csv-file"
-                                            class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                                            class="relative cursor-pointer font-bold text-teal-600 hover:text-teal-700"
                                         >
-                                            <span>Upload a CSV file</span>
+                                            <span>Igo CSV fitxategia</span>
                                             <input
                                                 id="csv-file"
                                                 type="file"
@@ -253,8 +133,8 @@ Jane Smith
                                             />
                                         </label>
                                     </div>
-                                    <p class="text-xs text-gray-500">
-                                        CSV format: name, email
+                                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+                                        Formatua: izena, emaila
                                     </p>
                                 </div>
                             </div>
@@ -288,14 +168,126 @@ Jane Smith
                         />
                     </div>
                 </div>
+
+                <!-- Team Configuration -->
+                <div class="border-t border-slate-100 pt-8 mt-4">
+                    <h3
+                        class="text-lg font-bold text-slate-900 mb-6"
+                    >
+                        Taldeen Konfigurazioa
+                    </h3>
+                    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                        <div class="sm:col-span-3" id="numTeamsContainer">
+                            <label
+                                for="numTeams"
+                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
+                                >Talde Kopurua</label
+                            >
+                            <input
+                                type="number"
+                                name="numTeams"
+                                id="numTeams"
+                                min="2"
+                                required
+                                placeholder="Ej. 5"
+                                class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
+                            />
+                        </div>
+
+                        <div
+                            class="sm:col-span-6 bg-teal-50 border border-teal-100 rounded-2xl p-6"
+                            id="distributionPreview"
+                        >
+                            <div
+                                class="flex items-center gap-3 text-teal-700 font-bold text-sm mb-2"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-5 w-5"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    ><path
+                                        d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                                    ></path><circle cx="9" cy="7" r="4"
+                                    ></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"
+                                    ></path><path d="M16 3.13a4 4 0 0 1 0 7.75"
+                                    ></path></svg
+                                >
+                                Banaketaren aurrebista
+                            </div>
+                            <p class="text-sm text-teal-600/80 font-medium leading-relaxed" id="previewText">
+                                Sartu ikasleen zerrenda eta talde kopurua nola banatuko diren ikusteko.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Final Details -->
+                <div class="border-t border-slate-100 pt-8">
+                    <h3
+                        class="text-lg font-bold text-slate-900 mb-6"
+                    >
+                        Xehetasun gehiago
+                    </h3>
+                    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                        <div class="sm:col-span-6">
+                            <label
+                                for="description"
+                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
+                                >Deskribapena</label
+                            >
+                            <textarea
+                                id="description"
+                                name="description"
+                                rows={3}
+                                class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm leading-relaxed"
+                                placeholder="Proiektuaren helburuen deskribapen laburra..."
+                            ></textarea>
+                        </div>
+
+                        <div class="sm:col-span-6">
+                            <span
+                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3"
+                                >Algoritmoaren Irizpidea</span
+                            >
+                            <div class="flex flex-wrap gap-4">
+                                {
+                                    [
+                                        "balanced",
+                                        "technical",
+                                        "narrative",
+                                        "management",
+                                    ].map((type) => (
+                                        <label class="relative flex items-center cursor-pointer group">
+                                            <input
+                                                type="radio"
+                                                name="projectType"
+                                                value={type}
+                                                checked={type === "balanced"}
+                                                class="sr-only peer"
+                                            />
+                                            <div class="px-5 py-2.5 border rounded-full text-xs font-bold uppercase tracking-wider border-slate-200 text-slate-400 peer-checked:bg-teal-600 peer-checked:text-white peer-checked:border-teal-600 peer-checked:shadow-lg peer-checked:shadow-teal-600/30 transition-all active:scale-95 group-hover:border-teal-200">
+                                                {type === 'balanced' ? 'Equilibrado' : type === 'technical' ? 'Técnico' : type === 'narrative' ? 'Narrativo' : 'Gestión'}
+                                            </div>
+                                        </label>
+                                    ))
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+            <div class="px-8 py-6 bg-slate-50 border-t border-slate-100 flex justify-end">
                 <button
                     type="submit"
-                    class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    class="inline-flex justify-center px-10 py-4 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-teal-600/20 transition-all active:scale-95"
                 >
-                    Create Project
+                    Proiektua Sortu
                 </button>
             </div>
         </form>
@@ -316,33 +308,8 @@ Jane Smith
         const csvPreview = document.getElementById("csv-preview");
         const csvPreviewBody = document.getElementById("csv-preview-body");
         const csvCount = document.getElementById("csv-count");
-        const configType = document.getElementById("configType");
         const numTeamsContainer = document.getElementById("numTeamsContainer");
-        const targetSizeContainer = document.getElementById(
-            "targetSizeContainer",
-        );
         const numTeamsInput = document.getElementById("numTeams");
-        const targetSizeInput = document.getElementById("targetTeamSize");
-
-        // Initialize
-        numTeamsInput.setAttribute("required", "");
-
-        configType.addEventListener("change", (e) => {
-            if (e.target.value === "fixed") {
-                numTeamsContainer.classList.remove("hidden");
-                targetSizeContainer.classList.add("hidden");
-                numTeamsInput.setAttribute("required", "");
-                targetSizeInput.removeAttribute("required");
-                targetSizeInput.value = "";
-            } else {
-                numTeamsContainer.classList.add("hidden");
-                targetSizeContainer.classList.remove("hidden");
-                targetSizeInput.setAttribute("required", "");
-                numTeamsInput.removeAttribute("required");
-                numTeamsInput.value = "";
-            }
-            updatePreview();
-        });
 
         const studentListInput = document.getElementById("studentList");
         const previewText = document.getElementById("previewText");
@@ -362,27 +329,14 @@ Jane Smith
             }
 
             if (studentCount === 0) {
-                previewText.innerHTML = "Waiting for student list...";
+                previewText.innerHTML = "Ikasleen zerrendaren zain...";
                 return;
             }
 
-            let numTeams = 0;
-            const mode = configType.value;
-
-            if (mode === "fixed") {
-                numTeams = parseInt(numTeamsInput.value);
-            } else {
-                const targetSize = parseInt(targetSizeInput.value);
-                if (targetSize >= 2) {
-                    numTeams = Math.max(
-                        2,
-                        Math.round(studentCount / targetSize),
-                    );
-                }
-            }
+            const numTeams = parseInt(numTeamsInput.value);
 
             if (!numTeams || numTeams < 2) {
-                previewText.innerHTML = `Found <b>${studentCount}</b> students. Please enter valid team settings.`;
+                previewText.innerHTML = `<b>${studentCount}</b> ikasle aurkitu dira. Sartu baliozko konfigurazioa.`;
                 return;
             }
 
@@ -390,30 +344,29 @@ Jane Smith
             const extra = studentCount % numTeams;
 
             if (baseSize < 1) {
-                previewText.innerHTML = `<b>Warning:</b> Too many teams for <b>${studentCount}</b> students. Some teams will be empty.`;
+                previewText.innerHTML = `<b>Abisua:</b> Talde gehiegi <b>${studentCount}</b> ikaslerentzat.`;
                 return;
             }
 
-            let message = `Distribution for <b>${studentCount}</b> students into <b>${numTeams}</b> teams:<br/>`;
+            let message = `<b>${studentCount}</b> ikasleren banaketa <b>${numTeams}</b> taldetan:<br/>`;
             if (extra === 0) {
-                message += `• All <b>${numTeams}</b> teams will have <b>${baseSize}</b> members.`;
+                message += `• Talde guztiek (<b>${numTeams}</b>) <b>${baseSize}</b> kide izango dituzte.`;
             } else {
-                message += `• <b>${extra}</b> teams of <b>${baseSize + 1}</b> members.<br/>`;
-                message += `• <b>${numTeams - extra}</b> teams of <b>${baseSize}</b> members.`;
+                message += `• <b>${extra}</b> talde <b>${baseSize + 1}</b> kidekoak.<br/>`;
+                message += `• <b>${numTeams - extra}</b> talde <b>${baseSize}</b> kidekoak.`;
             }
 
             previewText.innerHTML = message;
         }
 
         numTeamsInput.addEventListener("input", updatePreview);
-        targetSizeInput.addEventListener("input", updatePreview);
         studentListInput.addEventListener("input", updatePreview);
 
         tabManual.addEventListener("click", () => {
             tabManual.className =
-                "px-4 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600";
+                "pb-3 px-2 text-sm font-bold border-b-2 border-teal-600 text-teal-600 transition-all";
             tabCsv.className =
-                "px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700";
+                "pb-3 px-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all";
             manualContainer.classList.remove("hidden");
             csvContainer.classList.add("hidden");
             updatePreview();
@@ -421,9 +374,9 @@ Jane Smith
 
         tabCsv.addEventListener("click", () => {
             tabCsv.className =
-                "px-4 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600";
+                "pb-3 px-2 text-sm font-bold border-b-2 border-teal-600 text-teal-600 transition-all";
             tabManual.className =
-                "px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700";
+                "pb-3 px-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all";
             csvContainer.classList.remove("hidden");
             manualContainer.classList.add("hidden");
             updatePreview();

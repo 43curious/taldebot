@@ -5,17 +5,16 @@ import { db } from "../../../lib/db";
 import { projects, students } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 import { SkillSlider } from "../../../components/SkillSlider";
-import { MultiSelect } from "../../../components/MultiSelect";
+import { GroupDynamics } from "../../../components/GroupDynamics";
 
 const { projectId } = Astro.params;
-const pid = parseInt(projectId || "");
 
-if (isNaN(pid)) {
+if (!projectId) {
     return Astro.redirect("/");
 }
 
 const project = await db.query.projects.findFirst({
-    where: eq(projects.id, pid),
+    where: eq(projects.accessCode, projectId),
 });
 
 if (!project) {
@@ -24,6 +23,8 @@ if (!project) {
 
 const url = new URL(Astro.request.url);
 const initialStudentId = url.searchParams.get("studentId");
+
+const pid = project.id;
 
 const allStudents = await db.query.students.findMany({
     where: eq(students.projectId, pid),
@@ -37,13 +38,17 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
     <main class="max-w-3xl mx-auto px-4 py-12">
         <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
             <!-- Header -->
-            <div class="bg-blue-600 px-8 py-10 text-white">
-                <h1 class="text-3xl font-bold mb-2">TaldeBOT</h1>
-                <p class="text-blue-100 text-lg">{project.name}</p>
-                <p class="text-blue-100/80 text-sm mt-4">
-                    Team formation survey. Please answer honestly to help us
-                    create the best possible teams.
-                </p>
+            <div class="bg-teal-600 px-8 py-10 text-white">
+                <div class="flex items-center gap-2 justify-between">
+                    <h1 class="text-3xl font-bold mb-2">TaldeBOT</h1>
+                    <p class="text-teal-100 px-2 text-2xl font-bold">{project.name}</p>
+                </div>
+                <div id="survey-header-content">
+                    <h2 id="header-title" class="text-xl font-semibold text-teal-50 transition-all duration-300">Ongi etorri</h2>
+                    <p id="header-description" class="text-teal-100/80 text-sm mt-2 transition-all duration-300 leading-relaxed whitespace-pre-line">
+                        Kaixo! TaldeBOT-i zure talde ideala diseinatzen lagunduko dion profila osatzear zaude. Ez dugu zu 'sailkatu' nahi, klaseko puzzleari zer pieza gehitzen dizkiozun ulertu nahi dugu, zure taldea ahalik eta orekatuena, kementsuena eta produktiboena izan dadin.
+                    </p>
+                </div>
             </div>
 
             <!-- Form -->
@@ -51,27 +56,27 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                 id="student-form"
                 action="/api/student/submit-form"
                 method="POST"
-                class="p-8 space-y-12"
+                class="p-8 pt-2 space-y-12"
             >
                 <input type="hidden" name="projectId" value={pid} />
 
                 <!-- Progress Indicator (Controlled by JS) -->
                 <div class="flex items-center gap-2 mb-8" id="progress-bar">
                     <div
-                        class="h-1 flex-1 bg-blue-600 rounded-full transition-all duration-300"
+                        class="h-1 flex-1 bg-teal-600 rounded-full transition-all duration-300"
                         style="width: 25%"
                     >
                     </div>
                     <div
-                        class="h-1 flex-1 bg-gray-200 rounded-full transition-all duration-300"
+                        class="h-1 flex-1 bg-slate-200 rounded-full transition-all duration-300"
                     >
                     </div>
                     <div
-                        class="h-1 flex-1 bg-gray-200 rounded-full transition-all duration-300"
+                        class="h-1 flex-1 bg-slate-200 rounded-full transition-all duration-300"
                     >
                     </div>
                     <div
-                        class="h-1 flex-1 bg-gray-200 rounded-full transition-all duration-300"
+                        class="h-1 flex-1 bg-slate-200 rounded-full transition-all duration-300"
                     >
                     </div>
                 </div>
@@ -85,21 +90,21 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
                             >1</span
                         >
-                        Who are you?
+                        Nor zara?
                     </h2>
                     <div class="space-y-6">
                         <div>
                             <label
                                 class="block text-sm font-medium text-gray-700 mb-1"
-                                >Select your name</label
+                                >Hautatu zure izena</label
                             >
                             <select
                                 name="studentId"
                                 id="studentSelect"
                                 required
-                                class="w-full border border-gray-300 rounded-md bg-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                class="w-full border border-slate-300 rounded-md bg-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                             >
-                                <option value="">Choose from list...</option>
+                                <option value="">Aukeratu zerrendatik...</option>
                                 {
                                     activeStudents.map((s) => (
                                         <option
@@ -112,7 +117,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                         >
                                             {s.name}{" "}
                                             {s.hasCompleted
-                                                ? "(Already completed)"
+                                                ? "(Dagoeneko osatuta)"
                                                 : ""}
                                         </option>
                                     ))
@@ -123,7 +128,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         <div>
                             <label
                                 class="block text-sm font-medium text-gray-700 mb-1"
-                                >Academic Email</label
+                                >Email akademikoa</label
                             >
                             <div class="flex rounded-md shadow-sm">
                                 <input
@@ -131,11 +136,11 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                     name="emailPrefix"
                                     id="emailPrefix"
                                     required
-                                    placeholder="your.name"
-                                    class="flex-1 border border-r-0 border-gray-300 rounded-l-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                    placeholder="zure.izena"
+                                    class="flex-1 border border-r-0 border-slate-300 rounded-l-md px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                                 />
                                 <span
-                                    class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm"
+                                    class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-slate-300 bg-slate-50 text-slate-500 sm:text-sm"
                                 >
                                     @alumni.mondragon.edu
                                 </span>
@@ -144,7 +149,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         </div>
 
                         <div
-                            class="bg-blue-50/50 p-4 rounded-lg border border-blue-100"
+                            class="bg-teal-50/50 p-4 rounded-lg border border-teal-100"
                         >
                             <div class="flex items-start">
                                 <div class="flex items-center h-5">
@@ -153,24 +158,23 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                         name="terms"
                                         type="checkbox"
                                         required
-                                        class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded cursor-pointer"
+                                        class="focus:ring-teal-500 h-4 w-4 text-teal-600 border-slate-300 rounded cursor-pointer"
                                     />
                                 </div>
                                 <div class="ml-3 text-sm">
                                     <label
                                         for="terms"
-                                        class="font-medium text-gray-700 cursor-pointer"
+                                        class="font-medium text-slate-700 cursor-pointer"
                                     >
-                                        I accept the <button
+                                        <button
                                             type="button"
                                             id="openDisclaimer"
-                                            class="text-blue-600 hover:underline"
-                                            >Terms & Conditions</button
-                                        >
+                                            class="text-teal-600 hover:underline"
+                                            >Baldintzak eta baldintzak</button
+                                        > onartzen ditut
                                     </label>
-                                    <p class="text-gray-500">
-                                        I agree to the processing of my academic
-                                        data for group formation.
+                                    <p class="text-slate-500">
+                                        Nire datu akademikoak taldeak osatzeko erabiltzea onartzen dut.
                                     </p>
                                 </div>
                             </div>
@@ -186,33 +190,26 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         <div
                             class="absolute inset-x-4 top-1/2 -translate-y-1/2 md:max-w-lg md:mx-auto bg-white rounded-2xl shadow-2xl p-6 md:p-8"
                         >
-                            <h3 class="text-xl font-bold text-gray-900 mb-4">
-                                Uso de Datos Formativos
+                             <h3 class="text-xl font-bold text-gray-900 mb-4">
+                                Datuen Erabilera
                             </h3>
-                            <div class="prose prose-sm text-gray-600 mb-6">
+                            <div class="prose prose-sm text-gray-600 mb-6 font-medium">
                                 <p>
-                                    Los datos recogidos en esta encuesta se
-                                    utilizarán exclusivamente para la formación
-                                    de grupos equilibrados en este proyecto.
+                                    Inkesta honetan jasotako datuak proiektu honetan talde orekatuak osatzeko soilik erabiliko dira.
                                 </p>
                                 <p>
-                                    <strong>¿Qué guardamos?</strong> Tus habilidades
-                                    autoevaluadas, tus preferencias de compañeros
-                                    y tu correo académico.
+                                    <strong>Zer gorde dugu?</strong> Zure gaitasun autoebaluatuak, zure kideen hobespenak eta zure posta elektroniko akademikoa.
                                 </p>
                                 <p>
-                                    No se compartirán con terceros externos a la
-                                    institución y serán eliminados o
-                                    anonimizados una vez finalizado el proceso
-                                    de asignación de equipos.
+                                    Ez dira erakundetik kanpoko hirugarrenekin partekatuko eta taldeak esleitzeko prozesua amaitutakoan ezabatu edo anonimizatu egingo dira.
                                 </p>
                             </div>
                             <button
                                 type="button"
                                 id="closeDisclaimer"
-                                class="w-full py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                                class="w-full py-2 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 transition-colors uppercase tracking-widest text-xs"
                             >
-                                Entendido
+                                Ados
                             </button>
                         </div>
                     </div>
@@ -222,10 +219,10 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             type="button"
                             id="btn-next-1"
                             data-next="2"
-                            class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="mt-4 px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled
                         >
-                            Next Section
+                            Hurrengo atala
                         </button>
                     </div>
                 </section>
@@ -239,46 +236,23 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
                             >2</span
                         >
-                        Group Dynamics
+                        Talde-dinamikak
                     </h2>
-                    <MultiSelect
-                        client:load
-                        options={allStudents}
-                        name="comfort"
-                        maxSelections={3}
-                        label="Comfort Zone"
-                        placeholder="Who are your friends / who do you feel most comfortable with?"
-                    />
-                    <MultiSelect
-                        client:load
-                        options={allStudents}
-                        name="preferWith"
-                        maxSelections={3}
-                        label="New Collaborations"
-                        placeholder="Who would you like to work with?"
-                    />
-                    <MultiSelect
-                        client:load
-                        options={allStudents}
-                        name="preferAvoid"
-                        maxSelections={2}
-                        label="Restrictions"
-                        placeholder="Who would you prefer to avoid?"
-                    />
+                    <GroupDynamics client:load options={allStudents} />
                     <div class="flex justify-between mt-8">
                         <button
                             type="button"
                             data-prev="1"
                             class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
                         >
-                            Back
+                            Atzera
                         </button>
                         <button
                             type="button"
                             data-next="3"
-                            class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+                            class="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
                         >
-                            Next Section
+                            Hurrengo atala
                         </button>
                     </div>
                 </section>
@@ -292,7 +266,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
                             >3</span
                         >
-                        Professional Skills
+                        Gaitasun Profesionalak
                     </h2>
 
                     <div class="space-y-8">
@@ -300,53 +274,53 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             <h3
                                 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
                             >
-                                Narrative Block
+                                Narratiba Blokea
                             </h3>
                             <SkillSlider
                                 client:load
-                                label="Creativity"
+                                label="Sormena"
                                 name="narrative_creativity"
-                                description="Ability to generate original ideas and storytelling concepts."
+                                description="Ideia originalak eta narrazio-kontzeptuak sortzeko gaitasuna."
                             />
                             <SkillSlider
                                 client:load
-                                label="Writing"
+                                label="Idazketa"
                                 name="narrative_writing"
-                                description="Drafting scripts, descriptions, and structural documents."
+                                description="Gidoiak, deskribapenak eta egiturazko dokumentuak idaztea."
                             />
                             <SkillSlider
                                 client:load
-                                label="References"
+                                label="Erreferentziak"
                                 name="narrative_references"
-                                description="Knowledge of existing works and cultural context."
+                                description="Dauden obren eta testuinguru kulturalaren ezagutza."
                             />
                             <SkillSlider
                                 client:load
-                                label="Communication"
+                                label="Komunikazioa"
                                 name="narrative_communication"
-                                description="Expressing ideas clearly to the team."
+                                description="Ideiak taldeari argi adieraztea."
                             />
                         </div>
 
                         <div>
                             <h3
-                                class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2 text-right"
+                                class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
                             >
-                                Technical Block
+                            Teknika Blokea
                             </h3>
                             <SkillSlider
                                 client:load
-                                label="Camera"
+                                label="Kamera"
                                 name="technical_camera"
                             />
                             <SkillSlider
                                 client:load
-                                label="Sound"
+                                label="Soinua"
                                 name="technical_sound"
                             />
                             <SkillSlider
                                 client:load
-                                label="Editing"
+                                label="Edizioa"
                                 name="technical_editing"
                             />
                         </div>
@@ -355,16 +329,16 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             <h3
                                 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
                             >
-                                Management Block
+                                Kudeaketa Blokea
                             </h3>
                             <SkillSlider
                                 client:load
-                                label="Planning"
+                                label="Plangintza"
                                 name="management_planning"
                             />
                             <SkillSlider
                                 client:load
-                                label="Production"
+                                label="Ekoizpena"
                                 name="management_production"
                             />
                         </div>
@@ -376,14 +350,14 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             data-prev="2"
                             class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
                         >
-                            Back
+                            Atzera
                         </button>
                         <button
                             type="button"
                             data-next="4"
-                            class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+                            class="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
                         >
-                            Next Section
+                            Hurrengo atala
                         </button>
                     </div>
                 </section>
@@ -397,37 +371,37 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
                             >4</span
                         >
-                        Personal & Soft Skills
+                        Gaitasun Pertsonalak
                     </h2>
 
                     <SkillSlider
                         client:load
-                        label="Leadership"
+                        label="Lidergoa"
                         name="soft_leadership"
                     />
                     <SkillSlider
                         client:load
-                        label="Listening"
+                        label="Entzumena"
                         name="soft_listening"
                     />
                     <SkillSlider
                         client:load
-                        label="Proactivity"
+                        label="Ekimen-gaitasuna"
                         name="soft_proactivity"
                     />
                     <SkillSlider
                         client:load
-                        label="Teamwork"
+                        label="Talde-lana"
                         name="soft_teamwork"
                     />
                     <SkillSlider
                         client:load
-                        label="Motivation"
+                        label="Motibazioa"
                         name="soft_motivation"
                     />
                     <SkillSlider
                         client:load
-                        label="Conflict Resolution"
+                        label="Gatazken konponbidea"
                         name="soft_conflict"
                     />
 
@@ -439,10 +413,9 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                 class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                             />
                             <span class="text-sm text-gray-600">
-                                I agree to the <strong
-                                    >Terms and Conditions</strong
-                                > and confirm that the information provided is accurate
-                                and will be used for group formation purposes.
+                                <strong
+                                    >Baldintzak eta baldintzak</strong
+                                > onartzen ditut eta emandako informazioa zuzena dela eta taldeak osatzeko erabiliko dela berresten dut.
                             </span>
                         </label>
                     </div>
@@ -453,13 +426,13 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             data-prev="3"
                             class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
                         >
-                            Back
+                            Atzera
                         </button>
                         <button
                             type="submit"
-                            class="px-8 py-3 bg-blue-600 text-white rounded-md font-bold hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl active:scale-95"
+                            class="px-8 py-3 bg-teal-600 text-white rounded-md font-bold hover:bg-teal-700 transition-all shadow-lg hover:shadow-xl active:scale-95"
                         >
-                            Submit Form
+                            Inkesta Bidali
                         </button>
                     </div>
                 </section>
@@ -475,7 +448,39 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
 
         document.querySelectorAll("[data-next]").forEach((btn) => {
             btn.addEventListener("click", () => {
+                const currentId = btn.closest('section')?.id.replace('section-', '');
                 const nextId = btn.getAttribute("data-next");
+
+                // Validation for Section 2 (Group Dynamics)
+                if (currentId === "2") {
+                    const comfort = (document.getElementsByName("comfort")[0] as HTMLInputElement)?.value;
+                    const preferWith = (document.getElementsByName("preferWith")[0] as HTMLInputElement)?.value;
+                    const preferAvoid = (document.getElementsByName("preferAvoid")[0] as HTMLInputElement)?.value;
+
+                    const isAllEmpty = comfort === "[]" && preferWith === "[]" && preferAvoid === "[]";
+                    
+                    if (isAllEmpty) {
+                        const confirmed = window.confirm("Seguru zaude ezer aukeratu gabe jarraitu nahi duzula? Horrek zure talde-erabakiak baldintza ditzake."
+);
+                        if (!confirmed) return;
+                    }
+                }
+
+                // Validation for Section 3 (Professional Skills)
+                if (currentId === "3") {
+                    const sliders = document.querySelectorAll<HTMLInputElement>('input[type="range"]');
+                    let allDefault = true;
+                    sliders.forEach(slider => {
+                        if (slider.value !== "5") allDefault = false;
+                    });
+
+                    if (allDefault) {
+                        const confirmed = window.confirm("Seguru zaude gaitasunik aldatu gabe jarraitu nahi duzula? Batez besteko maila (5) onartuko da atal guztietan."
+);
+                        if (!confirmed) return;
+                    }
+                }
+
                 if (nextId) showSection(nextId);
             });
         });
@@ -487,19 +492,64 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
             });
         });
 
+        const headerTitle = document.getElementById("header-title");
+        const headerDescription = document.getElementById("header-description");
+
+        const headerContent = {
+            "1": {
+                title: "Has gaitezen",
+                description: `Kaixo! TaldeBOT-i zure talde ideala diseinatzen lagunduko dion profila osatzear zaude. Ez dugu zu 'sailkatu' nahi, klaseko puzzleari zer pieza gehitzen dizkiozun ulertu nahi dugu, zure taldea ahalik eta orekatuena, kementsuena eta produktiboena izan dadin. Hori lortzeko, erabateko zintzotasuna eskatzen dizugu: hemen ez dago erantzun zuzenik edo okerrik, beraz, erantzun zintzotasunez dakizunari buruz eta benetan nola sentitzen zaren. Zure gardentasuna funtsezkoa da balio gehien ematen duzun eta lanean hobekien sentitzen zaren tokia esleitu ahal izateko. Eskerrik asko zure denboragatik!`
+            },
+            "2": {
+                title: "Talde Kudeaketa",
+                description: `Atal honek zure lan-ingurune ideala diseinatzen laguntzen digu. Jende berriarekin elkarlanean has zaitezen nahi dugu, baina ziurtatuz beti duzula konfiantzazko 'aingura' bat eta blokeorik gabeko giroa. Zure lehentasunak eta segurtasun-zirkuluak adieraztean, TaldeBOTek harremanak batzen dituen eta proiektuan zentratu zaitezkeen talde bat konfiguratzea ahalbidetzen duzu, taldeko giroa babestuta dagoela jakinda.`
+            },
+            "3": {
+                title: "Gaitasun Profesionalak",
+                description: `Ebaluatu zure gaitasun tekniko eta sortzaileak. Ez dago erantzun zuzenik, zure piezak taldearen puzzlean nola sartzen diren ikusi nahi dugu besterik gabe.
+
+Hemen zure lan-tresnak definitzen ditugu. Kontua ez da denetik jakitea, segurtasun handiena zer eremutan sentitzen duzun identifikatzea baizik, dela kamera maneiatzen, gidoi bat idazten edo azken materiala editatzen. TaldeBOTek informazio hori erabiliko du zure taldean gako pieza bat bera ere falta ez dadin eta zuk dakizun horretan lideratu ahal izan dezazun, besteen talentu profesionalean oinarritzen zaren bitartean.
+
+Izan zintzoa zure egungo mailarekin.
+
+1etik 4ra: Ikasten ari naiz eta laguntza behar dut arlo honetan.
+5etik 7ra: Erraztasunez moldatzen naiz eta modu autonomoan lan egin dezaket.
+8tik 10era: Domeinu handia dut eta beste batzuk mentorizatu ditzaket.
+
+Gogoratu: Talde perfektua ez da kide guztiak 10 dutenak, arlo bakoitzean aditua den norbait duena baizik.`
+            },
+            "4": {
+                title: "Gaitasun Pertsonalak",
+                description: `Azkenik, kontatu iezaguzu zure jarrerari eta soft skillei buruz. Horrek taldeak dinamika orekatua eta motibatzailea duela ziurtatzen lagunduko digu. Hemen taldearen 'motorra' ebaluatzen dugu. Zure jarrera zure teknika bezain garrantzitsua da. Si eres una persona que prefiere escuchar antes que mandar, o si eres quien siempre motiva cuando el ánimo baja, refléjalo aquí. TaldeBOTek zure nortasuna osatuko duten kideak bilatuko ditu, talkarik egon ez dadin eta lan-fluxua konstantea izan dadin, bermatuz atalen batean ahulagoa bazara, taldean beti izango duzula norbait laguntzeko eta balantza orekatzeko.`
+            }
+        };
+
         function showSection(id: string) {
             sections.forEach((s) => s.classList.add("hidden"));
             const targetSection = document.getElementById(`section-${id}`);
             if (targetSection) targetSection.classList.remove("hidden");
 
+            // Update Header
+            if (headerTitle && headerDescription && headerContent[id]) {
+                headerTitle.style.opacity = "0";
+                headerDescription.style.opacity = "0";
+                
+                setTimeout(() => {
+                    headerTitle.textContent = headerContent[id].title;
+                    headerDescription.textContent = headerContent[id].description;
+                    headerTitle.style.opacity = "1";
+                    headerDescription.style.opacity = "1";
+                }, 150);
+            }
+
             const idx = parseInt(id) - 1;
             progressBars.forEach((bar, i) => {
                 if (i <= idx) {
-                    bar.classList.add("bg-blue-600");
-                    bar.classList.remove("bg-gray-200");
+                    bar.classList.add("bg-teal-600");
+                    bar.classList.remove("bg-slate-200");
                 } else {
-                    bar.classList.remove("bg-blue-600");
-                    bar.classList.add("bg-gray-200");
+                    bar.classList.remove("bg-teal-600");
+                    bar.classList.add("bg-slate-200");
                 }
             });
 
@@ -564,7 +614,8 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
             }
         });
 
-        // Initialize validation
+        // Initialize validation and first section
         validateSection1();
+        showSection("1");
     </script>
 </Layout>

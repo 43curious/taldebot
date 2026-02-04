@@ -2,87 +2,110 @@
 import Layout from "../layouts/Layout.astro";
 ---
 
-<Layout title="Welcome">
-	<main
-		class="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-800 text-white"
-	>
-		<div class="max-w-5xl mx-auto px-4 py-24 md:py-32">
-			<div class="text-center">
-				<div
-					class="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm border border-white/20"
-				>
-					<span class="text-4xl font-bold">T</span>
-				</div>
-				<h1
-					class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6"
-				>
-					Talde<span class="text-blue-200">BOT</span>
-				</h1>
-				<p
-					class="text-xl md:text-2xl text-blue-100 max-w-2xl mx-auto mb-12"
-				>
-					Intelligent university team formation. Making collaborations
-					smoother, one algorithm at a time.
-				</p>
+<Layout title="TaldeBOT - Taldeak Eratzeko Sistema Adimentsua">
+	<main class="min-h-screen bg-slate-50 text-slate-900 overflow-hidden relative selection:bg-teal-500/30">
+		<!-- Subtle Background Accents -->
+		<div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-600/5 rounded-full blur-[120px] pointer-events-none"></div>
+		<div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-600/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-				<div
-					class="flex flex-col sm:flex-row items-center justify-center gap-4"
-				>
-					<a
-						href="/admin/login"
-						class="w-full sm:w-auto px-8 py-4 bg-white text-blue-700 rounded-xl font-bold text-lg shadow-xl hover:bg-blue-50 transition-all hover:scale-105"
-					>
-						Administrator Login
-					</a>
-					<button
-						onclick="document.getElementById('student-access').scrollIntoView({ behavior: 'smooth' })"
-						class="w-full sm:w-auto px-8 py-4 bg-blue-500 text-white rounded-xl font-bold text-lg border border-blue-400 hover:bg-blue-400 transition-all"
-					>
-						I am a Student
-					</button>
-				</div>
-			</div>
-		</div>
-
-		<div id="student-access" class="bg-white text-gray-900 py-24">
-			<div class="max-w-4xl mx-auto px-4 text-center">
-				<h2 class="text-3xl font-bold mb-4 text-gray-900">
-					Student Access
-				</h2>
-				<p class="text-gray-600 mb-12">
-					Please enter the Project ID provided by your instructor to
-					access your recruitment form.
-				</p>
-
-				<div class="max-w-md mx-auto">
-					<div class="flex gap-2">
-						<input
-							type="number"
-							id="project-id-input"
-							placeholder="Enter Project ID (e.g. 1)"
-							class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-						/>
-						<button
-							onclick="const id = document.getElementById('project-id-input').value; if(id) window.location.href = `/student/form/${id}`"
-							class="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
-						>
-							Go
-						</button>
+		<!-- Nav Bar -->
+		<nav class="fixed top-0 left-0 w-full z-50 px-6 py-6 flex justify-center">
+			<div class="w-full max-w-6xl flex justify-between items-center px-4">
+				<div class="flex items-center gap-2 group cursor-default">
+					<div class="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center font-bold text-white text-lg shadow-lg shadow-teal-600/20 group-hover:rotate-6 transition-transform">
+						T
 					</div>
-					<p class="mt-4 text-sm text-gray-400">
-						Sample Project ID might be 1 if you just seeded the
-						database.
-					</p>
+					<span class="font-bold text-2xl tracking-tight text-slate-800">Talde<span class="text-teal-600">BOT</span></span>
+				</div>
+				
+				<a 
+					href="/admin/login" 
+					class="text-sm font-semibold text-slate-500 hover:text-teal-600 transition-colors flex items-center gap-2 group py-2 px-4 rounded-lg hover:bg-teal-50"
+				>
+					Admin Sarbidea
+					<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+				</a>
+			</div>
+		</nav>
+
+		<!-- Hero Section -->
+		<div class="relative min-h-screen flex flex-col items-center justify-center px-4 pt-20">
+			<div class="w-full max-w-6xl flex flex-col items-center justify-center">
+				<div class="w-full text-center slide-up">
+					<!-- Header -->
+					<div class="mb-14">
+						<h1 class="text-6xl md:text-8xl font-black tracking-tighter mb-6 text-slate-900">
+							Talde<span class="text-teal-600">BOT</span>
+						</h1>
+						<p class="text-2xl italic text-slate-500 leading-relaxed max-w-xl mx-auto">
+							Taldeak sortzen, denok bat egiteko.
+						</p>
+					</div>
+
+					<!-- Code Input -->
+					<div class="max-w-xl mx-auto relative group">
+						<div class="absolute -inset-1 rounded-2xl blur opacity-15 group-focus-within:opacity-30 transition-all duration-500"></div>
+						<div class="relative flex p-2 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50">
+							<input
+								type="text"
+								id="project-id-input"
+								placeholder="Sartu zure proiektuaren kodea..."
+								maxlength="5"
+								class="flex-1 bg-transparent border-none outline-none px-6 py-4 text-slate-900 text-lg placeholder:text-slate-400 selection:bg-teal-100 italic"
+							/>
+							<button
+								onclick="const input = document.getElementById('project-id-input'); const code = input.value.trim().toUpperCase(); if(/^[0-9]{4}[A-Z]$/.test(code)) { window.location.href = `/student/form/${code}`; } else { alert('Kodeak 4 zenbaki eta letra bat izan behar du (adib. 1234A)'); }"
+								class="px-10 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-lg shadow-teal-600/30 transition-all active:scale-95 flex items-center gap-2"
+							>
+							Hasi
+							</button>
+						</div>
+						<p class="mt-8 text-sm text-slate-400 font-medium px-4">
+							Zure irakasleak emango dizu profil hau osatzeko beharrezko kodea (5 karaktere).
+						</p>
+					</div>
 				</div>
 			</div>
 		</div>
 
-		<footer
-			class="py-12 px-4 text-center text-blue-200/50 text-sm border-t border-white/10 bg-indigo-900"
-		>
-			<p>
-				&copy; {new Date().getFullYear()} TaldeBOT Team Formation System
-			</p>
+		<!-- Footer -->
+		<footer class="absolute bottom-0 left-0 w-full flex justify-center py-10">
+			<div class="w-full max-w-6xl px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 border-t border-slate-200 pt-8">
+				<p class="text-[10px] font-bold tracking-[0.3em] uppercase">
+					&copy; {new Date().getFullYear()} TaldeBOT &bull; Intelligent Systems &bull; MU
+				</p>
+				<div class="flex gap-6 text-[10px] font-bold tracking-widest uppercase">
+					<span class="text-slate-300">Pribatutasuna</span>
+					<span class="text-slate-300">Baldintzak</span>
+				</div>
+			</div>
 		</footer>
 	</main>
 </Layout>
+
+<style>
+	.slide-up {
+		animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(30px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	/* Remove arrows/spinners from number input */
+	input::-webkit-outer-spin-button,
+	input::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	input[type=number] {
+		-moz-appearance: textfield;
+	}
+</style>
