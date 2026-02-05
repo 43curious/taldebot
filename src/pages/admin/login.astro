@@ -26,7 +26,9 @@ if (Astro.request.method === "POST") {
         } else if (await verifyPassword(password, user.hashedPassword)) {
             console.log(`[Login] Success for user: ${username}`);
             Astro.cookies.set("admin_session", "active", { path: "/" });
-            Astro.cookies.set("admin_user", user.username, { path: "/" });
+            Astro.cookies.set("admin_user", user.fullName || user.username, {
+                path: "/",
+            });
             return Astro.redirect("/admin/dashboard");
         } else {
             console.log(`[Login] Incorrect password for user: ${username}`);
