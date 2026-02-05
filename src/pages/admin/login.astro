@@ -14,20 +14,27 @@ if (Astro.request.method === "POST") {
         const username = formData.get("username")?.toString() || "";
         const password = formData.get("password")?.toString() || "";
 
+        console.log(`[Login] Attempt for user: ${username}`);
+
         const user = await db.query.users.findFirst({
             where: eq(users.username, username),
         });
 
-        if (user && await verifyPassword(password, user.hashedPassword)) {
+        if (!user) {
+            console.log(`[Login] User not found: ${username}`);
+            error = "Erabiltzaile edo pasahitz okerra";
+        } else if (await verifyPassword(password, user.hashedPassword)) {
+            console.log(`[Login] Success for user: ${username}`);
             Astro.cookies.set("admin_session", "active", { path: "/" });
             Astro.cookies.set("admin_user", user.username, { path: "/" });
             return Astro.redirect("/admin/dashboard");
         } else {
+            console.log(`[Login] Incorrect password for user: ${username}`);
             error = "Erabiltzaile edo pasahitz okerra";
         }
     } catch (e) {
         error = "Errorea datuak bidaltzean. Saiatu berriro.";
-        console.error("Form parsing error:", e);
+        console.error("[Login] Error during process:", e);
     }
 }
 ---
@@ -43,7 +50,9 @@ if (Astro.request.method === "POST") {
                 >
                     T
                 </div>
-                <h1 class="text-3xl font-black text-slate-900 tracking-tight">Admin Sarbidea</h1>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight">
+                    Admin Sarbidea
+                </h1>
                 <p class="text-sm text-slate-400 font-medium mt-2">
                     Sartu zure administratzaile kredentzialak
                 </p>
