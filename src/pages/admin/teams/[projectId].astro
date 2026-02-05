@@ -51,7 +51,9 @@ const projectTeams = await db.query.teams.findMany({
                     </li>
                 </ol>
             </nav>
-            <h2 class="text-3xl font-black leading-7 text-slate-900 tracking-tight">
+            <h2
+                class="text-3xl font-black leading-7 text-slate-900 tracking-tight"
+            >
                 Taldeen Esleipena
             </h2>
         </div>
@@ -68,10 +70,16 @@ const projectTeams = await db.query.teams.findMany({
                 </button>
             </form>
             <a
-                href={`/api/admin/export-teams?projectId=${pid}`}
+                href={`/api/admin/export-teams-txt?projectId=${pid}`}
+                class="inline-flex items-center px-4 py-2 bg-white border border-slate-300 rounded-xl shadow-sm text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest active:scale-95"
+            >
+                Zerrenda (TXT)
+            </a>
+            <a
+                href={`/api/admin/export-data?projectId=${pid}`}
                 class="inline-flex items-center px-4 py-2 bg-white border border-teal-600 rounded-xl shadow-sm text-xs font-bold text-teal-600 hover:bg-teal-50 transition-all uppercase tracking-widest active:scale-95"
             >
-                Esportatu CSV
+                Esportatu Excel
             </a>
             <button
                 onclick="window.print()"
@@ -125,7 +133,9 @@ const projectTeams = await db.query.teams.findMany({
                             />
                         </svg>
                     </div>
-                    <p class="text-slate-500 font-bold text-lg">Ez dago talderik sortuta oraindik.</p>
+                    <p class="text-slate-500 font-bold text-lg">
+                        Ez dago talderik sortuta oraindik.
+                    </p>
                     <form
                         action={`/api/admin/generate-teams?projectId=${pid}`}
                         method="POST"

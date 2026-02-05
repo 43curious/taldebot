@@ -40,28 +40,12 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
             <!-- Header -->
             <div class="bg-teal-600 px-8 py-10 text-white">
                 <div class="flex items-center gap-2 justify-between">
-                    <h1 class="text-3xl font-bold mb-2">TaldeBOT</h1>
-                    <p class="text-teal-100 px-2 text-2xl font-bold">
+                    <p class="px-2 text-3xl font-bold">
                         {project.name}
                     </p>
-                </div>
-                <div id="survey-header-content">
-                    <h2
-                        id="header-title"
-                        class="text-xl font-semibold text-teal-50 transition-all duration-300"
-                    >
-                        Ongi etorri
-                    </h2>
-                    <p
-                        id="header-description"
-                        class="text-teal-100/80 text-sm mt-2 transition-all duration-300 leading-relaxed whitespace-pre-line"
-                    >
-                        Kaixo! TaldeBOT-i zure talde ideala diseinatzen
-                        lagunduko dion profila osatzear zaude. Ez dugu zu
-                        'sailkatu' nahi, klaseko puzzleari zer pieza gehitzen
-                        dizkiozun ulertu nahi dugu, zure taldea ahalik eta
-                        orekatuena, kementsuena eta produktiboena izan dadin.
-                    </p>
+                    <h1 class="text-teal-500 text-3xl font-bold mb-2">
+                        TaldeBOT
+                    </h1>
                 </div>
             </div>
 
@@ -70,12 +54,12 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                 id="student-form"
                 action="/api/student/submit-form"
                 method="POST"
-                class="p-8 pt-2 space-y-12"
+                class="p-8 pt-2 space-y-8"
             >
                 <input type="hidden" name="projectId" value={pid} />
 
                 <!-- Progress Indicator (Controlled by JS) -->
-                <div class="flex items-center gap-2 mb-8" id="progress-bar">
+                <div class="flex items-center gap-2 mb-4" id="progress-bar">
                     <div
                         class="h-1 flex-1 bg-teal-600 rounded-full transition-all duration-300"
                         style="width: 25%"
@@ -101,11 +85,16 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         class="text-xl font-semibold mb-6 flex items-center gap-2"
                     >
                         <span
-                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
+                            class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm"
                             >1</span
                         >
                         Nor zara?
                     </h2>
+                    <p
+                        id="section-description-1"
+                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
+                    >
+                    </p>
                     <div class="space-y-6">
                         <div>
                             <label
@@ -164,7 +153,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         </div>
 
                         <div
-                            class="bg-teal-50/50 p-4 rounded-lg border border-teal-100"
+                            class="bg-slate-50/50 p-4 rounded-lg border border-slate-100"
                         >
                             <div class="flex items-start">
                                 <div class="flex items-center h-5">
@@ -185,7 +174,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                             type="button"
                                             id="openDisclaimer"
                                             class="text-teal-600 hover:underline"
-                                            >Baldintzak eta baldintzak</button
+                                            >Baldintzak</button
                                         > onartzen ditut
                                     </label>
                                     <p class="text-slate-500">
@@ -258,11 +247,16 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         class="text-xl font-semibold mb-6 flex items-center gap-2"
                     >
                         <span
-                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
+                            class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm"
                             >2</span
                         >
                         Talde-dinamikak
                     </h2>
+                    <p
+                        id="section-description-2"
+                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
+                    >
+                    </p>
                     <GroupDynamics client:load options={allStudents} />
                     <div class="flex justify-between mt-8">
                         <button
@@ -288,11 +282,16 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         class="text-xl font-semibold mb-6 flex items-center gap-2"
                     >
                         <span
-                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
+                            class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm"
                             >3</span
                         >
                         Gaitasun Profesionalak
                     </h2>
+                    <p
+                        id="section-description-3"
+                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
+                    >
+                    </p>
 
                     <div class="space-y-8">
                         <div>
@@ -393,11 +392,16 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         class="text-xl font-semibold mb-6 flex items-center gap-2"
                     >
                         <span
-                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm"
+                            class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm"
                             >4</span
                         >
                         Gaitasun Pertsonalak
                     </h2>
+                    <p
+                        id="section-description-4"
+                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
+                    >
+                    </p>
 
                     <SkillSlider
                         client:load
@@ -435,7 +439,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             <input
                                 type="checkbox"
                                 required
-                                class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                class="mt-1 w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
                             />
                             <span class="text-sm text-gray-600">
                                 <strong>Baldintzak eta baldintzak</strong> onartzen
@@ -538,26 +542,17 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
             });
         });
 
-        const headerTitle = document.getElementById("header-title");
-        const headerDescription = document.getElementById("header-description");
-
-        const headerContent: Record<
-            string,
-            { title: string; description: string }
-        > = {
+        const headerContent: Record<string, { description: string }> = {
             "1": {
-                title: "Has gaitezen",
                 description: `Kaixo! TaldeBOT-i zure talde ideala diseinatzen lagunduko dion profila osatzear zaude. Ez dugu zu 'sailkatu' nahi, klaseko puzzleari zer pieza gehitzen dizkiozun ulertu nahi dugu, zure taldea ahalik eta orekatuena, kementsuena eta produktiboena izan dadin. Hori lortzeko, erabateko zintzotasuna eskatzen dizugu: hemen ez dago erantzun zuzenik edo okerrik, beraz, erantzun zintzotasunez dakizunari buruz eta benetan nola sentitzen zaren. Zure gardentasuna funtsezkoa da balio gehien ematen duzun eta lanean hobekien sentitzen zaren tokia esleitu ahal izateko. Eskerrik asko zure denboragatik!`,
             },
             "2": {
-                title: "Talde Kudeaketa",
-                description: `Atal honek zure lan-ingurune ideala diseinatzen laguntzen digu. Jende berriarekin elkarlanean has zaitezen nahi dugu, baina ziurtatuz beti duzula konfiantzazko 'aingura' bat eta blokeorik gabeko giroa. Zure lehentasunak eta segurtasun-zirkuluak adieraztean, TaldeBOTek harremanak batzen dituen eta proiektuan zentratu zaitezkeen talde bat konfiguratzea ahalbidetzen duzu, taldeko giroa babestuta dagoela jakinda.`,
+                description: `Atal honek zure lan-ingurune ideala diseinatzen laguntzen digu. Jende berriarekin elkarlanean ha zaitezen nahi dugu, baina ziurtatuz beti duzula konfiantzazko 'aingura' bat eta blokeorik gabeko giroa. Zure lehentasunak eta segurtasun-zirkuluak adieraztean, TaldeBOTek harremanak batzen dituen eta proiektuan zentratu zaitezkeen talde bat konfiguratzea ahalbidetzen duzu, taldeko giroa babestuta dagoela jakinda.`,
             },
             "3": {
-                title: "Gaitasun Profesionalak",
                 description: `Ebaluatu zure gaitasun tekniko eta sortzaileak. Ez dago erantzun zuzenik, zure piezak taldearen puzzlean nola sartzen diren ikusi nahi dugu besterik gabe.
 
-Hemen zure lan-tresnak definitzen ditugu. Kontua ez da denetik jakitea, segurtasun handiena zer eremutan sentitzen duzun identifikatzea baizik, dela kamera maneiatzen, gidoi bat idazten edo azken materiala editatzen. TaldeBOTek informazio hori erabiliko du zure taldean gako pieza bat bera ere falta ez dadin eta zuk dakizun horretan lideratu ahal izan dezazun, besteen talentu profesionalean oinarritzen zaren bitartean.
+Hemen zure lan-tresnak definitzen ditugu. Kontua ez da denetik jakitea, segurtasun goldena zer eremutan sentitzen duzun identifikatzea baizik, dela kamera maneiatzen, gidoi bat idazten edo azken materiala editatzen. TaldeBOTek informazio hori erabiliko du zure taldean gako pieza bat bera ere falta ez dadin eta zuk dakizun horretan lideratu ahal izan dezazun, besteen talentu profesionalean oinarritzen zaren bitartean.
 
 Izan zintzoa zure egungo mailarekin.
 
@@ -568,27 +563,29 @@ Izan zintzoa zure egungo mailarekin.
 Gogoratu: Talde perfektua ez da kide guztiak 10 dutenak, arlo bakoitzean aditua den norbait duena baizik.`,
             },
             "4": {
-                title: "Gaitasun Pertsonalak",
-                description: `Azkenik, kontatu iezaguzu zure jarrerari eta soft skillei buruz. Horrek taldeak dinamika orekatua eta motibatzailea duela ziurtatzen lagunduko digu. Hemen taldearen 'motorra' ebaluatzen dugu. Zure jarrera zure teknika bezain garrantzitsua da. Si eres una persona que prefiere escuchar antes que mandar, o si eres quien siempre motiva cuando el ánimo baja, refléjalo aquí. TaldeBOTek zure nortasuna osatuko duten kideak bilatuko ditu, talkarik egon ez dadin eta lan-fluxua konstantea izan dadin, bermatuz atalen batean ahulagoa bazara, taldean beti izango duzula norbait laguntzeko eta balantza orekatzeko.`,
+                description: `Azkenik, kontatu iezaguzu zure jarrerari eta soft skillei buruz. Horrek taldeak dinamika orekatua eta motibatzailea duela ziurtatzen lagunduko digu. Hemen taldearen 'motorra' ebaluatzen dugu. Zure jarrera zure teknika bezain garrantzitsua da. Si eres una persona que prefiere escuchar antes que mandar, o si eres quien siempre motiva cuando el ánimo baja, refléjalo aquí. TaldeBOTek zure nortasuna osatuko duten kideak bilatuko ditu, talkarik egon ez dadin eta lan-fluxua konstantea izan dadin, bermatuz atalen batean ahulagoa bazara, taldean beti izango duzula norbait laguntzeko eta balantza orekaritzeko.`,
             },
         };
 
+        // Helper to show sections
         function showSection(id: string) {
             sections.forEach((s) => s.classList.add("hidden"));
             const targetSection = document.getElementById(`section-${id}`);
             if (targetSection) targetSection.classList.remove("hidden");
 
-            // Update Header
-            if (headerTitle && headerDescription && headerContent[id]) {
-                headerTitle.style.opacity = "0";
-                headerDescription.style.opacity = "0";
+            // Update Section Description
+            const sectionDescription = document.getElementById(
+                `section-description-${id}`,
+            );
+            if (headerContent[id]) {
+                if (sectionDescription) sectionDescription.style.opacity = "0";
 
                 setTimeout(() => {
-                    headerTitle.textContent = headerContent[id].title;
-                    headerDescription.textContent =
-                        headerContent[id].description;
-                    headerTitle.style.opacity = "1";
-                    headerDescription.style.opacity = "1";
+                    if (sectionDescription) {
+                        sectionDescription.textContent =
+                            headerContent[id].description;
+                        sectionDescription.style.opacity = "1";
+                    }
                 }, 150);
             }
 

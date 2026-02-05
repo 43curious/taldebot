@@ -176,10 +176,6 @@ import Layout from "../layouts/Layout.astro";
 						>
 							This code doesn't exist
 						</p>
-
-						<p class="mt-8 text-sm text-slate-400 font-medium px-4">
-							Sartu irakasleak emandako kodea.
-						</p>
 					</div>
 
 					<script>
@@ -260,6 +256,12 @@ import Layout from "../layouts/Layout.astro";
 									}
 								}
 
+								if (val) {
+									target.classList.add("filled");
+								} else {
+									target.classList.remove("filled");
+								}
+
 								if (val && index < inputs.length - 1) {
 									inputs[index + 1].focus();
 								}
@@ -274,6 +276,11 @@ import Layout from "../layouts/Layout.astro";
 									if (!input.value && index > 0) {
 										const prevInput = inputs[index - 1];
 										prevInput.focus();
+										setTimeout(() => {
+											prevInput.classList.remove(
+												"filled",
+											);
+										}, 0);
 									}
 								}
 							});
@@ -300,6 +307,7 @@ import Layout from "../layouts/Layout.astro";
 											)
 												return;
 											inputs[i].value = char;
+											inputs[i].classList.add("filled");
 										}
 									});
 									const nextFocus = Math.min(
@@ -311,6 +319,16 @@ import Layout from "../layouts/Layout.astro";
 								}
 							});
 						});
+
+						function updateFilledState() {
+							inputs.forEach((input) => {
+								if (input.value) {
+									input.classList.add("filled");
+								} else {
+									input.classList.remove("filled");
+								}
+							});
+						}
 
 						function checkFullCode() {
 							const fullCode = Array.from(inputs)
@@ -377,20 +395,11 @@ import Layout from "../layouts/Layout.astro";
 			class="absolute bottom-0 left-0 w-full flex justify-center py-10"
 		>
 			<div
-				class="w-full max-w-6xl px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 border-t border-slate-200 pt-8"
+				class="w-full max-w-6xl px-4 flex justify-center items-center text-slate-400 border-t border-slate-200 pt-8"
 			>
 				<p class="text-[10px] font-bold tracking-[0.3em] uppercase">
-					&copy; {new Date().getFullYear()} TaldeBOT &bull; MU
+					&copy; 2025 TaldeBOT &bull; MU
 				</p>
-				<div
-					class="flex gap-6 text-[10px] font-bold tracking-widest uppercase"
-				>
-					<a
-						href="/pribatutasuna"
-						class="text-slate-400 hover:text-teal-600 transition-colors"
-						>Pribatutasuna</a
-					>
-				</div>
 			</div>
 		</footer>
 	</main>
@@ -448,5 +457,11 @@ import Layout from "../layouts/Layout.astro";
 
 	.otp-input:focus::placeholder {
 		color: transparent;
+	}
+
+	.otp-input.filled {
+		color: #0d9488 !important; /* teal-600 */
+		border-color: #0d9488 !important; /* teal-600 */
+		background-color: #f8fafc; /* slate-50 */
 	}
 </style>

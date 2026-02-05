@@ -80,6 +80,12 @@ const completionRate = activeStudents.length
         </div>
         <div class="mt-4 flex md:mt-0 md:ml-4 gap-3">
             <a
+                href={`/api/admin/export-data?projectId=${project.id}`}
+                class="inline-flex items-center px-6 py-2.5 border border-slate-300 rounded-xl shadow-lg shadow-slate-200/50 text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 transition-all active:scale-95"
+            >
+                Esportatu Datuak (Excel)
+            </a>
+            <a
                 href={`/admin/teams/${project.id}`}
                 class={`inline-flex items-center px-6 py-2.5 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white transition-all active:scale-95 ${completionRate > 50 ? "bg-teal-600 hover:bg-teal-700 shadow-teal-600/20" : "bg-slate-300 cursor-not-allowed"}`}
             >
@@ -92,7 +98,9 @@ const completionRate = activeStudents.length
         <!-- Left Column: Stats & Pending -->
         <div class="lg:col-span-2 space-y-8">
             <!-- Stats Card -->
-            <div class="bg-white p-8 shadow-xl shadow-slate-200/50 rounded-2xl border border-slate-200/60 transition-all">
+            <div
+                class="bg-white p-8 shadow-xl shadow-slate-200/50 rounded-2xl border border-slate-200/60 transition-all"
+            >
                 <div class="flex items-center justify-between mb-8">
                     <h3 class="text-lg font-bold text-slate-900">
                         Inkestaren Egoera
@@ -101,14 +109,18 @@ const completionRate = activeStudents.length
                         >{completed.length} / {allStudents.length}</span
                     >
                 </div>
-                <div class="w-full bg-slate-100 rounded-full h-4 mb-5 border border-slate-200/50 overflow-hidden">
+                <div
+                    class="w-full bg-slate-100 rounded-full h-4 mb-5 border border-slate-200/50 overflow-hidden"
+                >
                     <div
                         class="bg-teal-600 h-4 rounded-full transition-all duration-700"
                         style={`width: ${completionRate}%`}
                     >
                     </div>
                 </div>
-                <div class="flex justify-between text-sm text-gray-500 font-medium">
+                <div
+                    class="flex justify-between text-sm text-gray-500 font-medium"
+                >
                     <span>%{completionRate} beteta</span>
                     {
                         completionRate < 100 ? (
@@ -148,8 +160,7 @@ const completionRate = activeStudents.length
                                             {student.name}
                                         </p>
                                         <p class="text-xs font-medium text-slate-400">
-                                            {student.email ||
-                                                "Email gabe"}
+                                            {student.email || "Email gabe"}
                                         </p>
                                     </div>
                                 </div>
@@ -161,8 +172,7 @@ const completionRate = activeStudents.length
                                         <button
                                             onclick="toggleDropdown(this)"
                                             class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-slate-100 rounded-xl hover:bg-slate-200 text-slate-600 transition-all dropdown-trigger"
-                                        >
-                                        </button>
+                                        />
                                         <div class="absolute right-0 bottom-full mb-3 hidden bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 w-48 z-10 dropdown-menu overflow-hidden">
                                             <a
                                                 href={`/student/form/${project.accessCode}?studentId=${student.id}`}

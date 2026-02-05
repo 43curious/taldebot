@@ -87,11 +87,37 @@ const projectStats = await Promise.all(
                                     : "Data ezezaguna"}
                             </span>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-1 flex justify-between items-center">
-                            <span>{project.name}</span>
-                            <span class="text-xs font-mono bg-teal-100 px-2 py-1 rounded text-teal-700 font-bold">
-                                KODEA: {project.accessCode}
-                            </span>
+                        <h3 class="text-lg font-bold text-gray-900 mb-1 flex justify-between items-center group">
+                            <a
+                                href={`/admin/monitor/${project.id}`}
+                                class="hover:text-teal-600 transition-colors"
+                            >
+                                {project.name}
+                            </a>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-mono bg-teal-100 px-2 py-1 rounded text-teal-700 font-bold">
+                                    KODEA: {project.accessCode}
+                                </span>
+                                <button
+                                    class="delete-project-btn p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                    data-project-id={project.id}
+                                    data-project-name={project.name}
+                                    title="Ezabatu proiektua"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="h-5 w-5"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                    >
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                            clip-rule="evenodd"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
                         </h3>
                         <p class="text-sm text-gray-500 line-clamp-2 mb-4 h-10">
                             {project.description}
@@ -158,3 +184,39 @@ const projectStats = await Promise.all(
         }
     </div>
 </AdminLayout>
+
+<script>
+    const deleteButtons = document.querySelectorAll(".delete-project-btn");
+
+    deleteButtons.forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+            const projectId = btn.getAttribute("data-project-id");
+            const projectName = btn.getAttribute("data-project-name");
+
+            const message = `Seguru zaude proiektu hau ezabatu nahi duzula? Kontuan izan bertan jasota dauden datu guztiak ezabatuko direla. Gomendatzen dizugu, ezabatu aurretik, hauek lehenago deskargatzea.`;
+
+            if (confirm(message)) {
+                try {
+                    const response = await fetch("/api/admin/delete-project", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            projectId: parseInt(projectId!),
+                        }),
+                    });
+
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert("Errorea proiektua ezabatzerakoan.");
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                    alert("Errorea proiektua ezabatzerakoan.");
+                }
+            }
+        });
+    });
+</script>

@@ -9,9 +9,11 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/netlify": "^6.6.4",
     "@astrojs/node": "^9.5.2",
     "@astrojs/react": "^4.4.2",
     "@astrojs/tailwind": "^6.0.2",
+    "@libsql/client": "^0.17.0",
     "@types/bcryptjs": "^2.4.6",
     "astro": "^5.17.1",
     "bcryptjs": "^3.0.3",
@@ -28,6 +30,7 @@
     "react-dom": "^19.2.4",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^3.4.19",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {
