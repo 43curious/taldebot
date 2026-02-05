@@ -36,9 +36,9 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
 
 <Layout title={`Form: ${project.name}`}>
     <main class="max-w-3xl mx-auto px-4 py-12">
-        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-xl">
             <!-- Header -->
-            <div class="bg-teal-600 px-8 py-10 text-white">
+            <div class="bg-teal-600 px-8 py-10 text-white rounded-t-2xl">
                 <div class="flex items-center gap-2 justify-between">
                     <p class="px-2 text-3xl font-bold">
                         {project.name}

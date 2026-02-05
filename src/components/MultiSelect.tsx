@@ -81,31 +81,50 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
         !excludedIds.includes(option.id) || selectedIds.includes(option.id)
     );
 
+    const [searchTerm, setSearchTerm] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Filter available options based on search term
+    const filteredOptions = availableOptions.filter(option =>
+        option.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    useEffect(() => {
+        if (isOpen && inputRef.current) {
+            inputRef.current.focus();
+        } else {
+            setSearchTerm('');
+        }
+    }, [isOpen]);
+
     const variantStyles = {
         teal: {
             tag: "bg-teal-100 text-teal-700",
             item: "bg-teal-50 text-teal-700",
             check: "text-teal-600",
-            ring: "focus-within:ring-teal-500 focus-within:border-teal-500"
+            ring: "focus-within:ring-teal-500 focus-within:border-teal-500",
+            search: "focus:ring-teal-500"
         },
         green: {
             tag: "bg-green-100 text-green-700",
             item: "bg-green-50 text-green-700",
             check: "text-green-600",
-            ring: "focus-within:ring-green-500 focus-within:border-green-500"
+            ring: "focus-within:ring-green-500 focus-within:border-green-500",
+            search: "focus:ring-green-500"
         },
         red: {
             tag: "bg-red-100 text-red-700",
             item: "bg-red-50 text-red-700",
             check: "text-red-600",
-            ring: "focus-within:ring-red-500 focus-within:border-red-500"
+            ring: "focus-within:ring-red-500 focus-within:border-red-500",
+            search: "focus:ring-red-500"
         }
     };
 
     const style = variantStyles[variant];
 
     return (
-        <div className="mb-6" ref={containerRef}>
+        <div className="mb-6 relative" ref={containerRef}>
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
                 {label} {maxSelections && <span className="text-slate-300 font-normal">(Gehien. {maxSelections})</span>}
             </label>
@@ -135,37 +154,51 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                 ))}
 
                 <div className="ml-auto pointer-events-none text-slate-300">
-                    <ChevronDown size={16} />
+                    <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
 
                 {isOpen && (
-                    <div className="absolute z-10 top-full left-0 w-full mt-3 bg-white border border-slate-100 rounded-2xl shadow-2xl shadow-slate-200/50 max-h-60 overflow-y-auto overflow-hidden">
-                        {availableOptions.map(option => {
-                            const isSelected = selectedIds.includes(option.id);
-                            const isFull = selectedIds.length >= maxSelections && !isSelected;
+                    <div className="absolute z-50 top-full left-0 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                        <div className="p-2 border-b border-slate-100">
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                className={`w-full px-3 py-2 text-sm bg-slate-50 border-none rounded-xl focus:ring-2 outline-none ${style.search}`}
+                                placeholder="Bilatu..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                        <div className="max-h-64 overflow-y-auto pt-1 pb-1">
+                            {filteredOptions.map(option => {
+                                const isSelected = selectedIds.includes(option.id);
+                                const isFull = selectedIds.length >= maxSelections && !isSelected;
 
-                            return (
-                                <div
-                                    key={option.id}
-                                    className={`px-3 py-2 flex items-center justify-between hover:bg-gray-50 text-sm ${isSelected ? style.item : ''} ${isFull ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (!isFull) toggleOption(option);
-                                    }}
-                                >
-                                    <span className={isSelected ? 'font-medium' : ''}>{option.name}</span>
-                                    {isSelected && <Check size={14} className={style.check} />}
+                                return (
+                                    <div
+                                        key={option.id}
+                                        className={`px-4 py-2 flex items-center justify-between hover:bg-slate-50 text-sm transition-colors ${isSelected ? style.item : ''} ${isFull ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isFull) toggleOption(option);
+                                        }}
+                                    >
+                                        <span className={isSelected ? 'font-semibold' : ''}>{option.name}</span>
+                                        {isSelected && <Check size={14} className={style.check} />}
+                                    </div>
+                                );
+                            })}
+                            {filteredOptions.length === 0 && (
+                                <div className="px-3 py-6 text-center text-gray-400 text-sm italic">
+                                    Ez da ezer aurkitu
                                 </div>
-                            );
-                        })}
-                        {availableOptions.length === 0 && (
-                            <div className="px-3 py-4 text-center text-gray-400 text-sm">
-                                Aukerarik ez dago
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
+
 
             {/* Hidden input to store selected IDs as JSON for form submission */}
             <input
