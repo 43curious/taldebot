@@ -140,7 +140,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                     name="emailPrefix"
                                     id="emailPrefix"
                                     required
-                                    placeholder="zure.izena"
+                                    placeholder="izena.abizena"
                                     class="flex-1 border border-r-0 border-slate-300 rounded-l-md px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                                 />
                                 <span
@@ -174,12 +174,12 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                             type="button"
                                             id="openDisclaimer"
                                             class="text-teal-600 hover:underline"
-                                            >Baldintzak</button
+                                            >Zehaztapenak eta baldintzak</button
                                         > onartzen ditut
                                     </label>
                                     <p class="text-slate-500">
-                                        Nire datu akademikoak taldeak osatzeko
-                                        erabiltzea onartzen dut.
+                                        Jarraian beteko ditudan datuak taldeak
+                                        osatzeko erabiltzea onartzen dut.
                                     </p>
                                 </div>
                             </div>
@@ -202,20 +202,19 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                                 class="prose prose-sm text-gray-600 mb-6 font-medium"
                             >
                                 <p>
-                                    Inkesta honetan jasotako datuak proiektu
-                                    honetan talde orekatuak osatzeko soilik
-                                    erabiliko dira.
+                                    Inkesta honetan jasotako datuak taldeak
+                                    osatzeko erabiliko dira.
                                 </p>
                                 <p>
-                                    <strong>Zer gorde dugu?</strong> Zure gaitasun
-                                    autoebaluatuak, zure kideen hobespenak eta zure
-                                    posta elektroniko akademikoa.
+                                    <strong>Zer gorde da?</strong> Zure gaitasun autoebaluatuak,
+                                    zure kideen hobespenak eta zure posta elektroniko
+                                    akademikoa.
                                 </p>
                                 <p>
-                                    Ez dira erakundetik kanpoko hirugarrenekin
-                                    partekatuko eta taldeak esleitzeko prozesua
-                                    amaitutakoan ezabatu edo anonimizatu egingo
-                                    dira.
+                                    Proiektuaren irakasleak edo
+                                    administratzaileak soilik ikus ditzake datu
+                                    horiek. Ez dira erakundetik kanpoko
+                                    hirugarrenekin partekatuko.
                                 </p>
                             </div>
                             <button
@@ -298,31 +297,31 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             <h3
                                 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
                             >
-                                Narratiba Blokea
+                                Narratibak eraikitzeko gaitasunak
                             </h3>
                             <SkillSlider
                                 client:load
                                 label="Sormena"
                                 name="narrative_creativity"
-                                description="Ideia originalak eta narrazio-kontzeptuak sortzeko gaitasuna."
+                                description="Ideia originalak eta narratiba aberatsak sortzeko gaitasuna."
                             />
                             <SkillSlider
                                 client:load
                                 label="Idazketa"
                                 name="narrative_writing"
-                                description="Gidoiak, deskribapenak eta egiturazko dokumentuak idaztea."
+                                description="Gidoiak, deskribapenak eta dokumentu ezberdinak idazteko gaitasuna."
                             />
                             <SkillSlider
                                 client:load
                                 label="Erreferentziak"
                                 name="narrative_references"
-                                description="Dauden obren eta testuinguru kulturalaren ezagutza."
+                                description="Proiektuaren generoko edukien ezagutza eta erreferente ezberdinak identifikatzeko gaitasuna."
                             />
                             <SkillSlider
                                 client:load
-                                label="Komunikazioa"
+                                label="Ahozko komunikazioa"
                                 name="narrative_communication"
-                                description="Ideiak taldeari argi adieraztea."
+                                description="Gende eta kamera aurrean hitz egiteko gaitasuna."
                             />
                         </div>
 
@@ -330,22 +329,25 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             <h3
                                 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
                             >
-                                Teknika Blokea
+                                Gaitasun teknikoak
                             </h3>
                             <SkillSlider
                                 client:load
-                                label="Kamera"
+                                label="Irudiaren errealizazioa eta grabaketa"
                                 name="technical_camera"
+                                description="Narratiba bisual aberats bat eraikitzeko baliabiden ezagutza eta erabilera gaitasuna"
                             />
                             <SkillSlider
                                 client:load
                                 label="Soinua"
                                 name="technical_sound"
+                                description="Kalitatezko audioa grabatzeko baliabideen ezagutza eta erabilera gaitasuna."
                             />
                             <SkillSlider
                                 client:load
                                 label="Edizioa"
                                 name="technical_editing"
+                                description="Edizio software ezberdinak erabilita, grabatutako materiala manipulatzeko, erritmoa emateko eta efektu bisualen bidez azken emaitza fintzeko gaitasuna."
                             />
                         </div>
 
@@ -353,17 +355,19 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                             <h3
                                 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
                             >
-                                Kudeaketa Blokea
+                                Kudeaketa gaitasunak
                             </h3>
                             <SkillSlider
                                 client:load
-                                label="Plangintza"
+                                label="Plangintza eta antolaketa"
                                 name="management_planning"
+                                description="Lan-egutegiak diseinatzeko, epeak kudeatzeko eta taldearen zereginak modu egokian egituratzeko gaitasuna."
                             />
                             <SkillSlider
                                 client:load
                                 label="Ekoizpena"
                                 name="management_production"
+                                description="Proiektua aurrera eramateko beharrezkoak diren baliabideak (materialak, pertsonalak, baimenak, logistika…) kudeatzeko eta lortzeko gaitasuna."
                             />
                         </div>
                     </div>
@@ -407,48 +411,38 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                         client:load
                         label="Lidergoa"
                         name="soft_leadership"
+                        description="Taldea gidatzeko, erabakiak hartzeko eta kideak helburu komun baterantz bideratzeko gaitasuna."
                     />
                     <SkillSlider
                         client:load
-                        label="Entzumena"
+                        label="Entzume-aktiboa"
                         name="soft_listening"
+                        description="Besteen ideiak arretaz jasotzeko, ulertzeko eta onartzeko gaitasuna, komunikazio on bat bermatzeko."
                     />
                     <SkillSlider
                         client:load
-                        label="Ekimen-gaitasuna"
+                        label="Proaktibitatea"
                         name="soft_proactivity"
+                        description="Ekimena hartzeko eta gauzak gertatu arte itxaron gabe lanean hasteko gaitasuna."
                     />
                     <SkillSlider
                         client:load
                         label="Talde-lana"
                         name="soft_teamwork"
-                    />
-                    <SkillSlider
-                        client:load
-                        label="Motibazioa"
-                        name="soft_motivation"
+                        description="Desberdintasunen eta arazoen aurrean lasaitasuna mantentzeko eta talde-giro ona babestuko duten akordioak lortzeko gaitasuna."
                     />
                     <SkillSlider
                         client:load
                         label="Gatazken konponbidea"
                         name="soft_conflict"
+                        description="Desberdintasunen eta arazoen aurrean lasaitasuna mantentzeko eta talde-giro ona babestuko duten akordioak lortzeko gaitasuna."
                     />
-
-                    <div class="mt-8 border-t pt-8">
-                        <label class="flex items-start gap-3 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                required
-                                class="mt-1 w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
-                            />
-                            <span class="text-sm text-gray-600">
-                                <strong>Baldintzak eta baldintzak</strong> onartzen
-                                ditut eta emandako informazioa zuzena dela eta taldeak
-                                osatzeko erabiliko dela berresten dut.
-                            </span>
-                        </label>
-                    </div>
-
+                    <SkillSlider
+                        client:load
+                        label="Proiektuarekiko motibazioa"
+                        name="soft_motivation"
+                        description="Proiektu hau burutzeko ditudan gogoak eta ilusioari eusteko gaitasuna"
+                    />
                     <div class="flex justify-between mt-8">
                         <button
                             type="button"
@@ -544,23 +538,22 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
 
         const headerContent: Record<string, { description: string }> = {
             "1": {
-                description: `Kaixo! TaldeBOT-i zure talde ideala diseinatzen lagunduko dion profila osatzear zaude. Ez dugu zu 'sailkatu' nahi, klaseko puzzleari zer pieza gehitzen dizkiozun ulertu nahi dugu, zure taldea ahalik eta orekatuena, kementsuena eta produktiboena izan dadin. Hori lortzeko, erabateko zintzotasuna eskatzen dizugu: hemen ez dago erantzun zuzenik edo okerrik, beraz, erantzun zintzotasunez dakizunari buruz eta benetan nola sentitzen zaren. Zure gardentasuna funtsezkoa da balio gehien ematen duzun eta lanean hobekien sentitzen zaren tokia esleitu ahal izateko. Eskerrik asko zure denboragatik!`,
+                description: `Kaixo! TaldeBOT zure lantalde ideala diseinatzen ahaleginduko da. Horretarako, zure profilaren fitxa osatu beharko duzu. Helburua ez da zu "sailkatzea", zure ikaskideen artean zein pieza osatzen duzun ulertzea baizik. Talde ahalik eta orekatuenak zein emankorrenak lortzeko, zintzotasun osoa eskatzen dizugu: hemen ez dago erantzun zuzen edo okerrik, galderak sentitzen duzunari leial izanda betetzea gomendatzen dizugu. Izan ere, zure gardentasuna funtsezkoa da ekarpen handiena eskaini ahalko diozun taldea topatzeko, beti ere, zure erosotasuna kontuan izanda. Eskerrik asko zure denboragatik!`,
             },
             "2": {
-                description: `Atal honek zure lan-ingurune ideala diseinatzen laguntzen digu. Jende berriarekin elkarlanean ha zaitezen nahi dugu, baina ziurtatuz beti duzula konfiantzazko 'aingura' bat eta blokeorik gabeko giroa. Zure lehentasunak eta segurtasun-zirkuluak adieraztean, TaldeBOTek harremanak batzen dituen eta proiektuan zentratu zaitezkeen talde bat konfiguratzea ahalbidetzen duzu, taldeko giroa babestuta dagoela jakinda.`,
+                description: `Atal honek zure lan-ingurune ideala diseinatzen laguntzen digu. Ikaskide berriekin elkarlana egitea sustatu nahi dugu, konfiantzazko kide bat alboan izango duzula ziurtatuta eta blokeorik gabeko giroa hobetziz. Zure lehentasunak eta segurtasun-zirkuluak adieraztean, TaldeBOT lan-harreman berriak erakitzen lagunduko dizu, taldeko giroa babestuta dagoela jakinda, proiektuan zure onena eman dezazun.`,
             },
             "3": {
-                description: `Ebaluatu zure gaitasun tekniko eta sortzaileak. Ez dago erantzun zuzenik, zure piezak taldearen puzzlean nola sartzen diren ikusi nahi dugu besterik gabe.
+                description: `Ebaluatu zure gaitasun tekniko eta sortzaileak. Ez dago erantzun zuzenik, zure gaitasunak taldearen dinamikan nola murgiltzen diren ikusi nahi dugu besterik gabe.
 
-Hemen zure lan-tresnak definitzen ditugu. Kontua ez da denetik jakitea, segurtasun goldena zer eremutan sentitzen duzun identifikatzea baizik, dela kamera maneiatzen, gidoi bat idazten edo azken materiala editatzen. TaldeBOTek informazio hori erabiliko du zure taldean gako pieza bat bera ere falta ez dadin eta zuk dakizun horretan lideratu ahal izan dezazun, besteen talentu profesionalean oinarritzen zaren bitartean.
+
+Hemen zure lan-tresnak definitzen ditugu. Ez da denetik jakin behar, segurtasun handiena zein eremutan zentitzen duzun identifikatzea baizik, dela irudiaren errealizazioan, idazketan edo baliabideak lortzeko gaitasunean. TaldeBOTek informazio hori erabiliko du zure taldean pieza bat bera ere falta ez dadin, zuk dakizun horren horretan lideratu ahal izateko, besteen talentu profesionaletatik ikasten duzun bitartean.
 
 Izan zintzoa zure egungo mailarekin.
 
 1etik 4ra: Ikasten ari naiz eta laguntza behar dut arlo honetan.
-5etik 7ra: Erraztasunez moldatzen naiz eta modu autonomoan lan egin dezaket.
-8tik 10era: Domeinu handia dut eta beste batzuk mentorizatu ditzaket.
-
-Gogoratu: Talde perfektua ez da kide guztiak 10 dutenak, arlo bakoitzean aditua den norbait duena baizik.`,
+5etik 7ra: Erraztsunez moldatzen naiz eta modu autonomoan lan egin dezaket.
+8tik 10era: Jakintza handia dut eta beste batzuk lagundu ditzaket.`,
             },
             "4": {
                 description: `Azkenik, kontatu iezaguzu zure jarrerari eta soft skillei buruz. Horrek taldeak dinamika orekatua eta motibatzailea duela ziurtatzen lagunduko digu. Hemen taldearen 'motorra' ebaluatzen dugu. Zure jarrera zure teknika bezain garrantzitsua da. Si eres una persona que prefiere escuchar antes que mandar, o si eres quien siempre motiva cuando el ánimo baja, refléjalo aquí. TaldeBOTek zure nortasuna osatuko duten kideak bilatuko ditu, talkarik egon ez dadin eta lan-fluxua konstantea izan dadin, bermatuz atalen batean ahulagoa bazara, taldean beti izango duzula norbait laguntzeko eta balantza orekaritzeko.`,

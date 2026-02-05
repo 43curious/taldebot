@@ -1,9 +1,10 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { db } from '../src/lib/db';
 import { users } from '../db/schema';
 import { hashPassword } from '../src/lib/auth';
-import * as dotenv from 'dotenv';
 
-dotenv.config();
 
 async function createAdmin() {
     const username = 'admin';

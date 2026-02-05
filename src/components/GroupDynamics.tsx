@@ -39,7 +39,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
                 options={options}
                 name="comfort"
                 maxSelections={6}
-                label="Konfiantza Zirkulua"
+                label="Konfort-Zona"
                 placeholder="Norekin sentitzen zara erosoen lanean?"
                 value={comfort}
                 onChange={setComfort}
@@ -52,7 +52,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
                 name="preferWith"
                 maxSelections={3}
                 label="Elkarlan Berriak"
-                placeholder="Norekin gustatuko litzaizuke proiektu honetan lan egitea?"
+                placeholder="Norekin ez duzu oraindik lanik egin eta gustatuko litzaizuke proiektu honetan lan egitea??"
                 value={preferWith}
                 onChange={setPreferWith}
                 excludedIds={[...baseExclusions, ...comfort, ...preferAvoid]}
@@ -64,7 +64,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
                 name="preferAvoid"
                 maxSelections={3}
                 label="Mugak"
-                placeholder="Norekin nahiko zenuke EZ lan egin?"
+                placeholder="Zein kide nahiago zenuke proiektu honetan saihestea?"
                 value={preferAvoid}
                 onChange={setPreferAvoid}
                 excludedIds={[...baseExclusions, ...comfort, ...preferWith]}
