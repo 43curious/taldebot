@@ -84,10 +84,14 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Filter available options based on search term
-    const filteredOptions = availableOptions.filter(option =>
-        option.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter available options based on search term (accent-insensitive)
+    const filteredOptions = availableOptions.filter(option => {
+        const normalize = (str: string) =>
+            str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        return normalize(option.name).includes(normalize(searchTerm));
+    });
+
 
     useEffect(() => {
         if (isOpen && inputRef.current) {

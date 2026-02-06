@@ -1,43 +1,26 @@
-# Astro Starter Kit: Minimal
+# TaldeBot ✈️
 
-```sh
-npm create astro@latest -- --template minimal
-```
+## Zer da?
+TaldeBot talde-lanaren kudeaketa optimizatzeko tresna bat da. Haren helburu nagusia lantalde **orekatuagoak, emankorragoak eta harreman osasuntsuagoak** dituztenak sortzea da, ikasleen profil profesionalak eta pertsonalak modu adimentsuan gurutzatuz.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Nola funtzionatzen du? (Algoritmoa)
+TaldeBot-ek hiru geruzatako algoritmo bat erabiltzen du taldeak osatzeko:
 
-## 🚀 Project Structure
+1.  **Gaitasunen Normalizazioa**: Ikasle bakoitzaren auto-ebaluazioak aztertzen ditu (narratiba, teknika, kudeaketa eta soft-skill-ak), bakoitzaren "power-up" edo indargune nagusiak identifikatzeko.
+2.  **Fit Score (Egokitasuna)**: Proiektu bakoitzak helburu ezberdin bat du (adib. teknikoagoa edo sortzaileagoa). Algoritmoak ikasle bakoitzaren profila proiektuaren izaerarekin alderatzen du.
+3.  **Optimizazio Gurutzatua**: Hau da gakoa. Binaka aztertzen ditu ikasleak:
+    -   **Gaitasun osagarriak**: Talde bakoitzean profil ezberdinak (gidoilaria, editorea, ekoizlea...) daudela bermatzen du.
+    -   **Harreman dinamikak**: Ikasleak adierazitako "Konfort-Zona" (norekin lan egin nahi duen) eta "Mugak" (nor saihestu nahi duen) kontuan hartzen ditu blokeoak ekiditeko.
 
-Inside of your Astro project, you'll see the following folders and files:
+## Nork erabili dezake?
+-   **Irakasleek/Administratzaileek**: Proiektuak sortu, ikasleen parte-hartzea monitorizatu eta algoritmoari botoia sakatuz taldeak automatikoki sortzeko.
+-   **Ikasleek**: Beraien profilaren fitxa osatzeko eta talde-hobespenak modu pribatu eta seguruan adierazteko.
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+## �️ Teknologia Pilatua
+- **Framework**: Astro (SSR)
+- **Frontend**: React + Tailwind CSS
+- **Datu-basea**: Turso (SQLite/LibSQL)
+- **ORM**: Drizzle ORM
+- **Inplementazioa**: Netlify
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
