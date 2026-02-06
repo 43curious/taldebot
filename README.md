@@ -16,7 +16,7 @@ TaldeBot-ek hiru geruzatako algoritmo bat erabiltzen du taldeak osatzeko:
 -   **Irakasleek/Administratzaileek**: Proiektuak sortu, ikasleen parte-hartzea monitorizatu eta algoritmoari botoia sakatuz taldeak automatikoki sortzeko.
 -   **Ikasleek**: Beraien profilaren fitxa osatzeko eta talde-hobespenak modu pribatu eta seguruan adierazteko.
 
-## �️ Teknologia Pilatua
+## Teknologia Pilatua
 - **Framework**: Astro (SSR)
 - **Frontend**: React + Tailwind CSS
 - **Datu-basea**: Turso (SQLite/LibSQL)
