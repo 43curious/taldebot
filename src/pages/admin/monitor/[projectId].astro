@@ -245,26 +245,34 @@ const completionRate = activeStudents.length
                 >
                     {
                         completed.map((student) => (
-                            <li class="px-6 py-3 flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="h-4 w-4"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width={3}
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
+                            <li class="px-6 py-3 flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-4 w-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width={3}
+                                                d="M5 13l4 4L19 7"
+                                            />
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-900">
+                                        {student.name}
+                                    </span>
                                 </div>
-                                <span class="text-sm font-medium text-gray-900">
-                                    {student.name}
-                                </span>
+                                <button
+                                    onclick={`resetStudent(${student.id})`}
+                                    class="px-3 py-1 text-[10px] font-bold uppercase tracking-widest border border-amber-200 bg-amber-50 rounded-lg hover:bg-amber-100 text-amber-700 transition-all"
+                                >
+                                    Berrabiarazi
+                                </button>
                             </li>
                         ))
                     }
@@ -329,5 +337,31 @@ const completionRate = activeStudents.length
 
         window.excludeStudent = excludeStudent;
         window.toggleDropdown = toggleDropdown;
+
+        async function resetStudent(studentId) {
+            if (
+                !confirm(
+                    "Seguru zaude ikasle honen inkesta berrabiarazi nahi duzula? Bere erantzun guztiak ezabatuko dira eta berriro bete beharko du.",
+                )
+            )
+                return;
+
+            try {
+                const res = await fetch(
+                    `/api/admin/reset-student?projectId=${pid}&studentId=${studentId}`,
+                    { method: "POST" },
+                );
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    alert("Errorea inkesta berrabiaraztean");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Sare errorea");
+            }
+        }
+
+        window.resetStudent = resetStudent;
     </script>
 </AdminLayout>
