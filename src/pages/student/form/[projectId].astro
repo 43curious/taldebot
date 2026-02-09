@@ -55,6 +55,7 @@ const activeStudents = allStudents.filter((s) => !s.isExcluded);
                 action="/api/student/submit-form"
                 method="POST"
                 class="p-8 pt-2 space-y-8"
+                onkeydown="return event.key !== 'Enter';"
             >
                 <input type="hidden" name="projectId" value={pid} />
 
@@ -664,5 +665,14 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
         // Initialize validation and first section
         validateSection1();
         showSection("1");
+
+        // Prevent implicit submission on Enter
+        document
+            .getElementById("student-form")
+            ?.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                }
+            });
     </script>
 </Layout>
