@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MultiSelect } from './MultiSelect';
+import { type Language, t } from '../lib/i18n';
 
 interface Option {
     id: number;
@@ -8,13 +9,16 @@ interface Option {
 
 interface GroupDynamicsProps {
     options: Option[];
+    lang?: Language;
 }
 
-export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
+export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options, lang = 'eu' }) => {
     const [comfort, setComfort] = useState<number[]>([]);
     const [preferWith, setPreferWith] = useState<number[]>([]);
     const [preferAvoid, setPreferAvoid] = useState<number[]>([]);
     const [selfId, setSelfId] = useState<number | null>(null);
+
+    const tr = t(lang).groupDynamics;
 
     React.useEffect(() => {
         const handleStudentSelected = (e: any) => {
@@ -39,8 +43,8 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
                 options={options}
                 name="comfort"
                 maxSelections={6}
-                label="Konfort-Zona"
-                placeholder="Norekin sentitzen zara erosoen lanean?"
+                label={tr.comfort.label}
+                placeholder={tr.comfort.placeholder}
                 value={comfort}
                 onChange={setComfort}
                 excludedIds={[...baseExclusions, ...preferWith, ...preferAvoid]}
@@ -51,8 +55,8 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
                 options={options}
                 name="preferWith"
                 maxSelections={3}
-                label="Elkarlan Berriak"
-                placeholder="Norekin ez duzu oraindik lanik egin eta gustatuko litzaizuke proiektu honetan lan egitea??"
+                label={tr.preferWith.label}
+                placeholder={tr.preferWith.placeholder}
                 value={preferWith}
                 onChange={setPreferWith}
                 excludedIds={[...baseExclusions, ...comfort, ...preferAvoid]}
@@ -63,8 +67,8 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options }) => {
                 options={options}
                 name="preferAvoid"
                 maxSelections={3}
-                label="Mugak"
-                placeholder="Zein kide nahiago zenuke proiektu honetan saihestea?"
+                label={tr.preferAvoid.label}
+                placeholder={tr.preferAvoid.placeholder}
                 value={preferAvoid}
                 onChange={setPreferAvoid}
                 excludedIds={[...baseExclusions, ...comfort, ...preferWith]}

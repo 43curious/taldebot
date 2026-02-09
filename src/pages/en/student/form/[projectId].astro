@@ -1,0 +1,608 @@
+---
+export const prerender = false;
+import Layout from "../../../../layouts/Layout.astro";
+import { db } from "../../../../lib/db";
+import { projects, students } from "../../../../../db/schema";
+import { eq } from "drizzle-orm";
+import { SkillSlider } from "../../../../components/SkillSlider";
+import { GroupDynamics } from "../../../../components/GroupDynamics";
+import { t } from "../../../../lib/i18n";
+
+const lang = "en";
+const tr = t(lang);
+
+const { projectId } = Astro.params;
+
+if (!projectId) {
+    return Astro.redirect("/en/");
+}
+
+const project = await db.query.projects.findFirst({
+    where: eq(projects.accessCode, projectId),
+});
+
+if (!project) {
+    return Astro.redirect("/en/?error=not_found");
+}
+
+const url = new URL(Astro.request.url);
+const initialStudentId = url.searchParams.get("studentId");
+
+const pid = project.id;
+
+const allStudents = await db.query.students.findMany({
+    where: eq(students.projectId, pid),
+    orderBy: (students, { asc }) => [asc(students.name)],
+});
+
+const activeStudents = allStudents.filter((s) => !s.isExcluded);
+---
+
+<Layout title={`Form: ${project.name}`}>
+    <main class="max-w-3xl mx-auto px-4 py-12">
+        <div class="bg-white rounded-2xl shadow-xl">
+            <!-- Header -->
+            <div class="bg-teal-600 px-8 py-10 text-white rounded-t-2xl">
+                <div class="flex items-center gap-2 justify-between">
+                    <p class="px-2 text-3xl font-bold">
+                        {project.name}
+                    </p>
+                    <h1 class="text-teal-500 text-3xl font-bold mb-2">
+                        TaldeBOT
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form
+                id="student-form"
+                action="/api/student/submit-form"
+                method="POST"
+                class="p-8 pt-2 space-y-8"
+                onkeydown="return event.key !== 'Enter';"
+            >
+                <input type="hidden" name="projectId" value={pid} />
+                <input type="hidden" name="lang" value={lang} />
+
+                <!-- Progress Indicator -->
+                <div class="flex items-center gap-2 mb-4" id="progress-bar">
+                    <div
+                        class="h-1 flex-1 bg-teal-600 rounded-full transition-all duration-300"
+                        style="width: 25%"
+                    >
+                    </div>
+                    <div
+                        class="h-1 flex-1 bg-slate-200 rounded-full transition-all duration-300"
+                    >
+                    </div>
+                    <div
+                        class="h-1 flex-1 bg-slate-200 rounded-full transition-all duration-300"
+                    >
+                    </div>
+                    <div
+                        class="h-1 flex-1 bg-slate-200 rounded-full transition-all duration-300"
+                    >
+                    </div>
+                </div>
+
+                <!-- Section 1: Identification -->
+                <section id="section-1" class="section-active">
+                    <h2
+                        class="text-xl font-semibold mb-6 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm"
+                            >1</span
+                        >
+                        {tr.form.section1Title}
+                    </h2>
+                    <p
+                        id="section-description-1"
+                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
+                    >
+                    </p>
+                    <div class="space-y-6">
+                        <div>
+                            <label
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >{tr.form.selectName}</label
+                            >
+                            <select
+                                name="studentId"
+                                id="studentSelect"
+                                required
+                                class="w-full border border-slate-300 rounded-md bg-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                            >
+                                <option value=""
+                                    >{tr.form.selectPlaceholder}</option
+                                >
+                                {
+                                    activeStudents.map((s) => (
+                                        <option
+                                            value={s.id}
+                                            disabled={s.hasCompleted}
+                                            selected={
+                                                initialStudentId ===
+                                                String(s.id)
+                                            }
+                                        >
+                                            {s.name}{" "}
+                                            {s.hasCompleted
+                                                ? tr.form.alreadyCompleted
+                                                : ""}
+                                        </option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >{tr.form.academicEmail}</label
+                            >
+                            <div class="flex rounded-md shadow-sm">
+                                <input
+                                    type="text"
+                                    name="emailPrefix"
+                                    id="emailPrefix"
+                                    required
+                                    placeholder={tr.form.emailPlaceholder}
+                                    class="flex-1 border border-r-0 border-slate-300 rounded-l-md px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                                />
+                                <span
+                                    class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-slate-300 bg-slate-50 text-slate-500 sm:text-sm"
+                                    >@alumni.mondragon.edu</span
+                                >
+                            </div>
+                            <input type="hidden" name="email" id="fullEmail" />
+                        </div>
+
+                        <div
+                            class="bg-slate-50/50 p-4 rounded-lg border border-slate-100"
+                        >
+                            <div class="flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input
+                                        id="terms"
+                                        name="terms"
+                                        type="checkbox"
+                                        required
+                                        class="focus:ring-teal-500 h-4 w-4 text-teal-600 border-slate-300 rounded cursor-pointer"
+                                    />
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label
+                                        for="terms"
+                                        class="font-medium text-slate-700 cursor-pointer"
+                                    >
+                                        <button
+                                            type="button"
+                                            id="openDisclaimer"
+                                            class="text-teal-600 hover:underline"
+                                            >{tr.form.termsLink}</button
+                                        >
+                                        {tr.form.termsAccept}
+                                    </label>
+                                    <p class="text-slate-500">
+                                        {tr.form.termsDescription}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Disclaimer Modal -->
+                    <div id="disclaimerModal" class="fixed inset-0 z-50 hidden">
+                        <div
+                            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        >
+                        </div>
+                        <div
+                            class="absolute inset-x-4 top-1/2 -translate-y-1/2 md:max-w-lg md:mx-auto bg-white rounded-2xl shadow-2xl p-6 md:p-8"
+                        >
+                            <h3 class="text-xl font-bold text-gray-900 mb-4">
+                                {tr.form.disclaimerTitle}
+                            </h3>
+                            <div
+                                class="prose prose-sm text-gray-600 mb-6 font-medium"
+                            >
+                                <p>{tr.form.disclaimerP1}</p>
+                                <p>
+                                    <strong>{tr.form.disclaimerP2}</strong>
+                                    {tr.form.disclaimerP2Content}
+                                </p>
+                                <p>{tr.form.disclaimerP3}</p>
+                            </div>
+                            <button
+                                type="button"
+                                id="closeDisclaimer"
+                                class="w-full py-2 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 transition-colors uppercase tracking-widest text-xs"
+                                >{tr.form.disclaimerClose}</button
+                            >
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button
+                            type="button"
+                            id="btn-next-1"
+                            data-next="2"
+                            class="mt-4 px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>{tr.form.nextSection}</button
+                        >
+                    </div>
+                </section>
+
+                <!-- Section 2: Group Dynamics -->
+                <section id="section-2" class="hidden">
+                    <h2
+                        class="text-xl font-semibold mb-6 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm"
+                            >2</span
+                        >
+                        {tr.form.section2Title}
+                    </h2>
+                    <p
+                        id="section-description-2"
+                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
+                    >
+                    </p>
+                    <GroupDynamics
+                        client:load
+                        options={allStudents}
+                        lang={lang}
+                    />
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            data-prev="1"
+                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
+                            >{tr.form.back}</button
+                        >
+                        <button
+                            type="button"
+                            data-next="3"
+                            class="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
+                            >{tr.form.nextSection}</button
+                        >
+                    </div>
+                </section>
+
+                <!-- Section 3: Professional Skills -->
+                <section id="section-3" class="hidden">
+                    <h2
+                        class="text-xl font-semibold mb-6 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm"
+                            >3</span
+                        >
+                        {tr.form.section3Title}
+                    </h2>
+                    <p
+                        id="section-description-3"
+                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
+                    >
+                    </p>
+
+                    <div class="space-y-8">
+                        <div>
+                            <h3
+                                class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
+                            >
+                                {tr.skillCategories.narrative}
+                            </h3>
+                            <SkillSlider
+                                client:load
+                                label={tr.skills.narrative_creativity.label}
+                                name="narrative_creativity"
+                                description={tr.skills.narrative_creativity
+                                    .description}
+                            />
+                            <SkillSlider
+                                client:load
+                                label={tr.skills.narrative_writing.label}
+                                name="narrative_writing"
+                                description={tr.skills.narrative_writing
+                                    .description}
+                            />
+                            <SkillSlider
+                                client:load
+                                label={tr.skills.narrative_references.label}
+                                name="narrative_references"
+                                description={tr.skills.narrative_references
+                                    .description}
+                            />
+                            <SkillSlider
+                                client:load
+                                label={tr.skills.narrative_communication.label}
+                                name="narrative_communication"
+                                description={tr.skills.narrative_communication
+                                    .description}
+                            />
+                        </div>
+
+                        <div>
+                            <h3
+                                class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
+                            >
+                                {tr.skillCategories.technical}
+                            </h3>
+                            <SkillSlider
+                                client:load
+                                label={tr.skills.technical_camera.label}
+                                name="technical_camera"
+                                description={tr.skills.technical_camera
+                                    .description}
+                            />
+                            <SkillSlider
+                                client:load
+                                label={tr.skills.technical_sound.label}
+                                name="technical_sound"
+                                description={tr.skills.technical_sound
+                                    .description}
+                            />
+                            <SkillSlider
+                                client:load
+                                label={tr.skills.technical_editing.label}
+                                name="technical_editing"
+                                description={tr.skills.technical_editing
+                                    .description}
+                            />
+                        </div>
+
+                        <div>
+                            <h3
+                                class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2"
+                            >
+                                {tr.skillCategories.management}
+                            </h3>
+                            <SkillSlider
+                                client:load
+                                label={tr.skills.management_planning.label}
+                                name="management_planning"
+                                description={tr.skills.management_planning
+                                    .description}
+                            />
+                            <SkillSlider
+                                client:load
+                                label={tr.skills.management_production.label}
+                                name="management_production"
+                                description={tr.skills.management_production
+                                    .description}
+                            />
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            data-prev="2"
+                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
+                            >{tr.form.back}</button
+                        >
+                        <button
+                            type="button"
+                            data-next="4"
+                            class="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
+                            >{tr.form.nextSection}</button
+                        >
+                    </div>
+                </section>
+
+                <!-- Section 4: Personal Skills -->
+                <section id="section-4" class="hidden">
+                    <h2
+                        class="text-xl font-semibold mb-6 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm"
+                            >4</span
+                        >
+                        {tr.form.section4Title}
+                    </h2>
+                    <p
+                        id="section-description-4"
+                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
+                    >
+                    </p>
+
+                    <SkillSlider
+                        client:load
+                        label={tr.skills.soft_leadership.label}
+                        name="soft_leadership"
+                        description={tr.skills.soft_leadership.description}
+                    />
+                    <SkillSlider
+                        client:load
+                        label={tr.skills.soft_listening.label}
+                        name="soft_listening"
+                        description={tr.skills.soft_listening.description}
+                    />
+                    <SkillSlider
+                        client:load
+                        label={tr.skills.soft_proactivity.label}
+                        name="soft_proactivity"
+                        description={tr.skills.soft_proactivity.description}
+                    />
+                    <SkillSlider
+                        client:load
+                        label={tr.skills.soft_teamwork.label}
+                        name="soft_teamwork"
+                        description={tr.skills.soft_teamwork.description}
+                    />
+                    <SkillSlider
+                        client:load
+                        label={tr.skills.soft_conflict.label}
+                        name="soft_conflict"
+                        description={tr.skills.soft_conflict.description}
+                    />
+                    <SkillSlider
+                        client:load
+                        label={tr.skills.soft_motivation.label}
+                        name="soft_motivation"
+                        description={tr.skills.soft_motivation.description}
+                    />
+
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            data-prev="3"
+                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
+                            >{tr.form.back}</button
+                        >
+                        <button
+                            type="submit"
+                            class="px-8 py-3 bg-teal-600 text-white rounded-md font-bold hover:bg-teal-700 transition-all shadow-lg hover:shadow-xl active:scale-95"
+                            >{tr.form.submit}</button
+                        >
+                    </div>
+                </section>
+            </form>
+        </div>
+    </main>
+
+    <script
+        define:vars={{
+            sectionDescriptions: tr.sectionDescriptions,
+            confirmEmptyDynamics: tr.form.confirmEmptyDynamics,
+            confirmDefaultSkills: tr.form.confirmDefaultSkills,
+        }}
+    >
+        const sections = document.querySelectorAll("section");
+        const progressBars = document.querySelectorAll("#progress-bar > div");
+
+        document.querySelectorAll("[data-next]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const currentId = btn
+                    .closest("section")
+                    ?.id.replace("section-", "");
+                const nextId = btn.getAttribute("data-next");
+
+                if (currentId === "2") {
+                    const comfort =
+                        document.getElementsByName("comfort")[0]?.value;
+                    const preferWith =
+                        document.getElementsByName("preferWith")[0]?.value;
+                    const preferAvoid =
+                        document.getElementsByName("preferAvoid")[0]?.value;
+                    const isAllEmpty =
+                        comfort === "[]" &&
+                        preferWith === "[]" &&
+                        preferAvoid === "[]";
+                    if (isAllEmpty && !confirm(confirmEmptyDynamics)) return;
+                }
+
+                if (currentId === "3") {
+                    const sliders = document.querySelectorAll(
+                        'input[type="range"]',
+                    );
+                    let allDefault = true;
+                    sliders.forEach((slider) => {
+                        if (slider.value !== "5") allDefault = false;
+                    });
+                    if (allDefault && !confirm(confirmDefaultSkills)) return;
+                }
+
+                if (nextId) showSection(nextId);
+            });
+        });
+
+        document.querySelectorAll("[data-prev]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const prevId = btn.getAttribute("data-prev");
+                if (prevId) showSection(prevId);
+            });
+        });
+
+        function showSection(id) {
+            sections.forEach((s) => s.classList.add("hidden"));
+            const targetSection = document.getElementById(`section-${id}`);
+            if (targetSection) targetSection.classList.remove("hidden");
+
+            const sectionDescription = document.getElementById(
+                `section-description-${id}`,
+            );
+            if (sectionDescriptions[id]) {
+                if (sectionDescription) sectionDescription.style.opacity = "0";
+                setTimeout(() => {
+                    if (sectionDescription) {
+                        sectionDescription.textContent =
+                            sectionDescriptions[id];
+                        sectionDescription.style.opacity = "1";
+                    }
+                }, 150);
+            }
+
+            const idx = parseInt(id) - 1;
+            progressBars.forEach((bar, i) => {
+                if (i <= idx) {
+                    bar.classList.add("bg-teal-600");
+                    bar.classList.remove("bg-slate-200");
+                } else {
+                    bar.classList.remove("bg-teal-600");
+                    bar.classList.add("bg-slate-200");
+                }
+            });
+
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        // Section 1 Validation & Modal Logic
+        const studentSelect = document.getElementById("studentSelect");
+        const emailPrefix = document.getElementById("emailPrefix");
+        const fullEmail = document.getElementById("fullEmail");
+        const termsCheckbox = document.getElementById("terms");
+        const btnNext1 = document.getElementById("btn-next-1");
+        const disclaimerModal = document.getElementById("disclaimerModal");
+        const openDisclaimer = document.getElementById("openDisclaimer");
+        const closeDisclaimer = document.getElementById("closeDisclaimer");
+
+        function validateSection1() {
+            const hasName = studentSelect.value !== "";
+            const hasEmail = emailPrefix.value.trim().length > 0;
+            const hasTerms = termsCheckbox.checked;
+            btnNext1.disabled = !(hasName && hasEmail && hasTerms);
+            fullEmail.value =
+                emailPrefix.value.trim() + "@alumni.mondragon.edu";
+            if (hasName) {
+                window.dispatchEvent(
+                    new CustomEvent("student-selected", {
+                        detail: { studentId: parseInt(studentSelect.value) },
+                    }),
+                );
+            }
+        }
+
+        studentSelect?.addEventListener("change", validateSection1);
+        emailPrefix?.addEventListener("input", validateSection1);
+        termsCheckbox?.addEventListener("change", validateSection1);
+        openDisclaimer?.addEventListener("click", () =>
+            disclaimerModal.classList.remove("hidden"),
+        );
+        closeDisclaimer?.addEventListener("click", () =>
+            disclaimerModal.classList.add("hidden"),
+        );
+        disclaimerModal?.addEventListener("click", (e) => {
+            if (
+                e.target === disclaimerModal ||
+                e.target.classList.contains("bg-black/50")
+            ) {
+                disclaimerModal.classList.add("hidden");
+            }
+        });
+
+        validateSection1();
+        showSection("1");
+
+        // Prevent implicit submission on Enter
+        document
+            .getElementById("student-form")
+            ?.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") e.preventDefault();
+            });
+    </script>
+</Layout>

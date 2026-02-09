@@ -7,6 +7,7 @@ import { z } from 'zod';
 const submissionSchema = z.object({
     projectId: z.coerce.number(),
     studentId: z.coerce.number(),
+    lang: z.string().optional().default('eu'),
     comfort: z.string().transform(val => JSON.parse(val) as number[]),
     preferWith: z.string().transform(val => JSON.parse(val) as number[]),
     preferAvoid: z.string().transform(val => JSON.parse(val) as number[]),
@@ -82,9 +83,12 @@ export const POST: APIRoute = async ({ request, redirect }) => {
             })
             .where(eq(students.id, data.studentId));
 
-        return redirect('/student/confirmation');
+        // Redirect based on language
+        const confirmationPath = data.lang === 'en' ? '/en/student/confirmation' : '/student/confirmation';
+        return redirect(confirmationPath);
     } catch (error) {
         console.error('Submission error:', error);
         return new Response('Invalid form data', { status: 400 });
     }
 };
+
