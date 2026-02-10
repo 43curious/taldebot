@@ -42,7 +42,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options, lang = 'e
             <MultiSelect
                 options={options}
                 name="comfort"
-                maxSelections={6}
+                maxSelections={1}
                 label={tr.comfort.label}
                 placeholder={tr.comfort.placeholder}
                 value={comfort}

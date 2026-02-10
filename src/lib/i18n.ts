@@ -88,7 +88,7 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
 
         // Group dynamics
         groupDynamics: {
-            comfort: { label: 'Konfort-Zona', placeholder: 'Norekin sentitzen zara erosoen lanean?' },
+            comfort: { label: 'Pertsona Aingura', placeholder: 'Norekin lan egiten duzu ondoen?' },
             preferWith: { label: 'Elkarlan Berriak', placeholder: 'Norekin ez duzu oraindik lanik egin eta gustatuko litzaizuke proiektu honetan lan egitea??' },
             preferAvoid: { label: 'Mugak', placeholder: 'Zein kide nahiago zenuke proiektu honetan saihestea?' },
         },
@@ -189,7 +189,7 @@ If you're someone who prefers listening over commanding, or you're always the on
 
         // Group dynamics
         groupDynamics: {
-            comfort: { label: 'Comfort Zone', placeholder: 'Who do you feel most comfortable working with?' },
+            comfort: { label: 'Anchor Person', placeholder: 'Who do you work best with?' },
             preferWith: { label: 'New Collaborations', placeholder: 'Who haven\'t you worked with yet and would like to work with on this project?' },
             preferAvoid: { label: 'Boundaries', placeholder: 'Which teammate would you prefer to avoid in this project?' },
         },

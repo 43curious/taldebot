@@ -46,9 +46,21 @@ export function createTeams(
         if (a.isExcluded && !b.isExcluded) return 1;
         if (!a.isExcluded && b.isExcluded) return -1;
 
-        const constraintsA = a.preferAvoid.length + history.filter(h => h.student1Id === a.id || h.student2Id === a.id).length;
-        const constraintsB = b.preferAvoid.length + history.filter(h => h.student1Id === b.id || h.student2Id === b.id).length;
-        return constraintsB - constraintsA;
+        // Calculate constraint scores
+        // 1. History (already worked together)
+        const histA = history.filter(h => h.student1Id === a.id || h.student2Id === a.id).length;
+        const histB = history.filter(h => h.student1Id === b.id || h.student2Id === b.id).length;
+
+        // 2. Avoidances (how many people they want to avoid AND how many people avoid them)
+        const avoidOutA = a.preferAvoid.length;
+        const avoidOutB = b.preferAvoid.length;
+        const avoidInA = students.filter(s => s.preferAvoid.includes(a.id)).length;
+        const avoidInB = students.filter(s => s.preferAvoid.includes(b.id)).length;
+
+        const scoreA = histA + avoidOutA + avoidInA;
+        const scoreB = histB + avoidOutB + avoidInB;
+
+        return scoreB - scoreA;
     });
 
     // 3. For each student, calculate compatibility score with each existing team
@@ -64,115 +76,144 @@ export function createTeams(
             let score = 0;
             const reasons: string[] = [];
 
-            // HARD CONSTRAINTS
-            const hasAvoid = team.members.some(m => student.preferAvoid.includes(m.id) || m.preferAvoid.includes(student.id));
-            if (hasAvoid) {
-                score = -10000;
-                reasons.push("Hard constraint: preferAvoid violation");
-            } else {
-                // HISTORY PENALTY
-                for (const member of team.members) {
-                    const workedBefore = history.some(
-                        h => (h.student1Id === student.id && h.student2Id === member.id) ||
-                            (h.student1Id === member.id && h.student2Id === student.id)
-                    );
-                    if (workedBefore) {
-                        score -= 50;
-                        reasons.push(`History penalty: worked with ${member.name} before`);
-                    }
+            // SOFT CONSTRAINT: AVOID PREFERENCES
+            // Instead of hard constraint, penalize but don't make impossible
+            let avoidPenalty = 0;
+            for (const member of team.members) {
+                if (student.preferAvoid.includes(member.id)) {
+                    avoidPenalty -= 300;
+                    reasons.push(`Avoid penalty: student wants to avoid ${member.name}`);
                 }
-
-                // PREFERENCE BONUS
-                for (const member of team.members) {
-                    if (student.preferWith.includes(member.id)) {
-                        score += 30;
-                        reasons.push(`Preference bonus: wants to work with ${member.name}`);
-                    }
-                    if (member.preferWith.includes(student.id)) {
-                        score += 30;
-                        reasons.push(`Preference bonus: ${member.name} wants to work with student`);
-                    }
-                }
-
-                // SKILL BALANCE
-                const categories: (keyof StudentData['skills'])[] = ['skillsNarrative', 'skillsTechnical', 'skillsManagement'];
-                for (const cat of categories) {
-                    const skillSet = student.skills[cat];
-                    const teamSkills = team.members.map(m => m.skills[cat]);
-
-                    // Weighting based on projectType
-                    let weight = 1;
-                    const shortCat = cat.replace('skills', '').toLowerCase();
-                    if (projectType === shortCat) weight = 2;
-                    else if (projectType === 'balanced') weight = 1;
-                    else weight = 0.5;
-
-                    for (const skillName in skillSet) {
-                        const val = (skillSet as any)[skillName];
-                        const teamVals = teamSkills.map(ts => (ts as any)[skillName]);
-                        const teamMax = teamVals.length > 0 ? Math.max(...teamVals) : 0;
-                        const teamAvg = teamVals.length > 0 ? teamVals.reduce((a, b) => a + b, 0) / teamVals.length : 0;
-
-                        if (teamMax < 8 && val > 7) {
-                            score += 40 * weight;
-                            reasons.push(`Skill balance (${skillName}): adds high performer`);
-                        }
-                        if (teamVals.length > 0 && teamVals.every(v => v > 7) && val < 5) {
-                            score += 20 * weight;
-                            reasons.push(`Skill balance (${skillName}): adds diversity to high performers`);
-                        }
-                        if (teamVals.length > 0 && teamAvg < 5 && val > 6) {
-                            score += 25 * weight;
-                            reasons.push(`Skill balance (${skillName}): improves low average`);
-                        }
-                    }
-                }
-
-                // SOFT SKILLS BALANCE
-                const teamLeaders = team.members.filter(m => m.skills.skillsSoft.leadership > 7).length;
-                if (teamLeaders > 2 && student.skills.skillsSoft.leadership > 7) {
-                    score -= 30;
-                    reasons.push("Soft skills: Too many leaders");
-                }
-
-                const hasMotivator = team.members.some(m => m.skills.skillsSoft.motivation > 6);
-                if (!hasMotivator && student.skills.skillsSoft.motivation > 6) {
-                    score += 20;
-                    reasons.push("Soft skills: Adds motivator");
-                }
-
-                const hasMediator = team.members.some(m => m.skills.skillsSoft.conflict > 6);
-                if (!hasMediator && student.skills.skillsSoft.conflict > 6) {
-                    score += 15;
-                    reasons.push("Soft skills: Adds mediator");
-                }
-
-                // ABSENT/EXCLUDED DISTRIBUTION
-                // Penalty for each excluded student already in the team to ensure distribution
-                if (student.isExcluded) {
-                    const excludedCount = team.members.filter(m => m.isExcluded).length;
-                    if (excludedCount > 0) {
-                        score -= 500 * excludedCount;
-                        reasons.push(`Absent distribution: Already has ${excludedCount} absent student(s)`);
-                    } else {
-                        score += 50; // Slight preference to being the first absent student in a team
-                        reasons.push("Absent distribution: First absent student in team");
-                    }
-                }
-
-                // COMFORT ZONE INVERSE FILTER
-                const comfortMatches = team.members.filter(m => student.comfort.includes(m.id)).length;
-                if (comfortMatches === 0) {
-                    score -= 500; // PESO_AISLAMIENTO
-                    reasons.push("Comfort Zone: Isolation penalty (0 known members)");
-                } else if (comfortMatches === 1) {
-                    score += 100; // PESO_ANCLAJE
-                    reasons.push("Comfort Zone: Anchorage success (1 known member, ideal for expansion)");
-                } else if (comfortMatches >= 2) {
-                    score -= 50;  // PESO_EXCESO
-                    reasons.push(`Comfort Zone: Overlap penalty (${comfortMatches} known members)`);
+                if (member.preferAvoid.includes(student.id)) {
+                    avoidPenalty -= 300;
+                    reasons.push(`Avoid penalty: ${member.name} wants to avoid student`);
                 }
             }
+            score += avoidPenalty;
+
+            // RENEGADE DISTRIBUTION
+            // Count how many times this student is avoided by ALL students
+            const timesAvoided = students.filter(s => s.preferAvoid.includes(student.id)).length;
+            const RENEGADE_THRESHOLD = 3;
+            if (timesAvoided >= RENEGADE_THRESHOLD) {
+                // This student is frequently avoided - distribute them
+                const renegadesInTeam = team.members.filter(m =>
+                    students.filter(s => s.preferAvoid.includes(m.id)).length >= RENEGADE_THRESHOLD
+                ).length;
+                if (renegadesInTeam > 0) {
+                    score -= 400;
+                    reasons.push(`Renegade distribution: team already has ${renegadesInTeam} frequently-avoided student(s)`);
+                }
+            }
+
+            // HISTORY PENALTY
+            for (const member of team.members) {
+                const workedBefore = history.some(
+                    h => (h.student1Id === student.id && h.student2Id === member.id) ||
+                        (h.student1Id === member.id && h.student2Id === student.id)
+                );
+                if (workedBefore) {
+                    score -= 50;
+                    reasons.push(`History penalty: worked with ${member.name} before`);
+                }
+            }
+
+            // PREFERENCE BONUS (preferWith)
+            for (const member of team.members) {
+                if (student.preferWith.includes(member.id)) {
+                    score += 30;
+                    reasons.push(`Preference bonus: wants to work with ${member.name}`);
+                }
+                if (member.preferWith.includes(student.id)) {
+                    score += 30;
+                    reasons.push(`Preference bonus: ${member.name} wants to work with student`);
+                }
+            }
+
+            // SKILL BALANCE
+            const categories: (keyof StudentData['skills'])[] = ['skillsNarrative', 'skillsTechnical', 'skillsManagement'];
+            for (const cat of categories) {
+                const skillSet = student.skills[cat];
+                const teamSkills = team.members.map(m => m.skills[cat]);
+
+                // Weighting based on projectType
+                let weight = 1;
+                const shortCat = cat.replace('skills', '').toLowerCase();
+                if (projectType === shortCat) weight = 2;
+                else if (projectType === 'balanced') weight = 1;
+                else weight = 0.5;
+
+                for (const skillName in skillSet) {
+                    const val = (skillSet as any)[skillName];
+                    const teamVals = teamSkills.map(ts => (ts as any)[skillName]);
+                    const teamMax = teamVals.length > 0 ? Math.max(...teamVals) : 0;
+                    const teamAvg = teamVals.length > 0 ? teamVals.reduce((a, b) => a + b, 0) / teamVals.length : 0;
+
+                    if (teamMax < 8 && val > 7) {
+                        score += 40 * weight;
+                        reasons.push(`Skill balance (${skillName}): adds high performer`);
+                    }
+                    if (teamVals.length > 0 && teamVals.every(v => v > 7) && val < 5) {
+                        score += 20 * weight;
+                        reasons.push(`Skill balance (${skillName}): adds diversity to high performers`);
+                    }
+                    if (teamVals.length > 0 && teamAvg < 5 && val > 6) {
+                        score += 25 * weight;
+                        reasons.push(`Skill balance (${skillName}): improves low average`);
+                    }
+                }
+            }
+
+            // SOFT SKILLS BALANCE
+            const teamLeaders = team.members.filter(m => m.skills.skillsSoft.leadership > 7).length;
+            if (teamLeaders > 2 && student.skills.skillsSoft.leadership > 7) {
+                score -= 30;
+                reasons.push("Soft skills: Too many leaders");
+            }
+
+            const hasMotivator = team.members.some(m => m.skills.skillsSoft.motivation > 6);
+            if (!hasMotivator && student.skills.skillsSoft.motivation > 6) {
+                score += 20;
+                reasons.push("Soft skills: Adds motivator");
+            }
+
+            const hasMediator = team.members.some(m => m.skills.skillsSoft.conflict > 6);
+            if (!hasMediator && student.skills.skillsSoft.conflict > 6) {
+                score += 15;
+                reasons.push("Soft skills: Adds mediator");
+            }
+
+            // ABSENT/EXCLUDED DISTRIBUTION
+            if (student.isExcluded) {
+                const excludedCount = team.members.filter(m => m.isExcluded).length;
+                if (excludedCount > 0) {
+                    score -= 500 * excludedCount;
+                    reasons.push(`Absent distribution: Already has ${excludedCount} absent student(s)`);
+                } else {
+                    score += 50;
+                    reasons.push("Absent distribution: First absent student in team");
+                }
+            }
+
+            // ANCHOR PERSON (simplified comfort zone)
+            // With maxSelections=1, comfort is now just the anchor person
+            const hasAnchor = team.members.some(m => student.comfort.includes(m.id));
+            const isAnchorForOther = team.members.some(m => m.comfort.includes(student.id));
+
+            if (hasAnchor) {
+                score += 150; // Strong bonus for having your anchor in team
+                reasons.push("Anchor Person: Student's anchor is in this team");
+            }
+            if (isAnchorForOther) {
+                score += 100; // Bonus for being someone's anchor
+                reasons.push("Anchor Person: Student is anchor for team member");
+            }
+
+            // SPACE BONUS
+            // Prevent greedy team filling by giving a bonus to teams with fewer members
+            const remainingSpace = teamSizes[i] - team.memberIds.length;
+            score += remainingSpace * 20;
+            // reasons.push(`Space bonus: ${remainingSpace} spots left`); // Too verbose for final justification
 
             teamScores.push({ index: i, score, reasons });
             if (score > maxScore) {
