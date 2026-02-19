@@ -1,12 +1,22 @@
 import type { APIRoute } from 'astro';
 import { db } from '../../../lib/db';
 import { projects, students, responses, teamHistory, teams as teamsTable } from '../../../../db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { createTeams, type StudentData } from '../../../lib/teamMatcher';
+import { createTeamsV1 } from '../../../lib/teamMatcherV1';
 
-export const POST: APIRoute = async ({ params, request, redirect }) => {
+type AlgorithmVersion = 'v1' | 'v2';
+
+function getRequestedAlgorithmVersion(requestUrl: string): AlgorithmVersion {
+    const url = new URL(requestUrl);
+    const version = url.searchParams.get('version');
+    return version === 'v1' ? 'v1' : 'v2';
+}
+
+export const POST: APIRoute = async ({ request, redirect }) => {
     const url = new URL(request.url);
     const projectId = parseInt(url.searchParams.get('projectId') || '');
+    const algorithmVersion = getRequestedAlgorithmVersion(request.url);
 
     if (isNaN(projectId)) {
         return new Response('Invalid project ID', { status: 400 });
@@ -82,23 +92,32 @@ export const POST: APIRoute = async ({ params, request, redirect }) => {
             return new Response('Project configuration missing team count or size', { status: 400 });
         }
 
-        // 6. Run algorithm
-        const generatedTeams = createTeams(studentDataList, numTeams, project.projectType, history);
+        // 6. Run requested algorithm version on persisted responses
+        const generatedTeams =
+            algorithmVersion === 'v1'
+                ? createTeamsV1(studentDataList, numTeams, project.projectType, history)
+                : createTeams(studentDataList, numTeams, project.projectType, history);
 
-        // 6. Save to database
-        // Clear old teams first
-        await db.delete(teamsTable).where(eq(teamsTable.projectId, projectId));
+        // 7. Save to database
+        // Clear only the version being regenerated; keep the other one for comparison.
+        await db.delete(teamsTable).where(
+            and(
+                eq(teamsTable.projectId, projectId),
+                eq(teamsTable.algorithmVersion, algorithmVersion)
+            )
+        );
 
         const insertChunks = generatedTeams.map(t => ({
             projectId,
             teamNumber: t.teamNumber,
             memberIds: t.memberIds,
             justification: t.justification,
+            algorithmVersion,
         }));
 
         await db.insert(teamsTable).values(insertChunks);
 
-        return redirect(`/admin/teams/${projectId}`);
+        return redirect(`/admin/teams/${projectId}?version=${algorithmVersion}`);
     } catch (error) {
         console.error('Team generation error:', error);
         return new Response('Error generating teams', { status: 500 });

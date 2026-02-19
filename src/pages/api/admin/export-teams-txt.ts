@@ -1,11 +1,12 @@
 import type { APIRoute } from 'astro';
 import { db } from '../../../lib/db';
 import { projects, students, teams } from '../../../../db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 
 export const GET: APIRoute = async ({ request }) => {
     const url = new URL(request.url);
     const projectId = parseInt(url.searchParams.get('projectId') || '');
+    const version = url.searchParams.get('version') || 'v2';
 
     if (isNaN(projectId)) {
         return new Response('Missing or invalid projectId', { status: 400 });
@@ -18,7 +19,10 @@ export const GET: APIRoute = async ({ request }) => {
         if (!project) return new Response('Project not found', { status: 404 });
 
         const projectTeams = await db.query.teams.findMany({
-            where: eq(teams.projectId, projectId),
+            where: and(
+                eq(teams.projectId, projectId),
+                eq(teams.algorithmVersion, version)
+            ),
             orderBy: (teams, { asc }) => [asc(teams.teamNumber)],
         });
 

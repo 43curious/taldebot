@@ -62,6 +62,7 @@ export const teams = sqliteTable('teams', {
   teamNumber: integer('team_number').notNull(),
   memberIds: text('member_ids', { mode: 'json' }).$type<number[]>().notNull(),
   justification: text('justification').notNull(),
+  algorithmVersion: text('algorithm_version').default('v2'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 

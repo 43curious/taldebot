@@ -1,12 +1,13 @@
 import type { APIRoute } from 'astro';
 import { db } from '../../../lib/db';
 import { projects, students, responses, teams } from '../../../../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import * as XLSX from 'xlsx';
 
 export const GET: APIRoute = async ({ request }) => {
     const url = new URL(request.url);
     const projectId = parseInt(url.searchParams.get('projectId') || '');
+    const version = url.searchParams.get('version') || 'v2';
 
     if (isNaN(projectId)) {
         return new Response('Missing or invalid projectId', { status: 400 });
@@ -27,7 +28,10 @@ export const GET: APIRoute = async ({ request }) => {
         });
 
         const allTeams = await db.query.teams.findMany({
-            where: eq(teams.projectId, projectId),
+            where: and(
+                eq(teams.projectId, projectId),
+                eq(teams.algorithmVersion, version)
+            ),
             orderBy: (teams, { asc }) => [asc(teams.teamNumber)],
         });
 

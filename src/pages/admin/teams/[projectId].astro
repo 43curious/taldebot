@@ -3,11 +3,14 @@ export const prerender = false;
 import AdminLayout from "../../../layouts/AdminLayout.astro";
 import { db } from "../../../lib/db";
 import { projects, teams } from "../../../../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import TeamCard from "../../../components/TeamCard.astro";
 
 const { projectId } = Astro.params;
 const pid = parseInt(projectId || "");
+const url = new URL(Astro.request.url);
+const versionParam = url.searchParams.get("version") || "v2";
+const selectedVersion = versionParam === "v1" ? "v1" : "v2";
 
 if (isNaN(pid)) return Astro.redirect("/admin/dashboard");
 
@@ -17,10 +20,19 @@ const project = await db.query.projects.findFirst({
 
 if (!project) return Astro.redirect("/admin/dashboard");
 
-const projectTeams = await db.query.teams.findMany({
-    where: eq(teams.projectId, pid),
-    orderBy: (teams, { asc }) => [asc(teams.teamNumber)],
+// Fetch counts for both versions to know if they exist
+const teamsV1 = await db.query.teams.findMany({
+    where: and(eq(teams.projectId, pid), eq(teams.algorithmVersion, "v1")),
 });
+const teamsV2 = await db.query.teams.findMany({
+    where: and(eq(teams.projectId, pid), eq(teams.algorithmVersion, "v2")),
+});
+
+const hasV1 = teamsV1.length > 0;
+const hasV2 = teamsV2.length > 0;
+
+const projectTeams = selectedVersion === "v1" ? teamsV1 : teamsV2;
+projectTeams.sort((a, b) => a.teamNumber - b.teamNumber);
 ---
 
 <AdminLayout title={`Teams: ${project.name}`}>
@@ -57,9 +69,32 @@ const projectTeams = await db.query.teams.findMany({
                 Taldeen Esleipena
             </h2>
         </div>
-        <div class="mt-4 flex flex-wrap md:mt-0 md:ml-4 gap-3">
+        <div class="mt-4 flex flex-wrap md:mt-0 md:ml-4 gap-3 items-center">
+            {
+                (hasV1 || hasV2) && (
+                    <div class="relative inline-block text-left mr-2">
+                        <select
+                            onchange={`window.location.href = window.location.pathname + '?version=' + this.value`}
+                            class="block w-full pl-3 pr-10 py-2 text-xs font-bold border border-slate-200 rounded-xl focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white text-slate-600 uppercase tracking-widest cursor-pointer hover:bg-slate-50 transition-all shadow-sm"
+                        >
+                            <option
+                                value="v2"
+                                selected={selectedVersion === "v2"}
+                            >
+                                Algoritmoa v2 {hasV2 ? "" : "(Sortu gabe)"}
+                            </option>
+                            <option
+                                value="v1"
+                                selected={selectedVersion === "v1"}
+                            >
+                                Algoritmoa v1 {hasV1 ? "" : "(Sortu gabe)"}
+                            </option>
+                        </select>
+                    </div>
+                )
+            }
             <form
-                action={`/api/admin/generate-teams?projectId=${pid}`}
+                action={`/api/admin/generate-teams?projectId=${pid}&version=${selectedVersion}`}
                 method="POST"
             >
                 <button
@@ -69,35 +104,75 @@ const projectTeams = await db.query.teams.findMany({
                     Berritu
                 </button>
             </form>
-            <a
-                href={`/api/admin/export-teams-txt?projectId=${pid}`}
-                class="inline-flex items-center px-4 py-2 bg-white border border-slate-300 rounded-xl shadow-sm text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest active:scale-95"
-            >
-                Zerrenda (TXT)
-            </a>
-            <a
-                href={`/api/admin/export-data?projectId=${pid}`}
-                class="inline-flex items-center px-4 py-2 bg-white border border-teal-600 rounded-xl shadow-sm text-xs font-bold text-teal-600 hover:bg-teal-50 transition-all uppercase tracking-widest active:scale-95"
-            >
-                Esportatu Excel
-            </a>
+            <details class="relative">
+                <summary
+                    class="list-none inline-flex items-center gap-2 px-4 py-2 bg-white border border-teal-600 rounded-xl shadow-sm text-xs font-bold text-teal-600 hover:bg-teal-50 transition-all uppercase tracking-widest cursor-pointer active:scale-95"
+                >
+                    Esportatu
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width={2}
+                            d="M19 9l-7 7-7-7"
+                        />
+                    </svg>
+                </summary>
+                <div class="absolute right-0 z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-xl p-2">
+                    <a
+                        href={`/api/admin/export-teams-txt?projectId=${pid}&version=v2`}
+                        class="block px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all uppercase tracking-wider"
+                    >
+                        Algoritmoa v2 - Zerrenda (TXT)
+                    </a>
+                    {
+                        hasV1 ? (
+                            <a
+                                href={`/api/admin/export-teams-txt?projectId=${pid}&version=v1`}
+                                class="block px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all uppercase tracking-wider"
+                            >
+                                Algoritmoa v1 - Zerrenda (TXT)
+                            </a>
+                        ) : (
+                            <span class="block px-3 py-2 rounded-lg text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                Algoritmoa v1 - Zerrenda (TXT) (Sortu gabe)
+                            </span>
+                        )
+                    }
+                    <a
+                        href={`/api/admin/export-data?projectId=${pid}&version=v2`}
+                        class="block px-3 py-2 rounded-lg text-xs font-bold text-teal-700 hover:bg-teal-50 transition-all uppercase tracking-wider"
+                    >
+                        Algoritmoa v2 - Excel
+                    </a>
+                    {
+                        hasV1 ? (
+                            <a
+                                href={`/api/admin/export-data?projectId=${pid}&version=v1`}
+                                class="block px-3 py-2 rounded-lg text-xs font-bold text-teal-700 hover:bg-teal-50 transition-all uppercase tracking-wider"
+                            >
+                                Algoritmoa v1 - Excel
+                            </a>
+                        ) : (
+                            <span class="block px-3 py-2 rounded-lg text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                Algoritmoa v1 - Excel (Sortu gabe)
+                            </span>
+                        )
+                    }
+                </div>
+            </details>
             <button
                 onclick="window.print()"
                 class="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest active:scale-95"
             >
                 Inprimatzeko Bista
             </button>
-            <form
-                action={`/api/admin/send-notifications?projectId=${pid}`}
-                method="POST"
-            >
-                <button
-                    type="submit"
-                    class="inline-flex items-center px-6 py-2 bg-teal-600 border border-transparent rounded-xl shadow-lg shadow-teal-600/20 text-xs font-bold text-white hover:bg-teal-700 transition-all uppercase tracking-widest active:scale-95"
-                >
-                    TALDEAK JAKINARAZI
-                </button>
-            </form>
         </div>
     </div>
 
@@ -137,7 +212,7 @@ const projectTeams = await db.query.teams.findMany({
                         Ez dago talderik sortuta oraindik.
                     </p>
                     <form
-                        action={`/api/admin/generate-teams?projectId=${pid}`}
+                        action={`/api/admin/generate-teams?projectId=${pid}&version=${selectedVersion}`}
                         method="POST"
                         class="mt-4"
                     >
