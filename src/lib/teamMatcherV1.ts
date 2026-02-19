@@ -46,6 +46,17 @@ export function createTeamsV1(
             const team = teams[i];
             if (team.memberIds.length >= teamSizes[i]) continue;
 
+            // Keep omitted/excluded students separated whenever there is any feasible alternative team.
+            if (student.isExcluded) {
+                const teamHasExcluded = team.members.some((m) => m.isExcluded);
+                const hasAlternativeTeam = teams.some((candidateTeam, candidateIdx) => {
+                    if (candidateIdx === i) return false;
+                    if (candidateTeam.memberIds.length >= teamSizes[candidateIdx]) return false;
+                    return !candidateTeam.members.some((m) => m.isExcluded);
+                });
+                if (teamHasExcluded && hasAlternativeTeam) continue;
+            }
+
             let score = 0;
             const reasons: string[] = [];
 
