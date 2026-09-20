@@ -1,131 +1,185 @@
 ---
 const { currentPath } = Astro.props;
 const adminUser = Astro.cookies.get("admin_user")?.value || "Admin";
+
+const links = [
+    { href: "/admin/dashboard", label: "Arbel Nagusia", icon: "dashboard" },
+    { href: "/admin/create-project", label: "Proiektu Berria", icon: "plus" },
+    { href: "/admin/users", label: "Erabiltzaileak", icon: "users" },
+];
 ---
 
-<nav class="bg-white border-b border-slate-200/60 sticky top-0 z-50 backdrop-blur-md bg-white/80">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-20">
-            <div class="flex items-center">
-                <a
-                    href="/admin/dashboard"
-                    class="flex-shrink-0 flex items-center gap-3 group"
-                >
-                    <div
-                        class="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-teal-600/20 group-hover:rotate-6 transition-transform"
-                    >
-                        T
-                    </div>
-                    <span
-                        class="text-xl font-bold text-slate-900 tracking-tight"
-                        >Talde<span class="text-teal-600">BOT</span> <span class="text-slate-400 font-medium text-sm ml-1">Admin</span></span
-                    >
-                </a>
-                <div class="hidden sm:ml-10 sm:flex sm:space-x-8">
-                    <a
-                        href="/admin/dashboard"
-                        class={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-semibold transition-all ${currentPath === "/admin/dashboard" ? "border-teal-600 text-slate-900" : "border-transparent text-slate-500 hover:text-teal-600 hover:border-teal-200"}`}
-                    >
-                        Arbel Nagusia
-                    </a>
-                    <a
-                        href="/admin/create-project"
-                        class={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-semibold transition-all ${currentPath === "/admin/create-project" ? "border-teal-600 text-slate-900" : "border-transparent text-slate-500 hover:text-teal-600 hover:border-teal-200"}`}
-                    >
-                        Proiektu Berria
-                    </a>
-                    <a
-                        href="/admin/users"
-                        class={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-semibold transition-all ${currentPath === "/admin/users" ? "border-teal-600 text-slate-900" : "border-transparent text-slate-500 hover:text-teal-600 hover:border-teal-200"}`}
-                    >
-                        Erabiltzaileak
-                    </a>
-                </div>
-            </div>
-            <div class="flex items-center gap-4 relative">
-                <!-- User Profile Dropdown -->
-                <div class="relative" id="user-menu-container">
-                    <button 
-                        id="user-menu-button"
-                        class="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition-all focus:outline-none group"
-                        aria-expanded="false"
-                        aria-haspopup="true"
-                    >
-                        <div class="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center text-teal-600 border border-teal-100 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                        </div>
-                        <div class="text-left hidden sm:block">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Admin</p>
-                            <p class="text-sm font-bold text-slate-800 leading-none">{adminUser}</p>
-                        </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 group-hover:text-teal-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-
-                    <!-- Dropdown Menu -->
-                    <div 
-                        id="user-dropdown"
-                        class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl shadow-slate-200/50 border border-slate-100 py-2 z-50 transform origin-top-right transition-all duration-200 overflow-hidden"
-                    >
-                        <a 
-                            href="/admin/profile" 
-                            class="flex items-center gap-3 px-4 py-3 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-colors"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            Nire Profila
-                        </a>
-
-                        <div class="border-t border-slate-50 mt-1 pt-1">
-                            <form action="/api/admin/logout" method="POST">
-                                <button 
-                                    type="submit"
-                                    class="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors font-semibold"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                    </svg>
-                                    Saioa Itxi
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<aside
+    id="admin-sidebar"
+    class="fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-slate-200 bg-white transition-all duration-200 lg:translate-x-0"
+    aria-label="Administrazio nabigazioa"
+>
+    <div data-sidebar-padding="header" class="flex h-20 items-center border-b border-slate-100 px-4 transition-[padding] duration-200">
+        <a href="/admin/dashboard" class="flex min-w-0 items-center gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-600 font-black text-white shadow-lg shadow-teal-600/20">T</span>
+            <span data-sidebar-label class="truncate text-lg font-black tracking-tight text-slate-900">Talde<span class="text-teal-600">BOT</span></span>
+        </a>
     </div>
-</nav>
+
+    <div data-sidebar-padding="x" class="px-3 pt-4 transition-[padding] duration-200">
+        <button
+            id="sidebar-toggle"
+            type="button"
+            class="flex h-11 w-full items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-600 transition-all duration-200 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+            aria-label="Alboko menua tolestu"
+            aria-expanded="true"
+            title="Alboko menua tolestu"
+        >
+            <svg data-collapse-icon xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span id="sidebar-toggle-label" data-sidebar-label>Menua itxi</span>
+        </button>
+    </div>
+
+    <nav data-sidebar-padding="x" class="flex-1 space-y-1 px-3 py-6 transition-[padding] duration-200" aria-label="Menu nagusia">
+        {
+            links.map((link) => (
+                <a
+                    href={link.href}
+                    class:list={[
+                        "sidebar-link flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-all duration-200",
+                        currentPath === link.href
+                            ? "bg-teal-50 text-teal-700"
+                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
+                    ]}
+                    aria-current={currentPath === link.href ? "page" : undefined}
+                    title={link.label}
+                >
+                    {link.icon === "dashboard" && (
+                        <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                    )}
+                    {link.icon === "plus" && (
+                        <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    )}
+                    {link.icon === "users" && (
+                        <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    )}
+                    <span data-sidebar-label>{link.label}</span>
+                </a>
+            ))
+        }
+    </nav>
+
+    <div data-sidebar-padding="all" class="border-t border-slate-100 p-3 transition-[padding] duration-200">
+        <a
+            href="/admin/profile"
+            class:list={[
+                "sidebar-link flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-all duration-200",
+                currentPath === "/admin/profile"
+                    ? "bg-teal-50 text-teal-700"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
+            ]}
+            title="Nire Profila"
+        >
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+            </span>
+            <span data-sidebar-label class="min-w-0 truncate">
+                <span class="block text-[10px] uppercase tracking-widest text-slate-400">Admin</span>
+                <span class="block truncate text-slate-800">{adminUser}</span>
+            </span>
+        </a>
+        <form action="/api/admin/logout" method="POST" class="mt-1">
+            <button
+                type="submit"
+                class="sidebar-link flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-red-500 transition-all duration-200 hover:bg-red-50 hover:text-red-600"
+                title="Saioa Itxi"
+            >
+                <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span data-sidebar-label>Saioa Itxi</span>
+            </button>
+        </form>
+    </div>
+</aside>
+<div id="sidebar-backdrop" class="fixed inset-0 z-40 hidden bg-slate-900/30 lg:hidden"></div>
 
 <script>
-    const button = document.getElementById('user-menu-button');
-    const dropdown = document.getElementById('user-dropdown');
-    const container = document.getElementById('user-menu-container');
+    const sidebar = document.getElementById("admin-sidebar");
+    const content = document.getElementById("admin-content");
+    const toggle = document.getElementById("sidebar-toggle");
+    const mobileToggle = document.getElementById("mobile-menu-button");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    const labels = sidebar?.querySelectorAll("[data-sidebar-label]");
+    const links = sidebar?.querySelectorAll(".sidebar-link");
+    const icons = sidebar?.querySelectorAll(".sidebar-link > svg");
+    const compactXPadding = sidebar?.querySelectorAll('[data-sidebar-padding="x"]');
+    const compactAllPadding = sidebar?.querySelector('[data-sidebar-padding="all"]');
+    const header = sidebar?.querySelector('[data-sidebar-padding="header"]');
+    const icon = sidebar?.querySelector("[data-collapse-icon]");
+    const toggleLabel = document.getElementById("sidebar-toggle-label");
 
-    if (button && dropdown && container) {
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdown.classList.toggle('hidden');
-            button.setAttribute('aria-expanded', dropdown.classList.contains('hidden') ? 'false' : 'true');
+    const setCollapsed = (collapsed: boolean) => {
+        if (!sidebar || !content) return;
+        sidebar.classList.toggle("w-16", collapsed);
+        sidebar.classList.toggle("w-64", !collapsed);
+        content.classList.toggle("lg:pl-16", collapsed);
+        content.classList.toggle("lg:pl-64", !collapsed);
+        header?.classList.toggle("px-3", collapsed);
+        header?.classList.toggle("px-4", !collapsed);
+        compactXPadding?.forEach((element) => {
+            element.classList.toggle("px-2", collapsed);
+            element.classList.toggle("px-3", !collapsed);
         });
+        compactAllPadding?.classList.toggle("p-2", collapsed);
+        compactAllPadding?.classList.toggle("p-3", !collapsed);
+        labels?.forEach((label) => {
+            label.classList.add("overflow-hidden", "whitespace-nowrap", "transition-[max-width,opacity]", "duration-200");
+            label.classList.toggle("max-w-0", collapsed);
+            label.classList.toggle("max-w-[180px]", !collapsed);
+            label.classList.toggle("opacity-0", collapsed);
+            label.classList.toggle("opacity-100", !collapsed);
+        });
+        links?.forEach((link) => {
+            link.classList.toggle("px-2", collapsed);
+            link.classList.toggle("px-3", !collapsed);
+        });
+        toggle?.classList.toggle("px-2", collapsed);
+        toggle?.classList.toggle("px-3", !collapsed);
+        icons?.forEach((sidebarIcon) => {
+            sidebarIcon.classList.add("transition-transform", "duration-200");
+            sidebarIcon.classList.toggle("translate-x-1.5", collapsed);
+        });
+        toggleLabel && (toggleLabel.textContent = collapsed ? "Menua ireki" : "Menua itxi");
+        icon?.classList.toggle("rotate-180", collapsed);
+        icon?.classList.toggle("translate-x-1.5", collapsed);
+        toggle?.setAttribute("aria-expanded", String(!collapsed));
+        toggle?.setAttribute("aria-label", collapsed ? "Alboko menua zabaldu" : "Alboko menua tolestu");
+        toggle?.setAttribute("title", collapsed ? "Alboko menua zabaldu" : "Alboko menua tolestu");
+        localStorage.setItem("taldebot-sidebar-collapsed", String(collapsed));
+    };
 
-        // Close when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!container.contains(e.target as Node)) {
-                dropdown.classList.add('hidden');
-                button.setAttribute('aria-expanded', 'false');
-            }
-        });
+    const closeMobile = () => {
+        sidebar?.classList.add("-translate-x-full");
+        sidebar?.classList.remove("translate-x-0");
+        backdrop?.classList.add("hidden");
+        mobileToggle?.setAttribute("aria-expanded", "false");
+    };
 
-        // ESC key to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                dropdown.classList.add('hidden');
-                button.setAttribute('aria-expanded', 'false');
-            }
-        });
-    }
+    toggle?.addEventListener("click", () => setCollapsed(!sidebar?.classList.contains("w-16")));
+    mobileToggle?.addEventListener("click", () => {
+        const open = sidebar?.classList.toggle("translate-x-0") ?? false;
+        sidebar?.classList.toggle("-translate-x-full", !open);
+        backdrop?.classList.toggle("hidden", !open);
+        mobileToggle.setAttribute("aria-expanded", String(open));
+    });
+    backdrop?.addEventListener("click", closeMobile);
+    sidebar?.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeMobile));
+
+    setCollapsed(localStorage.getItem("taldebot-sidebar-collapsed") === "true");
 </script>
