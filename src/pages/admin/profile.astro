@@ -6,16 +6,8 @@ import { users } from "../../../db/schema";
 import { hashPassword } from "../../lib/auth";
 import { eq } from "drizzle-orm";
 
-// Auth check
-const session = Astro.cookies.get("admin_session");
-if (!session || session.value !== "active") {
-    return Astro.redirect("/admin/login");
-}
-
-// For this simplified version, we just assume the first user or we could store user id in session
-// Since we have a 'master' or initial admin, let's just fetch the current one
-// In a real app, you'd get the ID from the session cookie
-const currentUser = await db.query.users.findFirst(); 
+const adminId = await Astro.session?.get<number>('adminId');
+const currentUser = adminId ? await db.query.users.findFirst({ where: eq(users.id, adminId) }) : null;
 
 let error = "";
 let success = "";

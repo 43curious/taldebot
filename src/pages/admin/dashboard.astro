@@ -9,7 +9,7 @@ const allProjects = await db.query.projects.findMany({
     orderBy: (projects, { desc }) => [desc(projects.createdAt)],
 });
 
-const adminUser = Astro.cookies.get("admin_user")?.value || "Admin";
+const adminUser = (await Astro.session?.get<string>('adminUser')) || "Admin";
 
 // Fetch completion stats for each project
 const projectStats = await Promise.all(

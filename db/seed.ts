@@ -82,6 +82,7 @@ async function seed() {
             preferWith: [],
             preferAvoid: [],
             comfort: [],
+            isExcluded: student.isExcluded ?? false,
         });
     }
 
@@ -96,7 +97,7 @@ async function seed() {
     studentDataForAlgorithm[2].preferAvoid = [studentEntities[0].id];
 
     console.log('Running team creation algorithm...');
-    const teams = createTeams(studentDataForAlgorithm, project.numTeams, project.projectType, [
+    const teams = createTeams(studentDataForAlgorithm, project.numTeams ?? 5, project.projectType, [
         { student1Id: studentEntities[0].id, student2Id: studentEntities[1].id },
         { student1Id: studentEntities[2].id, student2Id: studentEntities[3].id },
     ]);

@@ -1,9 +1,10 @@
 ---
 const { currentPath } = Astro.props;
-const adminUser = Astro.cookies.get("admin_user")?.value || "Admin";
+const adminUser = (await Astro.session?.get<string>('adminUser')) || "Admin";
 
 const links = [
     { href: "/admin/dashboard", label: "Arbel Nagusia", icon: "dashboard" },
+    { href: "/admin/classes", label: "Classes", icon: "classes" },
     { href: "/admin/create-project", label: "Proiektu Berria", icon: "plus" },
     { href: "/admin/users", label: "Erabiltzaileak", icon: "users" },
 ];
@@ -54,6 +55,11 @@ const links = [
                     {link.icon === "dashboard" && (
                         <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                    )}
+                    {link.icon === "classes" && (
+                        <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19.5A2.5 2.5 0 016.5 17H20M6.5 2H20v15H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
                         </svg>
                     )}
                     {link.icon === "plus" && (

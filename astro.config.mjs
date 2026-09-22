@@ -9,10 +9,13 @@ import netlify from '@astrojs/netlify';
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
+  session: { ttl: 8 * 60 * 60 },
   integrations: [tailwind(), react()],
 
   adapter: netlify({
     devFeatures: {
+      images: true,
+      environmentVariables: false,
       edgeFunctions: false
     }
   })

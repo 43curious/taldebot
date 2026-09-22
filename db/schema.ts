@@ -1,5 +1,36 @@
-import { sqliteTable, text, integer, blob } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, blob, unique } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
+
+export const degrees = sqliteTable('degrees', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const classes = sqliteTable('classes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  year: integer('year').notNull(),
+  capacity: integer('capacity').notNull().default(50),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  degreeId: integer('degree_id').references(() => degrees.id, { onDelete: 'cascade' }),
+}, (table) => [unique('classes_degree_name_unique').on(table.degreeId, table.name)]);
+
+export const classMembers = sqliteTable('class_members', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  classId: integer('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  email: text('email'),
+  division: text('division').$type<'sormena' | 'digitala'>(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  nationalId: text('national_id'),
+  tutor: text('tutor'),
+  town: text('town'),
+  academicStatus: text('academic_status'),
+  erasmus: text('erasmus'),
+  dual: text('dual'),
+  notes: text('notes'),
+});
 
 export const projects = sqliteTable('projects', {
   id: integer('id').primaryKey({ autoIncrement: true }),

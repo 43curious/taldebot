@@ -23,4 +23,10 @@ TaldeBot-ek hiru geruzatako algoritmo bat erabiltzen du taldeak osatzeko:
 - **ORM**: Drizzle ORM
 - **Inplementazioa**: Netlify
 
+## Klaseen datu-basea eguneratu
+
+Klaseen orria argitaratu **aurretik**, egin Turso datu-basearen babeskopia eta exekutatu `node scripts/migrate-classes.mjs --remote` (`TURSO_CONNECTION_URL` eta `TURSO_AUTH_TOKEN` behar dira). Scriptak dauden klaseak, ikasleak eta proiektuen loturak gordetzen ditu; berriro exekutatzea segurua da. Tokiko datu-basea prestatzeko: `node scripts/migrate-classes.mjs --local` (honek `sqlite.db` aldatzen du).
+
+Administratzaileek berriz hasi beharko dute saioa argitaratu ondoren; aurreko `admin_session` cookieak ez du balio.
+
 

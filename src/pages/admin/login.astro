@@ -25,10 +25,10 @@ if (Astro.request.method === "POST") {
             error = "Erabiltzaile edo pasahitz okerra";
         } else if (await verifyPassword(password, user.hashedPassword)) {
             console.log(`[Login] Success for user: ${username}`);
-            Astro.cookies.set("admin_session", "active", { path: "/" });
-            Astro.cookies.set("admin_user", user.fullName || user.username, {
-                path: "/",
-            });
+            if (!Astro.session) throw new Error("Session storage unavailable");
+            await Astro.session.regenerate();
+            Astro.session.set("adminId", user.id);
+            Astro.session.set("adminUser", user.fullName || user.username);
             return Astro.redirect("/admin/dashboard");
         } else {
             console.log(`[Login] Incorrect password for user: ${username}`);
