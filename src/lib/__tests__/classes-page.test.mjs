@@ -39,6 +39,7 @@ it('shows degree-first browse and edit views only after a real login', async () 
         }
         expect(ready).toBe(true);
         expect((await fetch(`${base}/admin/classes`, { headers: { cookie: 'admin_session=active' }, redirect: 'manual' })).status).toBe(302);
+        expect((await fetch(`${base}/admin/users`, { headers: { cookie: 'astro-session=ad96f327-3f16-4615-9ff0-65e6152c586f' }, redirect: 'manual' })).status).toBe(302);
         const login = await fetch(`${base}/admin/login`, {
             method: 'POST', redirect: 'manual', headers: { origin: base, 'content-type': 'application/x-www-form-urlencoded' },
             body: 'username=test&password=test-pass',
