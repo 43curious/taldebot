@@ -1,7 +1,6 @@
 // @ts-check
 import { defineConfig, sessionDrivers } from 'astro/config';
 
-import tailwind from '@astrojs/tailwind';
 import react from '@astrojs/react';
 
 import netlify from '@astrojs/netlify';
@@ -13,7 +12,7 @@ export default defineConfig({
     ttl: 8 * 60 * 60,
     ...(process.argv.includes('dev') ? { driver: sessionDrivers.fs({ base: '.astro/sessions' }) } : {}),
   },
-  integrations: [tailwind(), react()],
+  integrations: [react()],
 
   adapter: netlify({
     devFeatures: {
