@@ -9,7 +9,7 @@ import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { migrateClasses } from '../../../scripts/migrate-classes.mjs';
 
-it('shows degree-first browse and edit views only after a real login', async () => {
+it('keeps class and dashboard actions available after a real login', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'taldebot-page-'));
     const db = createClient({ url: `file:${join(dir, 'test.db')}` });
     let server;
@@ -20,6 +20,10 @@ it('shows degree-first browse and edit views only after a real login', async () 
         await db.execute("INSERT INTO degrees(name) VALUES ('Media')");
         await db.execute("INSERT INTO classes(name, year, degree_id) VALUES ('1. maila', 1, 1)");
         await db.execute("INSERT INTO class_members(class_id, name, division) VALUES (1, 'Ane', 'sormena')");
+        await db.execute("CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT, num_teams INTEGER, target_team_size INTEGER, project_type TEXT NOT NULL, created_at TEXT, status TEXT, admin_email TEXT, access_code TEXT)");
+        await db.execute("CREATE TABLE students (id INTEGER PRIMARY KEY, project_id INTEGER, name TEXT NOT NULL, email TEXT, has_completed INTEGER, is_excluded INTEGER)");
+        await db.execute("INSERT INTO projects (id, name, project_type, status, access_code) VALUES (1, 'Film lab', 'balanced', 'active', '1234A')");
+        await db.execute("INSERT INTO students (project_id, name, has_completed) VALUES (1, 'Ane', 1), (1, 'Iker', 0)");
         const port = await new Promise((resolve) => {
             const listener = createServer().listen(0, '127.0.0.1', () => {
                 const port = listener.address().port;
@@ -54,6 +58,16 @@ it('shows degree-first browse and edit views only after a real login', async () 
         const edit = await (await fetch(`${base}/admin/classes?mode=edit`, { headers: { cookie } })).text();
         expect(edit).toContain('4. maila');
         expect(edit).toContain('Klasea gehitu');
+        const dashboard = await (await fetch(`${base}/admin/dashboard`, { headers: { cookie } })).text();
+        expect(dashboard).toContain('Film lab');
+        expect(dashboard).toContain('lg:grid-cols-[minmax(0,1fr)_15rem_11rem]');
+        expect(dashboard).toContain('aria-valuenow="50"');
+        expect(dashboard.indexOf('Film lab')).toBeLessThan(dashboard.indexOf('Kodea:'));
+        expect(dashboard.indexOf('1234A')).toBeLessThan(dashboard.indexOf('aria-valuenow="50"'));
+        expect(dashboard).toContain('/admin/create-project');
+        expect(dashboard).toContain('/admin/monitor/1');
+        expect(dashboard).toContain('/admin/teams/1');
+        expect(dashboard).toContain('data-project-id="1"');
     } finally {
         if (server && server.exitCode === null && server.signalCode === null) {
             server.kill();

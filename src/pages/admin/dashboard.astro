@@ -34,166 +34,76 @@ const projectStats = await Promise.all(
 );
 ---
 
-<AdminLayout title="Dashboard">
-    <div class="mb-12">
-        <h1 class="text-5xl font-black text-black tracking-tight mb-2">
-            Kaixo, {adminUser}! 👋
-        </h1>
-        <h2 class="text-xl text-gray-500 font-medium">
-            Ongi etorri berriro zure proiektuen arbelera.
-        </h2>
-    </div>
-
-    <div class="md:flex md:items-center md:justify-between mb-8">
-        <div class="flex-1 min-w-0">
-            <h2
-                class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate"
-            >
-                Proiektuak
-            </h2>
-        </div>
-        <div class="mt-4 flex md:mt-0 md:ml-4">
-            <a
-                href="/admin/create-project"
-                class="inline-flex items-center px-6 py-2.5 border border-transparent rounded-xl shadow-lg shadow-teal-600/20 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 focus:outline-none transition-all active:scale-95"
-            >
-                Proiektu Berria
+<AdminLayout title="Arbel nagusia">
+    <main class="py-10">
+        <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-black tracking-tight text-slate-900">Arbel nagusia</h1>
+                <p class="mt-2 text-sm font-medium text-slate-500">Kaixo, {adminUser}. Kudeatu zure proiektuak hemen.</p>
+            </div>
+            <a href="/admin/create-project" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-bold text-white hover:bg-teal-700">
+                + Proiektu berria
             </a>
-        </div>
-    </div>
+        </header>
 
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {
-            projectStats.map((project) => (
-                <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
-                    <div class="p-5">
-                        <div class="flex items-center justify-between mb-4">
-                            <span
-                                class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    project.status === "active"
-                                        ? "bg-green-100 text-green-800"
-                                        : project.status === "setup"
-                                          ? "bg-teal-100 text-teal-800"
-                                          : "bg-slate-100 text-slate-800"
-                                }`}
-                            >
-                                {(project.status || "setup").toUpperCase()}
-                            </span>
-                            <span class="text-xs text-gray-500">
-                                {project.createdAt
-                                    ? new Date(
-                                          project.createdAt,
-                                      ).toLocaleDateString()
-                                    : "Data ezezaguna"}
-                            </span>
+        <h2 class="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
+            Proiektuak <span class="rounded-full bg-teal-50 px-2 py-0.5 text-xs text-teal-700">{projectStats.length}</span>
+        </h2>
+        <div class="space-y-4">
+            {projectStats.map((project) => (
+                <article class="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:grid lg:grid-cols-[minmax(0,1fr)_15rem_11rem]">
+                    <div class="min-w-0 p-5">
+                        <div class="flex items-start justify-between gap-3">
+                            <h3 class="min-w-0 text-xl font-black leading-snug text-slate-900">
+                                <a href={`/admin/monitor/${project.id}`} class="break-words hover:text-teal-700">{project.name}</a>
+                            </h3>
+                            <button type="button" class="delete-project-btn shrink-0 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600" data-project-id={project.id} data-project-name={project.name} aria-label={`Ezabatu ${project.name}`} title="Ezabatu proiektua">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-1 flex justify-between items-center group">
-                            <a
-                                href={`/admin/monitor/${project.id}`}
-                                class="hover:text-teal-600 transition-colors"
-                            >
-                                {project.name}
-                            </a>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-mono bg-teal-100 px-2 py-1 rounded text-teal-700 font-bold">
-                                    KODEA: {project.accessCode}
+                        {project.accessCode && <div class="mt-4"><span class="inline-flex rounded-lg bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-700">Kodea: <span class="ml-2 font-mono tracking-wider">{project.accessCode}</span></span></div>}
+                        <div class="mt-4">
+                            {project.description && <p class="line-clamp-2 text-sm text-slate-500">{project.description}</p>}
+                            <div class:list={["flex flex-wrap items-center gap-2 text-xs text-slate-500", project.description && "mt-4"]}>
+                                <span class:list={["rounded-full border px-2.5 py-1 font-semibold", project.status === "active" ? "border-teal-200 bg-teal-50 text-teal-700" : project.status === "completed" ? "border-slate-200 bg-slate-50 text-slate-600" : "border-amber-200 bg-amber-50 text-amber-700"]}>
+                                    {project.status === "active" ? "Aktibo" : project.status === "completed" ? "Amaituta" : "Prestaketa"}
                                 </span>
-                                <button
-                                    class="delete-project-btn p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                    data-project-id={project.id}
-                                    data-project-name={project.name}
-                                    title="Ezabatu proiektua"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="h-5 w-5"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            fill-rule="evenodd"
-                                            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                            clip-rule="evenodd"
-                                        />
-                                    </svg>
-                                </button>
+                                <span>{project.createdAt ? new Date(project.createdAt).toLocaleDateString() : "Data ezezaguna"}</span>
                             </div>
-                        </h3>
-                        <p class="text-sm text-gray-500 line-clamp-2 mb-4 h-10">
-                            {project.description}
-                        </p>
-
-                        <div class="mb-4">
-                            <div class="flex justify-between text-xs font-medium text-gray-700 mb-1">
-                                <span>Bete-maila</span>
-                                <span>
-                                    {project.completedStudents} /{" "}
-                                    {project.totalStudents} (
-                                    {project.percentage}%)
-                                </span>
-                            </div>
-                            <div class="w-full bg-slate-200 rounded-full h-2">
-                                <div
-                                    class="bg-teal-600 h-2 rounded-full transition-all"
-                                    style={`width: ${project.percentage}%`}
-                                />
-                            </div>
-                        </div>
-
-                        <div class="pt-4 border-t border-gray-100 grid grid-cols-2 gap-2">
-                            <a
-                                href={`/admin/monitor/${project.id}`}
-                                class="inline-flex justify-center items-center px-3 py-2 border border-teal-600 text-sm font-bold rounded-xl text-teal-600 bg-white hover:bg-teal-50 transition-all font-semibold"
-                            >
-                                Kudeatu
-                            </a>
-                            <a
-                                href={`/admin/teams/${project.id}`}
-                                class="inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-bold rounded-xl text-white bg-teal-600 hover:bg-teal-700 shadow-md shadow-teal-600/10 transition-all active:scale-95"
-                            >
-                                Ikusi Taldeak
-                            </a>
                         </div>
                     </div>
-                </div>
-            ))
-        }
-
-        {
-            projectStats.length === 0 && (
-                <div class="col-span-full py-20 bg-white rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-12 w-12 text-gray-400 mb-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width={1}
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                        />
-                    </svg>
-                    <p class="text-gray-500 text-lg">
-                        Ez dago proiekturik oraindik. Sortu zure lehena hasteko!
-                    </p>
-                </div>
-            )
-        }
-    </div>
+                    <div class="flex flex-col justify-center border-t border-slate-100 bg-slate-50/60 p-5 lg:border-l lg:border-t-0">
+                        <div class="mb-3 flex items-end justify-between gap-2">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Bete-maila</span>
+                            <strong class="text-xl font-black text-teal-700">{project.percentage}%</strong>
+                        </div>
+                        <div role="progressbar" aria-label={`${project.name}: bete-maila`} aria-valuenow={project.percentage} aria-valuemin="0" aria-valuemax="100" class="h-2.5 overflow-hidden rounded-full bg-slate-200">
+                            <div class="h-full rounded-full bg-teal-600" style={`width: ${project.percentage}%`}></div>
+                        </div>
+                        <p class="mt-2 text-xs text-slate-500">{project.completedStudents} / {project.totalStudents} ikasle</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 border-t border-slate-100 p-4 lg:content-center lg:grid-cols-1 lg:border-l lg:border-t-0">
+                        <a href={`/admin/monitor/${project.id}`} class="rounded-lg border border-teal-200 bg-white px-3 py-2 text-center text-sm font-bold text-teal-700 hover:bg-teal-50">Kudeatu</a>
+                        <a href={`/admin/teams/${project.id}`} class="rounded-lg bg-teal-600 px-3 py-2 text-center text-sm font-bold text-white hover:bg-teal-700">Ikusi taldeak</a>
+                    </div>
+                </article>
+            ))}
+            {projectStats.length === 0 && <p class="col-span-full rounded-2xl border-2 border-dashed border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Ez dago proiekturik oraindik. Sortu zure lehena hasteko!</p>}
+        </div>
+    </main>
 </AdminLayout>
 
 <script>
     const deleteButtons = document.querySelectorAll(".delete-project-btn");
 
     deleteButtons.forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
+        btn.addEventListener("click", async () => {
             const projectId = btn.getAttribute("data-project-id");
             const projectName = btn.getAttribute("data-project-name");
 
-            const message = `Seguru zaude proiektu hau ezabatu nahi duzula? Kontuan izan bertan jasota dauden datu guztiak ezabatuko direla. Gomendatzen dizugu, ezabatu aurretik, hauek lehenago deskargatzea.`;
+            const message = `Seguru zaude "${projectName}" ezabatu nahi duzula? Bertako datu guztiak ezabatuko dira. Deskargatu datuak lehenago, behar badituzu.`;
 
             if (confirm(message)) {
                 try {
