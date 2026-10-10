@@ -1,367 +1,164 @@
 ---
 export const prerender = false;
 import AdminLayout from "../../../layouts/AdminLayout.astro";
+import ClassGraph from "../../../components/ClassGraph";
 import { db } from "../../../lib/db";
-import { projects, students } from "../../../../db/schema";
-import { eq, and } from "drizzle-orm";
+import { projects, students, responses } from "../../../../db/schema";
+import { eq } from "drizzle-orm";
+import { projectAssessments } from "../../../lib/studentReport";
+import { classRelationships, studentStatus, trackingSummary } from "../../../lib/tracking";
 
-const { projectId } = Astro.params;
-const pid = parseInt(projectId || "");
-
-if (isNaN(pid)) return Astro.redirect("/admin/dashboard");
-
-const project = await db.query.projects.findFirst({
-    where: eq(projects.id, pid),
-});
-
+const pid = Number(Astro.params.projectId);
+if (!Number.isInteger(pid) || pid < 1) return Astro.redirect("/admin/dashboard");
+const project = await db.query.projects.findFirst({ where: eq(projects.id, pid) });
 if (!project) return Astro.redirect("/admin/dashboard");
-
 const allStudents = await db.query.students.findMany({
     where: eq(students.projectId, pid),
     orderBy: (students, { asc }) => [asc(students.name)],
 });
-
-const completed = allStudents.filter((s) => s.hasCompleted);
-const activeStudents = allStudents.filter((s) => !s.isExcluded);
-const pending = activeStudents.filter((s) => !s.hasCompleted);
-const excluded = allStudents.filter((s) => s.isExcluded);
-
-const completionRate = activeStudents.length
-    ? Math.round((completed.length / activeStudents.length) * 100)
-    : 0;
+const summary = trackingSummary(allStudents);
+const search = (Astro.url.searchParams.get("q") || "").trim();
+const requestedStatus = Astro.url.searchParams.get("status") || "all";
+const status = ["pending", "completed", "excluded"].includes(requestedStatus) ? requestedStatus : "all";
+const mapView = Astro.url.searchParams.get("view") === "map";
+const filtered = allStudents.filter(student =>
+    (status === "all" || studentStatus(student) === status) &&
+    `${student.name} ${student.email || ""}`.toLocaleLowerCase("eu").includes(search.toLocaleLowerCase("eu"))
+);
+const surveyUrl = project.accessCode ? new URL(`/student/form/${project.accessCode}`, Astro.url.origin).href : "";
+const pendingEmails = [...new Set(allStudents.filter(student => studentStatus(student) === "pending" && student.email).map(student => student.email))].join(", ");
+const missingEmails = allStudents.filter(student => studentStatus(student) === "pending" && !student.email).length;
+const preferences = mapView ? await db.query.responses.findMany({ where: eq(responses.projectId, pid) }) : [];
+const assessments = projectAssessments(preferences, pid);
+const graphStudents = allStudents.filter(student => !student.isExcluded).map(student => ({ ...student, assessment: student.hasCompleted ? assessments.get(student.id) : undefined }));
+const relationships = classRelationships(allStudents, preferences);
+const labels = { pending: "Erantzun gabe", completed: "Osatuta", excluded: "Absent" };
+const filterUrl = (nextStatus: string) => `?${new URLSearchParams({ status: nextStatus, q: search })}`;
+const reminderUrl = (email: string) => `mailto:${encodeURIComponent(email)}?${new URLSearchParams({ subject: `${project.name} · Inkesta`, body: `Kaixo,\n\nBete ${project.name} proiektuaren inkesta, mesedez:\n${surveyUrl}\n\nEskerrik asko!` }).toString().replace(/\+/g, "%20")}`;
 ---
 
-<AdminLayout title={`Monitor: ${project.name}`}>
-    <div class="md:flex md:items-center md:justify-between mb-8">
-        <div class="flex-1 min-w-0">
-            <nav class="flex mb-2" aria-label="Breadcrumb">
-                <ol class="flex items-center space-x-2">
-                    <li>
-                        <a
-                            href="/admin/dashboard"
-                            class="text-sm font-bold text-slate-400 hover:text-teal-600 transition-colors"
-                            >Proiektuak</a
-                        >
-                    </li>
-                    <li>
-                        <svg
-                            class="h-5 w-5 text-slate-300"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                            ><path
-                                fill-rule="evenodd"
-                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                clip-rule="evenodd"></path></svg
-                        >
-                    </li>
-                    <li class="text-sm font-bold text-slate-900">
-                        {project.name}
-                    </li>
-                </ol>
+<AdminLayout title={`Jarraipena: ${project.name}`}>
+    <section class="teacher-page" data-project-id={pid} aria-labelledby="tracking-heading">
+        <a href="/admin/dashboard" class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700">← Proiektuak</a>
+        <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
+                <h1 id="tracking-heading" class="break-words">{project.name}</h1>
+                <p class="mt-2 text-sm text-slate-500">Inkestaren jarraipena · {project.numTeams ? `${project.numTeams} talde` : project.targetTeamSize ? `${project.targetTeamSize} ikasle taldeko` : "Taldeak konfiguratu gabe"}</p>
+            </div>
+            <div class="teacher-toolbar">
+                <a href={`/api/admin/export-data?projectId=${pid}`} class="teacher-button">Excel deskargatu</a>
+                <a href={`/admin/teams/${pid}`} class="teacher-button teacher-button-primary">Taldeak kudeatu →</a>
+            </div>
+        </header>
+
+        <div class="teacher-panel mb-6 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <p><strong class="font-semibold text-slate-900">{summary.completed} / {summary.active}</strong> <span class="text-slate-500">ikaslek erantzun dute</span></p>
+                <span class="text-slate-500">{summary.percentage}%</span>
+            </div>
+            <div role="progressbar" aria-label="Inkestaren bete-maila" aria-valuenow={summary.percentage} aria-valuemin="0" aria-valuemax="100" class="my-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div class="h-full rounded-full bg-teal-600" style={`width: ${summary.percentage}%`}></div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs text-slate-500">{summary.active === 0 ? "Ez dago ikasle aktiborik." : summary.pending ? `${summary.pending} ikasleren erantzunaren zain.` : "Ikasle aktibo guztiek erantzun dute."} {summary.excluded > 0 && `${summary.excluded} absent.`}</p>
+                {surveyUrl && <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>Kodea: <strong class="font-mono font-medium text-slate-800">{project.accessCode}</strong></span><button type="button" data-copy={surveyUrl} data-success="Inkestaren esteka kopiatuta." class="font-medium text-teal-700 hover:underline">Inkestaren esteka kopiatu</button></div>}
+            </div>
+        </div>
+
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+            <nav class="teacher-tabs" aria-label="Jarraipenaren ikuspegia">
+                <a href={`?${new URLSearchParams({ status, q: search })}`} aria-current={!mapView ? "page" : undefined}>Ikasleak</a>
+                <a href="?view=map" aria-current={mapView ? "page" : undefined}>Harremanen mapa</a>
             </nav>
-            <h2
-                class="text-3xl font-black leading-7 text-slate-900 tracking-tight flex items-center gap-3"
-            >
-                Kudeaketa
-                <span
-                    class="text-xs font-bold bg-teal-100 text-teal-700 px-2.5 py-1 rounded-lg border border-teal-200 uppercase tracking-wider"
-                    >KODEA: {project.accessCode}</span
-                >
-                <span
-                    class="text-xs font-bold bg-slate-100 text-slate-500 px-2.5 py-1 rounded-lg border border-slate-200 uppercase tracking-wider"
-                >
-                    {
-                        project.numTeams
-                            ? `${project.numTeams} Talde`
-                            : `${project.targetTeamSize} taldeko`
-                    }
-                </span>
-            </h2>
+            <button type="button" class="teacher-button" onclick="window.location.reload()">Eguneratu</button>
         </div>
-        <div class="mt-4 flex md:mt-0 md:ml-4 gap-3">
-            <a
-                href={`/api/admin/export-data?projectId=${project.id}`}
-                class="inline-flex items-center px-6 py-2.5 border border-slate-300 rounded-xl shadow-lg shadow-slate-200/50 text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 transition-all active:scale-95"
-            >
-                Esportatu Datuak (Excel)
-            </a>
-            <a
-                href={`/admin/teams/${project.id}`}
-                class={`inline-flex items-center px-6 py-2.5 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white transition-all active:scale-95 ${completionRate > 50 ? "bg-teal-600 hover:bg-teal-700 shadow-teal-600/20" : "bg-slate-300 cursor-not-allowed"}`}
-            >
-                Taldeak Sortu
-            </a>
-        </div>
-    </div>
+        <p id="tracking-feedback" class="mb-3 text-sm text-teal-700" role="status" aria-live="polite" aria-atomic="true"></p>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Left Column: Stats & Pending -->
-        <div class="lg:col-span-2 space-y-8">
-            <!-- Stats Card -->
-            <div
-                class="bg-white p-8 shadow-xl shadow-slate-200/50 rounded-2xl border border-slate-200/60 transition-all"
-            >
-                <div class="flex items-center justify-between mb-8">
-                    <h3 class="text-lg font-bold text-slate-900">
-                        Inkestaren Egoera
-                    </h3>
-                    <span class="text-3xl font-black text-teal-600"
-                        >{completed.length} / {allStudents.length}</span
-                    >
-                </div>
-                <div
-                    class="w-full bg-slate-100 rounded-full h-4 mb-5 border border-slate-200/50 overflow-hidden"
-                >
-                    <div
-                        class="bg-teal-600 h-4 rounded-full transition-all duration-700"
-                        style={`width: ${completionRate}%`}
-                    >
-                    </div>
-                </div>
-                <div
-                    class="flex justify-between text-sm text-gray-500 font-medium"
-                >
-                    <span>%{completionRate} beteta</span>
-                    {
-                        completionRate < 100 ? (
-                            <span>{pending.length} ikasleren zain</span>
-                        ) : (
-                            <span>Gaituta sortzeko!</span>
-                        )
-                    }
-                </div>
+        {mapView ? <>
+            <p class="mb-4 text-sm leading-relaxed text-slate-500">Ikasle bat aukeratu bere lan-hobespenak ikusteko. Irakaslearentzako informazio pribatua.</p>
+            <ClassGraph client:load students={graphStudents} relationships={relationships} />
+        </> : <>
+            <form method="GET" role="search" aria-label="Ikasleak bilatu" class="mb-4 flex flex-wrap items-end gap-3">
+                <input type="hidden" name="status" value={status} />
+                <label class="teacher-label min-w-0 flex-1">Bilatu ikaslea<input type="search" name="q" value={search} placeholder="Izena edo emaila" /></label>
+                <button class="teacher-button">Bilatu</button>
+                {search && <a href={filterUrl(status).replace(/&q=[^&]*/, "")} class="teacher-button">Garbitu</a>}
+            </form>
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <nav class="teacher-tabs" aria-label="Ikasleen egoera">
+                    {[{ id: "all", label: "Guztiak", count: allStudents.length }, { id: "pending", label: "Erantzun gabe", count: summary.pending }, { id: "completed", label: "Osatuta", count: summary.completed }, { id: "excluded", label: "Absent", count: summary.excluded }].map(tab => <a href={filterUrl(tab.id)} aria-current={status === tab.id ? "page" : undefined}>{tab.label} <span class="text-xs">{tab.count}</span></a>)}
+                </nav>
+                {pendingEmails && <button type="button" data-copy={pendingEmails} data-success="Erantzun gabeko ikasleen emailak kopiatuta." class="min-h-11 text-sm font-medium text-teal-700 hover:underline">Erantzun gabekoen emailak kopiatu</button>}
             </div>
-
-            <!-- Pending Students -->
-            <div
-                class="bg-white shadow-xl shadow-slate-200/50 rounded-3xl border border-slate-200/60 overflow-hidden"
-            >
-                <div
-                    class="px-8 py-5 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center"
-                >
-                    <h3 class="text-lg font-bold text-slate-900">
-                        Erantzun gabeak ({pending.length})
-                    </h3>
-                    <button
-                        class="text-xs font-bold text-teal-600 uppercase tracking-widest hover:text-teal-700 transition-colors"
-                        >Guztiei gogorarazi</button
-                    >
-                </div>
-                <ul class="divide-y divide-gray-200">
-                    {
-                        pending.map((student) => (
-                            <li class="px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black border border-slate-200 transition-all group-hover:bg-teal-50 group-hover:text-teal-600 group-hover:border-teal-100">
-                                        {student.name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-bold text-slate-900">
-                                            {student.name}
-                                        </p>
-                                        <p class="text-xs font-medium text-slate-400">
-                                            {student.email || "Email gabe"}
-                                        </p>
-                                    </div>
+            {missingEmails > 0 && <p class="mb-4 text-xs text-slate-500">{missingEmails} erantzun gabeko ikaslek ez dute emailik. Partekatu inkestaren esteka haiekin.</p>}
+            <div class="teacher-panel">
+                <ul class="divide-y divide-slate-100">
+                    {filtered.map(student => {
+                        const state = studentStatus(student);
+                        return <li class="flex items-center gap-3 px-4 py-3 sm:px-5">
+                            <div class="min-w-0 flex-1 basis-36"><p class="break-words text-sm font-medium text-slate-900">{student.name}</p><p class="mt-0.5 break-all text-xs text-slate-500">{student.email || "Emailik gabe"}</p></div>
+                            <span class:list={["text-xs", state === "completed" ? "text-teal-700" : state === "pending" ? "text-amber-700" : "text-slate-500"]}>{labels[state]}</span>
+                            <details class="teacher-menu">
+                                <summary aria-label={`${student.name}: aukerak`}><span class="hidden sm:inline">Aukerak</span><span aria-hidden="true" class="text-lg sm:hidden">⋯</span><span aria-hidden="true" class="ml-2 hidden sm:inline">⌄</span></summary>
+                                <div class="teacher-menu-content">
+                                    {state === "pending" && surveyUrl && <a href={`${surveyUrl}?studentId=${student.id}`}>Inkesta ireki</a>}
+                                    {state === "pending" && student.email && surveyUrl && <a href={reminderUrl(student.email)}>Gogorarazpena prestatu ↗</a>}
+                                    {surveyUrl && <button type="button" data-copy={`${surveyUrl}?studentId=${student.id}`} data-success={`${student.name}: esteka kopiatuta.`}>Ikaslearen esteka kopiatu</button>}
+                                    <button type="button" data-student-id={student.id} data-student-name={student.name} data-action={state === "excluded" ? "restore" : "exclude"}>{state === "excluded" ? "Bertaratua markatu" : "Absent markatu"}</button>
+                                    {student.hasCompleted && <button type="button" class="text-amber-700" data-student-id={student.id} data-student-name={student.name} data-action="reset">Inkesta berrabiarazi</button>}
                                 </div>
-                                <div class="flex gap-3">
-                                    <button class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border border-slate-200 rounded-xl hover:bg-white text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-all">
-                                        Gogorarazi
-                                    </button>
-                                    <div class="relative dropdown-container">
-                                        <button
-                                            onclick="toggleDropdown(this)"
-                                            class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-slate-100 rounded-xl hover:bg-slate-200 text-slate-600 transition-all dropdown-trigger"
-                                        />
-                                        <div class="absolute right-0 bottom-full mb-3 hidden bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 w-48 z-10 dropdown-menu overflow-hidden">
-                                            <a
-                                                href={`/student/form/${project.accessCode}?studentId=${student.id}`}
-                                                class="flex items-center gap-2 w-full text-left px-4 py-3 text-xs font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 rounded-xl transition-colors"
-                                            >
-                                                Inkesta Bete
-                                            </a>
-                                            <button
-                                                onclick={`excludeStudent(${student.id}, true)`}
-                                                class="flex items-center gap-2 w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                                            >
-                                                Absent markatu
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </li>
-                        ))
-                    }
-                    {
-                        excluded.map((student) => (
-                            <li class="px-6 py-4 flex items-center justify-between bg-red-50/50 opacity-70">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-400 font-bold italic">
-                                        X
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-500 line-through">
-                                            {student.name}
-                                        </p>
-                                        <p class="text-xs text-red-400 font-bold uppercase tracking-tighter">
-                                            Absent / Kanporatua
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button
-                                        onclick={`excludeStudent(${student.id}, false)`}
-                                        class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-white text-gray-600 bg-white"
-                                    >
-                                        Berrezarri
-                                    </button>
-                                </div>
-                            </li>
-                        ))
-                    }
-                    {
-                        pending.length === 0 && (
-                            <li class="px-6 py-12 text-center text-gray-500 italic">
-                                Ikasle guztiek osatu dute inkesta!
-                            </li>
-                        )
-                    }
+                            </details>
+                        </li>;
+                    })}
+                    {filtered.length === 0 && <li class="p-10 text-center"><p class="text-sm text-slate-500">{allStudents.length === 0 ? "Ez dago ikaslerik proiektu honetan." : search ? "Ez da ikaslerik aurkitu." : "Ez dago ikaslerik egoera honetan."}</p>{search && <a href={filterUrl(status).replace(/&q=[^&]*/, "")} class="mt-3 inline-block text-sm text-teal-700">Garbitu bilaketa</a>}</li>}
                 </ul>
             </div>
-        </div>
+            <p class="mt-3 text-xs text-slate-500">{filtered.length} / {allStudents.length} ikasle · Absent markatutako ikasleak ez dira inkestaren bete-mailan zenbatzen.</p>
+        </>}
+    </section>
+</AdminLayout>
 
-        <!-- Right Column: Completed -->
-        <div class="space-y-8">
-            <div
-                class="bg-white shadow-xl shadow-slate-200/50 rounded-3xl border border-slate-200/60 overflow-hidden"
-            >
-                <div class="px-8 py-5 border-b border-slate-100 bg-slate-50/80">
-                    <h3 class="text-lg font-bold text-slate-900">
-                        Osatuak ({completed.length})
-                    </h3>
-                </div>
-                <ul
-                    class="divide-y divide-gray-200 max-h-[600px] overflow-y-auto"
-                >
-                    {
-                        completed.map((student) => (
-                            <li class="px-6 py-3 flex items-center justify-between gap-3">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="h-4 w-4"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width={3}
-                                                d="M5 13l4 4L19 7"
-                                            />
-                                        </svg>
-                                    </div>
-                                    <span class="text-sm font-medium text-gray-900">
-                                        {student.name}
-                                    </span>
-                                </div>
-                                <button
-                                    onclick={`resetStudent(${student.id})`}
-                                    class="px-3 py-1 text-[10px] font-bold uppercase tracking-widest border border-amber-200 bg-amber-50 rounded-lg hover:bg-amber-100 text-amber-700 transition-all"
-                                >
-                                    Berrabiarazi
-                                </button>
-                            </li>
-                        ))
-                    }
-                    {
-                        completed.length === 0 && (
-                            <li class="px-6 py-8 text-center text-gray-500 text-sm">
-                                Lehenengo erantzunaren zain...
-                            </li>
-                        )
-                    }
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <script is:inline define:vars={{ pid }}>
-        async function excludeStudent(studentId, exclude) {
-            if (
-                !confirm(
-                    exclude
-                        ? "Ikasle hau absent bezala markatu? Taldeak osatzean eragin txikiena izan dezan banatuko da."
-                        : "Ikasle hau berrezarri?",
-                )
-            )
-                return;
-
+<script>
+    const page = document.querySelector<HTMLElement>(".teacher-page[data-project-id]");
+    const feedback = document.getElementById("tracking-feedback");
+    page?.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach(button => {
+        button.addEventListener("click", async () => {
+            button.disabled = true;
             try {
-                const res = await fetch(
-                    `/api/admin/exclude-student?projectId=${pid}&studentId=${studentId}&exclude=${exclude}`,
-                    { method: "POST" },
-                );
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    alert("Errorea ikaslearen egoera eguneratzean");
-                }
-            } catch (e) {
-                console.error(e);
-                alert("Sare errorea");
-            }
-        }
-
-        function toggleDropdown(button) {
-            // Close all other dropdowns
-            document.querySelectorAll(".dropdown-menu").forEach((menu) => {
-                if (menu !== button.nextElementSibling) {
-                    menu.classList.add("hidden");
-                }
-            });
-            // Toggle current one
-            button.nextElementSibling.classList.toggle("hidden");
-        }
-
-        // Close dropdowns when clicking outside
-        document.addEventListener("click", (e) => {
-            if (!e.target.closest(".dropdown-container")) {
-                document.querySelectorAll(".dropdown-menu").forEach((menu) => {
-                    menu.classList.add("hidden");
-                });
+                await navigator.clipboard.writeText(button.dataset.copy || "");
+                if (feedback) { feedback.classList.remove("text-red-700"); feedback.textContent = button.dataset.success || "Kopiatuta."; }
+            } catch {
+                if (feedback) { feedback.classList.add("text-red-700"); feedback.textContent = "Ezin izan da kopiatu. Saiatu berriro."; }
+            } finally { button.disabled = false; }
+        });
+    });
+    page?.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(button => {
+        button.addEventListener("click", async () => {
+            const action = button.dataset.action;
+            if (action === "reset" && !confirm(`${button.dataset.studentName}: inkesta berrabiarazi? Erantzun guztiak ezabatuko dira.`)) return;
+            const endpoint = action === "reset" ? "reset-student" : "exclude-student";
+            const query = new URLSearchParams({ projectId: page.dataset.projectId || "", studentId: button.dataset.studentId || "", exclude: String(action === "exclude") });
+            button.disabled = true;
+            try {
+                const response = await fetch(`/api/admin/${endpoint}?${query}`, { method: "POST" });
+                if (!response.ok) throw new Error("Update failed");
+                window.location.reload();
+            } catch {
+                if (feedback) { feedback.classList.add("text-red-700"); feedback.textContent = "Ezin izan da aldaketa gorde. Saiatu berriro."; }
+                button.disabled = false;
             }
         });
-
-        window.excludeStudent = excludeStudent;
-        window.toggleDropdown = toggleDropdown;
-
-        async function resetStudent(studentId) {
-            if (
-                !confirm(
-                    "Seguru zaude ikasle honen inkesta berrabiarazi nahi duzula? Bere erantzun guztiak ezabatuko dira eta berriro bete beharko du.",
-                )
-            )
-                return;
-
-            try {
-                const res = await fetch(
-                    `/api/admin/reset-student?projectId=${pid}&studentId=${studentId}`,
-                    { method: "POST" },
-                );
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    alert("Errorea inkesta berrabiaraztean");
-                }
-            } catch (e) {
-                console.error(e);
-                alert("Sare errorea");
-            }
-        }
-
-        window.resetStudent = resetStudent;
-    </script>
-</AdminLayout>
+    });
+    document.addEventListener("click", event => {
+        if (!(event.target instanceof Element)) return;
+        page?.querySelectorAll<HTMLDetailsElement>(".teacher-menu[open]").forEach(menu => {
+            if (!menu.contains(event.target as Node)) menu.open = false;
+        });
+    });
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape") page?.querySelectorAll<HTMLDetailsElement>(".teacher-menu[open]").forEach(menu => {
+            menu.open = false;
+            menu.querySelector<HTMLElement>("summary")?.focus();
+        });
+    });
+</script>

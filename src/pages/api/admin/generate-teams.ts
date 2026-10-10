@@ -33,6 +33,9 @@ export const POST: APIRoute = async ({ request, redirect }) => {
         const allStudents = await db.query.students.findMany({
             where: eq(students.projectId, projectId),
         });
+        if (allStudents.length === 0) {
+            return redirect(`/admin/teams/${projectId}?version=${algorithmVersion}&error=no-students`);
+        }
 
         const allResponses = await db.query.responses.findMany({
             where: eq(responses.projectId, projectId),

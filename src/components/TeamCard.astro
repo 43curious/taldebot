@@ -44,60 +44,21 @@ const membersWithSkills = memberData.map((m) => {
     const topSkills = allSkills.sort((a, b) => b.val - a.val).slice(0, 3);
     return { ...m, topSkills };
 });
+const skillLabels: Record<string, string> = { creativity: "Sormena", writing: "Idazketa", references: "Erreferentziak", communication: "Komunikazioa", camera: "Kamera", sound: "Soinua", editing: "Edizioa", planning: "Plangintza", production: "Ekoizpena" };
 ---
 
-<div
-    class="bg-white shadow-lg shadow-slate-200/50 rounded-2xl border border-slate-200/60 overflow-hidden flex flex-col h-full"
->
-    <div
-        class="px-6 py-4 bg-slate-50 border-b border-slate-200/60 flex justify-between items-center"
-    >
-        <h3 class="text-lg font-bold text-slate-900">Taldea {teamNumber}</h3>
-        <span
-            class="text-[10px] bg-teal-100 text-teal-800 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider"
-            >{memberIds.length} Kide</span
-        >
-    </div>
-
-    <div class="p-6 flex-grow">
-        <ul class="space-y-4 mb-6">
-            {
-                membersWithSkills.map((member) => (
-                    <li class="flex flex-col">
-                        <span class="text-sm font-bold text-slate-800">
-                            {member.name}
-                        </span>
-                        <div class="flex flex-wrap gap-1 mt-1.5">
-                            {member.topSkills.map((skill) => (
-                                <span
-                                    class={`text-[9px] font-bold uppercase tracking-tight px-1.5 py-0.5 rounded border ${
-                                        skill.cat === "Narratiba"
-                                            ? "bg-orange-50 border-orange-100 text-orange-700"
-                                            : skill.cat === "Teknika"
-                                              ? "bg-teal-50 border-teal-100 text-teal-700"
-                                              : "bg-green-50 border-green-100 text-green-700"
-                                    }`}
-                                >
-                                    {skill.name} ({skill.val})
-                                </span>
-                            ))}
-                        </div>
-                    </li>
-                ))
-            }
+<article class="teacher-panel flex flex-col">
+    <header class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <h2 class="text-sm text-slate-900">{teamNumber}. taldea</h2><span class="text-xs text-slate-500">{membersWithSkills.length} kide</span>
+    </header>
+    <ul class="divide-y divide-slate-100 px-5">
+        {membersWithSkills.map(member => <li class="py-3 text-sm text-slate-800">{member.name}{member.isExcluded && <span class="ml-2 text-xs text-slate-400">Absent</span>}</li>)}
+    </ul>
+    <details class="mt-auto border-t border-slate-100 px-5 py-3 print:hidden">
+        <summary class="flex cursor-pointer items-center justify-between text-xs text-slate-500">Gaitasunak eta azalpena <span aria-hidden="true">⌄</span></summary>
+        <ul class="mt-3 space-y-3">
+            {membersWithSkills.map(member => <li><p class="text-xs font-medium text-slate-700">{member.name}</p><p class="mt-1 text-xs leading-relaxed text-slate-500">{member.topSkills.map(skill => `${skillLabels[skill.name] || skill.name} (${skill.val})`).join(' · ') || 'Batez besteko profila'}</p></li>)}
         </ul>
-
-        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
-            <h4
-                class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-2"
-            >
-                Algoritmoaren Azalpena
-            </h4>
-            <p
-                class="text-xs text-slate-500 leading-relaxed whitespace-pre-line line-clamp-4 hover:line-clamp-none transition-all cursor-default"
-            >
-                {justification}
-            </p>
-        </div>
-    </div>
-</div>
+        <p class="mt-4 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500 whitespace-pre-line">{justification}</p>
+    </details>
+</article>

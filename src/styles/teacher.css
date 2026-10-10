@@ -1,0 +1,27 @@
+.teacher-page { --teacher-border: #e2e8f0; padding: 1rem 0; }
+.teacher-page h1 { font-size: clamp(1.6rem, 3vw, 2rem); font-weight: 650; letter-spacing: -.04em; line-height: 1.25; }
+.teacher-page h2 { font-weight: 600; }
+.teacher-page :is(input, select, textarea) { min-width: 0; border: 1px solid var(--teacher-border); border-radius: .5rem; background: white; padding: .65rem .75rem; font-size: .875rem; color: #0f172a; }
+.teacher-page :is(input:not([type=hidden]), select, button, summary, .teacher-button) { min-height: 2.75rem; }
+.teacher-page :is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid #0d9488; outline-offset: 3px; }
+.teacher-page button:disabled { opacity: .5; cursor: wait; }
+.teacher-panel { border: 1px solid var(--teacher-border); border-radius: .75rem; background: white; }
+.teacher-button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .6rem 1rem; border: 1px solid var(--teacher-border); border-radius: .5rem; background: white; color: #334155; font-size: .875rem; font-weight: 500; transition: background-color 150ms; }
+.teacher-button:hover { background: #f8fafc; }
+.teacher-button-primary { border-color: #0f766e; background: #0f766e; color: white; }
+.teacher-button-primary:hover { background: #115e59; }
+.teacher-label { display: grid; gap: .4rem; font-size: .75rem; font-weight: 500; color: #475569; }
+.teacher-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.teacher-tabs { display: flex; flex-wrap: wrap; gap: .25rem; }
+.teacher-tabs a { display: inline-flex; min-height: 2.75rem; align-items: center; gap: .5rem; padding: .5rem .85rem; border-radius: .5rem; color: #64748b; font-size: .875rem; }
+.teacher-tabs a[aria-current=page] { background: #f0fdfa; color: #0f766e; font-weight: 600; }
+.teacher-tabs a:hover { background: #f8fafc; }
+.teacher-menu { position: relative; }
+.teacher-menu > summary { display: flex; align-items: center; justify-content: center; list-style: none; cursor: pointer; padding: .5rem .75rem; border-radius: .5rem; color: #64748b; }
+.teacher-menu > summary::-webkit-details-marker { display: none; }
+.teacher-menu > summary:hover { background: #f1f5f9; }
+.teacher-menu-content { position: absolute; right: 0; top: 100%; z-index: 20; width: 15rem; padding: .4rem; border: 1px solid var(--teacher-border); border-radius: .6rem; background: white; box-shadow: 0 8px 24px #0f172a12; }
+.teacher-menu-content :is(a, button) { display: flex; align-items: center; min-height: 2.75rem; padding: .5rem .75rem; width: 100%; text-align: left; font-size: .875rem; border-radius: .3rem; }
+.teacher-menu-content :is(a, button):hover { background: #f8fafc; }
+.teacher-page [hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .teacher-page * { transition: none !important; } }

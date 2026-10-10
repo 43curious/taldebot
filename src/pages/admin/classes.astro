@@ -1,21 +1,39 @@
 ---
 export const prerender = false;
 import AdminLayout from "../../layouts/AdminLayout.astro";
+import ClassSelector from "../../components/ClassSelector.astro";
+import { selectClassScope } from "../../lib/classSelection";
 import { db } from "../../lib/db";
 import { classMembers, classes, degrees } from "../../../db/schema";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, and } from "drizzle-orm";
+import { prepareRosterImport } from "../../lib/roster";
 import Papa from "papaparse";
 
 const editing = Astro.url.searchParams.get("mode") === "edit";
+const search = (Astro.url.searchParams.get("q") || "").trim();
+const selectedDegree = Astro.url.searchParams.get("degree") || "";
+const selectedYear = Astro.url.searchParams.get("year") || "";
+let activeClassId = Number(Astro.url.searchParams.get("class")) || 0;
+let activeDegreeId = 0;
+let activeStudentId = 0;
+let importing = false;
+let adding = false;
 
 let error = "";
 let success = "";
+let submitted: FormData | null = null;
 const value = (form: FormData, key: string) => String(form.get(key) || "").trim();
 
 if (Astro.request.method === "POST") {
     try {
         const form = await Astro.request.formData();
+        submitted = form;
         const action = value(form, "action");
+        activeClassId = Number(value(form, "classId")) || (action === "save-class" ? Number(value(form, "id")) : 0);
+        activeDegreeId = action === "save-degree" ? Number(value(form, "id")) : Number(value(form, "degreeId"));
+        activeStudentId = action === "save-student" ? Number(value(form, "id")) : 0;
+        importing = action === "import";
+        adding = action === "add-student";
         if (action === "degree") {
             const name = value(form, "name");
             if (!name) throw new Error("Graduaren izena beharrezkoa da.");
@@ -32,7 +50,8 @@ if (Astro.request.method === "POST") {
             const year = Number(value(form, "year"));
             const degreeId = Number(value(form, "degreeId")) || null;
             if (!name || !Number.isInteger(year) || year < 1) throw new Error("Klasearen izena eta urte balioduna behar dira.");
-            await db.insert(classes).values({ name, year, degreeId });
+            const [created] = await db.insert(classes).values({ name, year, degreeId }).returning({ id: classes.id });
+            activeClassId = created.id;
             success = "Klasea sortu da.";
         } else if (action === "save-class") {
             const id = Number(value(form, "id"));
@@ -42,28 +61,40 @@ if (Astro.request.method === "POST") {
             if (!id || !name || !Number.isInteger(year) || year < 1) throw new Error("Klasearen datuak ez dira baliodunak.");
             await db.update(classes).set({ name, year, degreeId }).where(eq(classes.id, id));
             success = "Klasea eguneratu da.";
+        } else if (action === "add-student") {
+            const name = value(form, "name");
+            const email = value(form, "email") || null;
+            if (!activeClassId || !name) throw new Error("Klasea eta ikaslearen izena behar dira.");
+            const existing = await db.select().from(classMembers).where(eq(classMembers.classId, activeClassId));
+            const { members } = prepareRosterImport(Papa.unparse([[name, email || ""]]), existing);
+            if (!members.length) throw new Error("Ikaslea dagoeneko badago klase honetan.");
+            await db.insert(classMembers).values({ classId: activeClassId, name, email });
+            adding = false;
+            success = "Ikaslea gehitu da.";
         } else if (action === "save-student") {
             const id = Number(value(form, "id"));
             const name = value(form, "name");
             if (!id || !name) throw new Error("Ikaslearen izena beharrezkoa da.");
+            const division = value(form, "division");
+            const email = value(form, "email");
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Emaila ez da balioduna.");
+            if (division && division !== "sormena" && division !== "digitala") throw new Error("Taldea ez da balioduna.");
             await db.update(classMembers).set({
                 name,
-                email: value(form, "email") || null,
+                email: email || null,
                 tutor: value(form, "tutor") || null,
-                division: (value(form, "division") || null) as "sormena" | "digitala" | null,
-            }).where(eq(classMembers.id, id));
+                division: division || null,
+                academicStatus: value(form, "academicStatus") || null,
+                notes: value(form, "notes") || null,
+            }).where(and(eq(classMembers.id, id), eq(classMembers.classId, activeClassId)));
             success = "Ikaslea eguneratu da.";
         } else if (action === "import") {
             const classId = Number(value(form, "classId"));
-            const parsed = Papa.parse<string[]>(value(form, "csv"), { skipEmptyLines: true }).data;
-            if (!classId || !parsed.length) throw new Error("Aukeratu klase bat eta gehitu inportatzeko datuak.");
-            const first = parsed[0].map((cell) => cell.trim().toLowerCase());
-            const data = first[0] === "name" || first[0] === "izena" ? parsed.slice(1) : parsed;
-            const members = data.map(([name, email]) => ({ classId, name: name?.trim(), email: email?.trim() || null }))
-                .filter((member) => member.name);
-            if (!members.length) throw new Error("Ez da izenik aurkitu.");
-            await db.insert(classMembers).values(members);
-            success = `${members.length} ikasle inportatu dira.`;
+            if (!classId) throw new Error("Aukeratu klase bat eta gehitu inportatzeko datuak.");
+            const existing = await db.select().from(classMembers).where(eq(classMembers.classId, classId));
+            const { members, skipped } = prepareRosterImport(value(form, "csv"), existing);
+            if (members.length) await db.insert(classMembers).values(members.map(member => ({ ...member, classId })));
+            success = `${members.length} ikasle inportatu dira.${skipped ? ` ${skipped} errepikatu saltatu dira.` : ""}`;
         } else if (action === "delete-student") {
             await db.delete(classMembers).where(eq(classMembers.id, Number(value(form, "id"))));
             success = "Ikaslea ezabatu da.";
@@ -76,148 +107,243 @@ if (Astro.request.method === "POST") {
     }
 }
 
+// Keep teachers' work in the form if validation or saving fails.
+const draft = (action: string, key: string, fallback: string | number | null = "", id?: number) => {
+    if (!error || !submitted || submitted.get("action") !== action) return fallback ?? "";
+    const submittedId = Number(submitted.get("id") || submitted.get("classId") || submitted.get("degreeId"));
+    if (id !== undefined && submittedId !== id) return fallback ?? "";
+    return String(submitted.get(key) || "");
+};
+
 const allDegrees = await db.select().from(degrees).orderBy(asc(degrees.name));
 const rows = await db.select({
     classId: classes.id, className: classes.name, year: classes.year, degreeId: classes.degreeId,
     degreeName: degrees.name, memberId: classMembers.id, memberName: classMembers.name,
-    memberEmail: classMembers.email, division: classMembers.division, tutor: classMembers.tutor, academicStatus: classMembers.academicStatus,
+    memberEmail: classMembers.email, division: classMembers.division, tutor: classMembers.tutor, academicStatus: classMembers.academicStatus, notes: classMembers.notes,
 }).from(classes).leftJoin(degrees, eq(classes.degreeId, degrees.id))
     .leftJoin(classMembers, eq(classMembers.classId, classes.id))
     .orderBy(asc(degrees.name), asc(classes.year), asc(classes.name), asc(classMembers.name));
 
-type ClassGroup = { id: number; name: string; year: number; degreeId: number | null; degreeName: string; students: { id: number; name: string; email: string | null; division: "sormena" | "digitala" | null; tutor: string | null; academicStatus: string | null }[] };
+type ClassGroup = { id: number; name: string; year: number; degreeId: number | null; degreeName: string; students: { id: number; name: string; email: string | null; division: "sormena" | "digitala" | null; tutor: string | null; academicStatus: string | null; notes: string | null }[] };
 const groups = new Map<number, ClassGroup>();
 for (const row of rows) {
     const group = groups.get(row.classId) || { id: row.classId, name: row.className, year: row.year, degreeId: row.degreeId, degreeName: row.degreeName || "Gradu zehaztu gabe", students: [] };
-    if (row.memberId && row.memberName) group.students.push({ id: row.memberId, name: row.memberName, email: row.memberEmail, division: row.division, tutor: row.tutor, academicStatus: row.academicStatus });
+    if (row.memberId && row.memberName) group.students.push({ id: row.memberId, name: row.memberName, email: row.memberEmail, division: row.division, tutor: row.tutor, academicStatus: row.academicStatus, notes: row.notes });
     groups.set(row.classId, group);
 }
-const editDegrees = allDegrees.map((degree) => ({ id: degree.id, name: degree.name, classes: Array.from(groups.values()).filter((group) => group.degreeId === degree.id) }));
-const unassignedClasses = Array.from(groups.values()).filter((group) => group.degreeId === null);
+const allGroups = Array.from(groups.values());
+const classScope = selectClassScope(allDegrees, allGroups.map(group => ({ ...group, studentCount: group.students.length })), Astro.url.searchParams);
+const degreeFilter = editing ? selectedDegree : classScope.degree;
+const studentCount = allGroups.reduce((count, group) => count + group.students.length, 0);
+const availableYears = Array.from(new Set(allGroups.map((group) => group.year))).sort((a, b) => a - b);
+const hasFilters = editing ? Boolean(search || selectedDegree || selectedYear) : Boolean(search);
+const matches = (text: string) => text.toLocaleLowerCase("eu").includes(search.toLocaleLowerCase("eu"));
+const visibleGroups = allGroups.filter((group) =>
+    (editing || group.id === classScope.selectedClass?.id) &&
+    (!degreeFilter || (degreeFilter === "none" ? group.degreeId === null : String(group.degreeId) === degreeFilter)) &&
+    (!selectedYear || String(group.year) === selectedYear)
+).map((group) => {
+    if (!search || matches(`${group.name} ${group.degreeName}`)) return group;
+    return { ...group, students: group.students.filter((student) => matches(`${student.name} ${student.email || ""} ${student.tutor || ""}`)) };
+}).filter((group) => !search || matches(`${group.name} ${group.degreeName}`) || group.students.length > 0);
+const editDegrees = allDegrees.map((degree) => ({ id: degree.id, name: degree.name, classes: visibleGroups.filter((group) => group.degreeId === degree.id) }))
+    .filter((degree) => !hasFilters || degree.classes.length > 0 || (!selectedYear && (!selectedDegree || String(degree.id) === selectedDegree) && matches(degree.name)));
+const unassignedClasses = visibleGroups.filter((group) => group.degreeId === null);
+activeDegreeId = groups.get(activeClassId)?.degreeId || activeDegreeId;
 if (unassignedClasses.length) editDegrees.push({ id: 0, name: "Gradurik gabe", classes: unassignedClasses });
-const degreeGroups = new Map<string, Map<number, ClassGroup[]>>();
-for (const group of groups.values()) {
-    const years = degreeGroups.get(group.degreeName) || new Map<number, ClassGroup[]>();
-    years.set(group.year, [...(years.get(group.year) || []), group]);
-    degreeGroups.set(group.degreeName, years);
-}
+
 ---
 
 <AdminLayout title="Klaseen kudeaketa">
-    <main class="py-10">
-        <div class="mb-8">
-            <h1 class="text-3xl font-black tracking-tight text-slate-900">Klaseen kudeaketa</h1>
-            <p class="mt-2 text-sm font-medium text-slate-500">{editing ? "Graduak, klaseak eta ikasleak kudeatu." : "Arakatu graduak, klaseak eta ikasleak."}</p>
-        </div>
-        <nav aria-label="Klaseen ikuspegia" class="mb-6 flex gap-2">
-            <a href="/admin/classes" aria-current={!editing ? "page" : undefined} class:list={["rounded-lg px-4 py-2 text-sm font-bold", !editing ? "bg-teal-600 text-white" : "bg-white text-slate-600 border border-slate-200"]}>Arakatu</a>
-            <a href="/admin/classes?mode=edit" aria-current={editing ? "page" : undefined} class:list={["rounded-lg px-4 py-2 text-sm font-bold", editing ? "bg-teal-600 text-white" : "bg-white text-slate-600 border border-slate-200"]}>Editatu</a>
-        </nav>
-        {error && <p role="alert" class="mb-5 rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p>}
-        {success && <p role="status" class="mb-5 rounded-xl bg-teal-50 p-4 text-sm font-bold text-teal-700">{success}</p>}
+    <section class="classes-page teacher-page" aria-labelledby="classes-heading">
+        <header class="mb-6 flex flex-wrap items-end justify-between gap-5">
+            <div>
+                <h1 id="classes-heading">Klaseak</h1>
+                <p class="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">{editing ? "Antolatu graduak eta klaseak. Ireki ikasle bat bere datuak aldatzeko." : "Aurkitu zure klasea eta kontsultatu ikasleen datuak."}</p>
+            </div>
+            <nav aria-label="Klaseen ikuspegia" class="inline-flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
+                <a href={`/admin/classes?${new URLSearchParams({ q: search, degree: selectedDegree || classScope.degree, ...(activeClassId ? { class: String(activeClassId) } : {}) })}`} aria-current={!editing ? "page" : undefined} class:list={["flex min-h-11 items-center rounded-lg px-4 text-sm font-medium", !editing ? "bg-teal-600 text-white" : "text-slate-600 hover:bg-slate-50"]}>Arakatu</a>
+                <a href={`/admin/classes?${new URLSearchParams({ mode: "edit", q: search, degree: selectedDegree || classScope.degree, class: String(activeClassId || classScope.selectedClass?.id || "") })}`} aria-current={editing ? "page" : undefined} class:list={["flex min-h-11 items-center rounded-lg px-4 text-sm font-medium", editing ? "bg-teal-600 text-white" : "text-slate-600 hover:bg-slate-50"]}>Editatu</a>
+            </nav>
+        </header>
+        {editing && <p class="mb-5 text-xs text-slate-500">{allDegrees.length} gradu · {groups.size} klase · {studentCount} ikasle</p>}
+        {editing ? <>
+        <form method="GET" class="mb-6 grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_8rem_auto]" role="search" aria-label="Klaseak eta ikasleak bilatu">
+            {editing && <input type="hidden" name="mode" value="edit" />}
+            <label class="text-xs font-semibold text-slate-600">Gradua<select name="degree" class="mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900"><option value="">Gradu guztiak</option>{allDegrees.map((degree) => <option value={degree.id} selected={selectedDegree === String(degree.id)}>{degree.name}</option>)}<option value="none" selected={selectedDegree === "none"}>Gradurik gabe</option></select></label>
+            <label class="text-xs font-semibold text-slate-600">Bilatu<input type="search" name="q" value={search} placeholder="Klasea, ikaslea, emaila edo tutorea" class="mt-1.5 block w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900" /></label>
+            <label class="text-xs font-semibold text-slate-600">Maila<select name="year" class="mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900"><option value="">Maila guztiak</option>{availableYears.map((year) => <option value={year} selected={selectedYear === String(year)}>{year}. maila</option>)}</select></label>
+            <div class="flex items-center gap-3"><button class="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700">Bilatu</button>{hasFilters && <a href={editing ? "/admin/classes?mode=edit" : "/admin/classes"} class="text-sm font-semibold text-slate-600 hover:text-teal-700">Garbitu</a>}</div>
+        </form>
+        </> : <>
+            <ClassSelector degrees={allDegrees} scope={classScope} />
+            {classScope.selectedClass && <form method="GET" class="mb-5 flex flex-wrap items-end gap-3" role="search" aria-label="Klaseko ikasleak bilatu">
+                <input type="hidden" name="degree" value={classScope.degree} /><input type="hidden" name="class" value={classScope.selectedClass.id} />
+                <div class="teacher-label min-w-0 flex-1"><label for="roster-search">Bilatu ikaslea</label><input id="roster-search" type="search" name="q" value={search} placeholder="Izena, emaila edo tutorea" /></div>
+                <button class="teacher-button">Bilatu</button>
+                {search && <a href={`?${new URLSearchParams({ degree: classScope.degree, class: String(classScope.selectedClass.id) })}`} class="teacher-button">Garbitu</a>}
+            </form>}
+        </>}
+        {hasFilters && <p class="mb-4 text-sm text-slate-600" role="status">Bilaketaren emaitzak: <strong class="text-slate-900">{visibleGroups.length} klase · {visibleGroups.reduce((count, group) => count + group.students.length, 0)} ikasle</strong></p>}
+        {error && <p role="alert" class="mb-5 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-700">{error}</p>}
+        {success && <p role="status" class="mb-5 rounded-xl bg-teal-50 p-4 text-sm font-medium text-teal-700">{success}</p>}
 
         {editing ? <>
-        <form method="POST" class="mb-5 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-4">
-            <input type="hidden" name="action" value="degree" />
-            <input name="name" required aria-label="Gradu berria" placeholder="Gradu berria" class="min-w-48 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-            <button class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-bold text-white">Gehitu gradua</button>
-        </form>
-
-        <details class="mb-8 rounded-2xl border border-slate-200 bg-white p-5">
-            <summary class="cursor-pointer font-bold text-slate-900">Ikasleak inportatu (CSV: izena,email)</summary>
-            <form method="POST" class="mt-4 space-y-3"><input type="hidden" name="action" value="import" />
-                <select name="classId" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Aukeratu klasea</option>{Array.from(groups.values()).map((group) => <option value={group.id}>{group.name} · {group.degreeName}</option>)}</select>
-                <textarea name="csv" required rows="5" placeholder={'izena,email\nAne Aduriz,ane@example.com'} class="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-sm"></textarea>
-                <button class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-bold text-white">Inportatu</button>
-            </form>
-        </details>
+        <div class="mb-6 grid items-start gap-4 xl:grid-cols-2">
+            <details open={Boolean(error && submitted?.get("action") === "degree")} class="teacher-panel"><summary class="flex cursor-pointer items-center justify-between p-4 text-sm font-medium text-slate-700">Gradu berria <span aria-hidden="true">+</span></summary><form method="POST" class="border-t border-slate-100 p-4">
+                <input type="hidden" name="action" value="degree" />
+                <h2 class="font-medium text-slate-900">Gradu berria</h2>
+                <p class="mt-1 text-sm text-slate-500">Gehitu gradua, eta sortu bere klaseak behean.</p>
+                <div class="mt-4 flex flex-wrap items-end gap-3">
+                    <label class="min-w-0 flex-1 basis-40 text-xs font-semibold text-slate-600">Graduaren izena<input name="name" required value={draft("degree", "name")} placeholder="Adib. Ikus-entzunezko Komunikazioa" class="mt-1.5 block w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" /></label>
+                    <button class="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700">Gehitu gradua</button>
+                </div>
+            </form></details>
+            <details id="import-students" open={importing || Astro.url.searchParams.get("import") === "1"} class="rounded-xl border border-slate-200 bg-white">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-5 hover:bg-slate-50 [&::-webkit-details-marker]:hidden"><span><span class="block font-medium text-slate-900">Ikasleak inportatu</span><span class="mt-1 block text-sm text-slate-500">Gehitu hainbat ikasle batera CSV datuekin.</span></span><svg aria-hidden="true" class="chevron h-5 w-5 shrink-0 text-teal-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6" /></svg></summary>
+                <form method="POST" class="space-y-4 border-t border-slate-100 p-5"><input type="hidden" name="action" value="import" />
+                    <label class="block text-xs font-semibold text-slate-600">Helburuko klasea<select name="classId" required class="mt-1.5 block w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-900"><option value="">Aukeratu klasea</option>{allGroups.map((group) => <option value={group.id} selected={group.id === activeClassId}>{group.name} · {group.year}. maila · {group.degreeName}</option>)}</select></label>
+                    <label class="block text-xs font-semibold text-slate-600">CSV fitxategia<input type="file" id="roster-file" accept=".csv,text/csv" class="mt-1.5 block w-full text-sm" aria-describedby="csv-help" /></label>
+                    <label class="block text-xs font-semibold text-slate-600">CSV datuak<textarea name="csv" required rows="5" aria-describedby="csv-help" placeholder={'izena,email\nAne Aduriz,ane@example.com'} class="mt-1.5 block w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-sm text-slate-900">{draft("import", "csv")}</textarea></label>
+                    <p id="csv-help" class="text-xs leading-relaxed text-slate-500">Ikasle bat lerro bakoitzean: izena,email. Emaila aukerakoa da. Itsatsi datuak edo aukeratu CSV fitxategia. Inportazioak ikasle berriak gehitzen ditu eta errepikatuak saltatzen ditu.</p>
+                    <button disabled={groups.size === 0} class="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300">Inportatu</button>
+                    {groups.size === 0 && <p class="text-sm text-slate-500">Sortu klase bat ikasleak inportatu aurretik.</p>}
+                </form>
+            </details>
+        </div>
+        <h2 class="mb-3 text-lg font-medium text-slate-900">Graduak eta klaseak</h2>
 
         <div class="space-y-4">
-            {editDegrees.map((degree) => <details class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {editDegrees.map((degree) => <details id={`degree-${degree.id}`} open={hasFilters || editDegrees.length === 1 || degree.id === activeDegreeId || (degree.id === 0 && groups.get(activeClassId)?.degreeId === null)} class="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                    <span><span class="block font-bold text-slate-900">{degree.name}</span><span class="text-xs text-slate-500">{degree.classes.length} klase · {degree.classes.reduce((count, group) => count + group.students.length, 0)} ikasle</span></span>
+                    <span><span class="block font-medium text-slate-900">{degree.name}</span><span class="text-xs text-slate-500">{degree.classes.length} klase · {degree.classes.reduce((count, group) => count + group.students.length, 0)} ikasle</span></span>
                     <svg aria-hidden="true" class="chevron h-6 w-6 shrink-0 text-teal-600 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6" /></svg>
                 </summary>
                 <div class="space-y-4 border-t border-slate-100 bg-slate-50/60 p-4">
-                    {degree.id !== 0 && <div class="flex flex-wrap gap-2">
-                        <form method="POST" class="flex min-w-48 flex-1 gap-2"><input type="hidden" name="action" value="save-degree" /><input type="hidden" name="id" value={degree.id} /><input name="name" required value={degree.name} aria-label="Graduaren izena" class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /><button class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600">Izena gorde</button></form>
-                        <form method="POST" class="flex flex-wrap gap-2"><input type="hidden" name="action" value="class" /><input type="hidden" name="degreeId" value={degree.id} /><input name="name" required aria-label="Klase berriaren izena" placeholder="Klase berria" class="min-w-32 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /><input name="year" type="number" min="1" value="1" required aria-label="Maila" class="w-16 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /><button class="rounded-lg bg-teal-600 px-3 py-2 text-xs font-bold text-white">Klasea gehitu</button></form>
-                    </div>}
-                    {Array.from(new Set([1, 2, 3, 4, ...degree.classes.map((group) => group.year)])).sort((a, b) => a - b).map((year) => {
+                    {degree.id !== 0 && <details open={Boolean(error && activeDegreeId === degree.id && ["save-degree", "class"].includes(String(submitted?.get("action"))))} class="teacher-panel"><summary class="cursor-pointer px-4 py-3 text-sm text-slate-600">Gradua editatu / Klasea gehitu</summary><div class="grid gap-4 border-t border-slate-100 p-4 xl:grid-cols-2">
+                        <form method="POST" class="rounded-xl border border-slate-200 bg-white p-4"><input type="hidden" name="action" value="save-degree" /><input type="hidden" name="id" value={degree.id} />
+                            <label class="block text-xs font-semibold text-slate-600">Graduaren izena<input name="name" required value={draft("save-degree", "name", degree.name, degree.id)} class="mt-1.5 block w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-900" /></label><button class="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Izena gorde</button>
+                        </form>
+                        <form method="POST" class="rounded-xl border border-teal-200 bg-teal-50/50 p-4"><input type="hidden" name="action" value="class" /><input type="hidden" name="degreeId" value={degree.id} />
+                            <div class="grid grid-cols-[minmax(0,1fr)_5rem] gap-3"><label class="text-xs font-semibold text-slate-600">Klase berriaren izena<input name="name" required value={draft("class", "name", "", degree.id)} placeholder="Adib. 1. maila A" class="mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900" /></label><label class="text-xs font-semibold text-slate-600">Maila<input name="year" type="number" min="1" value={draft("class", "year", 1, degree.id)} required class="mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900" /></label></div><button class="mt-3 rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700">Klasea gehitu</button>
+                        </form>
+                    </div></details>}
+                    {Array.from(new Set(degree.classes.map((group) => group.year))).sort((a, b) => a - b).map((year) => {
                         const yearClasses = degree.classes.filter((group) => group.year === year);
                         return <section>
-                        {!(yearClasses.length === 1 && yearClasses[0].name === `${year}. maila`) && <h3 class="mb-2 text-sm font-bold text-slate-700">{year}. maila</h3>}
+                        {!(yearClasses.length === 1 && yearClasses[0].name === `${year}. maila`) && <h3 class="mb-2 text-sm font-medium text-slate-700">{year}. maila</h3>}
                         <div class="space-y-2">
                         {yearClasses.map((group) => (
-                <details class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <details open={hasFilters || group.id === activeClassId} id={`class-${group.id}`} class="overflow-hidden rounded-xl border border-slate-200 bg-white">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                        <span><span class="block font-bold text-slate-900">{group.name}</span><span class="text-xs text-slate-500">{group.students.length} ikasle</span></span>
+                        <span><span class="block font-medium text-slate-900">{group.name}</span><span class="text-xs text-slate-500">{group.students.length} ikasle</span></span>
                         <svg aria-hidden="true" class="chevron h-5 w-5 shrink-0 text-teal-600 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6" /></svg>
                     </summary>
-                    <form method="POST" class="flex flex-wrap items-end gap-3 border-y border-slate-100 bg-slate-50 p-4">
+                    <details open={Boolean(submitted?.get("action") === "save-class" && activeClassId === group.id)} class="border-t border-slate-100"><summary class="cursor-pointer px-4 py-3 text-sm text-slate-500">Klasearen ezarpenak</summary><form method="POST" class="flex flex-wrap items-end gap-3 border-y border-slate-100 bg-slate-50 p-4">
                         <input type="hidden" name="action" value="save-class" /><input type="hidden" name="id" value={group.id} />
-                        <label class="min-w-40 flex-1 text-xs font-bold text-slate-500">Klasea<input name="name" required value={group.name} class="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900" /></label>
-                        <label class="w-24 text-xs font-bold text-slate-500">Maila<input name="year" type="number" min="1" required value={group.year} class="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900" /></label>
-                        <label class="min-w-40 flex-1 text-xs font-bold text-slate-500">Gradua<select name="degreeId" class="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"><option value="">Gradurik gabe</option>{allDegrees.map((degree) => <option value={degree.id} selected={degree.id === group.degreeId}>{degree.name}</option>)}</select></label>
-                        <button class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-bold text-white">Gorde</button><span class="px-2 py-2 text-xs text-slate-500">{group.students.length} ikasle</span>
-                        <button form={`delete-class-${group.id}`} class="px-2 py-2 text-xs font-bold text-red-600" onclick="return confirm('Klasea eta bertako ikasleak ezabatu?')">Ezabatu klasea</button>
+                        <label class="min-w-40 flex-1 text-xs font-medium text-slate-500">Klasea<input name="name" required value={draft("save-class", "name", group.name, group.id)} class="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900" /></label>
+                        <label class="w-24 text-xs font-medium text-slate-500">Maila<input name="year" type="number" min="1" required value={draft("save-class", "year", group.year, group.id)} class="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900" /></label>
+                        <label class="min-w-40 flex-1 text-xs font-medium text-slate-500">Gradua<select name="degreeId" class="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"><option value="">Gradurik gabe</option>{allDegrees.map((degree) => <option value={degree.id} selected={degree.id === group.degreeId}>{degree.name}</option>)}</select></label>
+                        <button class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white">Gorde</button><span class="px-2 py-2 text-xs text-slate-500">{group.students.length} ikasle</span>
+                        <button form={`delete-class-${group.id}`} class="px-2 py-2 text-xs font-medium text-red-600" onclick="return confirm('Klasea eta bertako ikasleak ezabatu?')">Ezabatu klasea</button>
                     </form>
-                    <form id={`delete-class-${group.id}`} method="POST"><input type="hidden" name="action" value="delete-class" /><input type="hidden" name="id" value={group.id} /></form>
+                    <form id={`delete-class-${group.id}`} method="POST"><input type="hidden" name="action" value="delete-class" /><input type="hidden" name="id" value={group.id} /></form></details>
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                        <h4 class="text-sm font-medium text-slate-700">Ikasleak <span class="ml-1 font-normal text-slate-500">({group.students.length})</span></h4>
+                        <div class="flex flex-wrap items-center gap-4"><a href={`/api/admin/export-roster?classId=${group.id}`} class="flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700">CSV deskargatu</a><a href={`/admin/classes?mode=edit&class=${group.id}&import=1#import-students`} class="flex min-h-11 items-center text-sm font-semibold text-teal-700 hover:underline">Inportatu</a></div>
+                    </div>
+                    <details id={`add-student-${group.id}`} open={adding && group.id === activeClassId} class="border-b border-slate-100">
+                        <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-teal-700">+ Ikaslea gehitu</summary>
+                        <form method="POST" class="grid gap-3 px-4 pb-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                            <input type="hidden" name="action" value="add-student" /><input type="hidden" name="classId" value={group.id} />
+                            <label class="teacher-label">Izena<input name="name" required value={draft("add-student", "name", "", group.id)} autocomplete="name" /></label>
+                            <label class="teacher-label">Emaila (aukerakoa)<input name="email" type="email" value={draft("add-student", "email", "", group.id)} autocomplete="email" /></label>
+                            <button class="teacher-button teacher-button-primary self-end">Gehitu</button>
+                        </form>
+                    </details>
                     <div class="divide-y divide-slate-100">
                         {group.students.map((student) => (
-                            <form method="POST" class="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_1.2fr_1fr_1fr_auto_auto] lg:items-end">
-                                <input type="hidden" name="action" value="save-student" /><input type="hidden" name="id" value={student.id} />
-                                <label class="text-[10px] font-bold uppercase text-slate-400">Izena<input name="name" required value={student.name} class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900" /></label>
-                                <label class="text-[10px] font-bold uppercase text-slate-400">Emaila<input name="email" type="email" value={student.email || ""} class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900" /></label>
-                                <label class="text-[10px] font-bold uppercase text-slate-400">Tutorea<input name="tutor" value={student.tutor || ""} class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900" /></label>
-                                <label class="text-[10px] font-bold uppercase text-slate-400">Taldea<select name="division" class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"><option value="">—</option><option value="sormena" selected={student.division === "sormena"}>Sormena</option><option value="digitala" selected={student.division === "digitala"}>Digitala</option></select></label>
-                                <button class="rounded-lg border border-teal-200 px-3 py-2 text-xs font-bold text-teal-700">Gorde</button>
-                                <button type="submit" form={`delete-student-${student.id}`} class="rounded-lg px-3 py-2 text-xs font-bold text-red-600" onclick="return confirm('Ikaslea ezabatu?')">Ezabatu</button>
-                            </form>
-                            <form id={`delete-student-${student.id}`} method="POST"><input type="hidden" name="action" value="delete-student" /><input type="hidden" name="id" value={student.id} /></form>
+                            <details id={`student-${student.id}`} open={student.id === activeStudentId} class="student-row">
+                                <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                                    <span class="min-w-0 flex-1"><span class="block break-words text-sm font-semibold text-slate-900">{student.name}</span><span class="mt-0.5 block break-all text-xs text-slate-500">{student.email || "Emailik gabe"}</span></span>
+                                    {student.division && <span class:list={["hidden rounded-full border px-2.5 py-1 text-xs font-semibold sm:inline-flex", student.division === "sormena" ? "border-orange-200 bg-orange-50 text-orange-700" : "border-indigo-200 bg-indigo-50 text-indigo-700"]}>{student.division === "sormena" ? "Sormena" : "Digitala"}</span>}
+                                    <span class="hidden text-xs font-semibold text-teal-700 sm:inline">Editatu</span>
+                                    <svg aria-hidden="true" class="chevron h-5 w-5 shrink-0 text-teal-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6" /></svg>
+                                </summary>
+                                <form method="POST" class="grid gap-4 border-t border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
+                                    <input type="hidden" name="action" value="save-student" /><input type="hidden" name="id" value={student.id} /><input type="hidden" name="classId" value={group.id} />
+                                    <label class="text-xs font-semibold text-slate-600">Izena<input name="name" required value={draft("save-student", "name", student.name, student.id)} class="mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900" /></label>
+                                    <label class="text-xs font-semibold text-slate-600">Emaila<input name="email" type="email" value={draft("save-student", "email", student.email, student.id)} class="mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900" /></label>
+                                    <label class="text-xs font-semibold text-slate-600">Tutorea<input name="tutor" value={draft("save-student", "tutor", student.tutor, student.id)} class="mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900" /></label>
+                                    <label class="text-xs font-semibold text-slate-600">Taldea<select name="division" class="mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900"><option value="">Zehaztu gabe</option><option value="sormena" selected={draft("save-student", "division", student.division, student.id) === "sormena"}>Sormena</option><option value="digitala" selected={draft("save-student", "division", student.division, student.id) === "digitala"}>Digitala</option></select></label>
+                                    <label class="text-xs font-semibold text-slate-600">Ibilbidea<input name="academicStatus" value={draft("save-student", "academicStatus", student.academicStatus, student.id)} class="mt-1.5 block w-full" /></label>
+                                    <label class="text-xs font-semibold text-slate-600 sm:col-span-2">Irakaslearen oharrak<textarea name="notes" rows="2" class="mt-1.5 block w-full">{draft("save-student", "notes", student.notes, student.id)}</textarea><span class="mt-1 block font-normal text-slate-500">Klasearen fitxan gordetzen dira; ez dira ikaslearen inkestan agertzen.</span></label>
+                                    <div class="flex flex-wrap items-center justify-between gap-3 sm:col-span-2"><button class="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700">Gorde aldaketak</button><button type="submit" form={`delete-student-${student.id}`} class="rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50" onclick="return confirm('Ikaslea ezabatu?')">Ezabatu ikaslea</button></div>
+                                </form>
+                                <form id={`delete-student-${student.id}`} method="POST"><input type="hidden" name="action" value="delete-student" /><input type="hidden" name="id" value={student.id} /><input type="hidden" name="classId" value={group.id} /></form>
+                            </details>
                         ))}
-                        {group.students.length === 0 && <p class="p-5 text-sm text-slate-400">Ikaslerik ez. Gehitu goiko inportazio tresnarekin.</p>}
+                        {group.students.length === 0 && <p class="p-5 text-sm text-slate-500">Ikaslerik ez. Erabili klase honetako inportazio esteka ikasleak gehitzeko.</p>}
                     </div>
                 </details>
                         ))}
-                        {yearClasses.length === 0 && <p class="text-xs text-slate-400">Klase gabe</p>}
                         </div>
                     </section>})}
+                    {degree.classes.length === 0 && <p class="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-sm text-slate-500">Ez dago klaserik. Gehitu lehenengoa goiko formularioarekin.</p>}
                 </div>
             </details>)}
-            {editDegrees.length === 0 && <p class="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-10 text-center text-slate-500">Gehitu gradua hasteko.</p>}
+            {editDegrees.length === 0 && <p class="rounded-xl border-2 border-dashed border-slate-200 bg-white p-10 text-center text-slate-500">{hasFilters ? "Ez da emaitzarik aurkitu. Aldatu bilaketa edo garbitu iragazkiak." : "Gehitu gradua hasteko."}</p>}
         </div>
-        </> : <div class="space-y-3">
-            {Array.from(degreeGroups.entries()).map(([degreeName, years]) => {
-                const degreeClassCount = Array.from(years.values()).reduce((count, classes) => count + classes.length, 0);
-                const degreeStudentCount = Array.from(years.values()).flat().reduce((count, group) => count + group.students.length, 0);
-                return <details open class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                        <span><span class="block font-bold text-slate-900">{degreeName}</span><span class="text-xs text-slate-500">{degreeClassCount} klase · {degreeStudentCount} ikasle</span></span>
-                        <svg aria-hidden="true" class="chevron h-6 w-6 shrink-0 text-teal-600 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6" /></svg>
-                    </summary>
-                    <div class="space-y-2 border-t border-slate-100 bg-slate-50/60 p-3">
-                        {Array.from(years.entries()).map(([year, yearClasses]) => <details class="rounded-xl border border-slate-200 bg-white">
-                            <summary class="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                                <span>{year}. maila</span><span class="ml-auto text-xs font-normal text-slate-500">{yearClasses.length} klase · {yearClasses.reduce((count, group) => count + group.students.length, 0)} ikasle</span><svg aria-hidden="true" class="chevron ml-2 h-6 w-6 shrink-0 text-teal-600 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6" /></svg>
-                            </summary>
-                            <div class="grid gap-2 border-t border-slate-100 p-3 md:grid-cols-2">
-                                {yearClasses.map((group) => <section class="rounded-lg border border-slate-100 bg-slate-50">
-                                    {group.name !== `${year}. maila` && <h3 class="flex items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-800"><span>{group.name}</span><span class="text-xs font-normal text-slate-500">{group.students.length} ikasle</span></h3>}
-                                    <ul class="space-y-1 border-t border-slate-100 bg-white px-3 py-2 text-sm text-slate-600">
-                                        {group.students.map((student) => <li class="flex items-center justify-between gap-3 py-1"><span class="min-w-0 truncate">{student.name}</span><span class="flex shrink-0 items-center justify-end gap-2 text-xs">{student.division && student.academicStatus && <span class="text-slate-400">Ibilbidea: {student.academicStatus}</span>}{student.division && <span class:list={["rounded-full border px-2.5 py-1 font-semibold", student.division === "sormena" ? "border-orange-200 bg-orange-50 text-orange-700" : "border-indigo-200 bg-indigo-50 text-indigo-700"]}>{student.division === "sormena" ? "Sormena" : "Digitala"}</span>}</span></li>)}
-                                        {group.students.length === 0 && <li class="py-1 text-slate-400">Ikaslerik ez</li>}
-                                    </ul>
-                                </section>)}
-                            </div>
-                        </details>)}
+        </> : <div class="teacher-panel divide-y divide-slate-100">
+            {visibleGroups.map(group => <section class="roster-class">
+                <header class="flex items-center gap-4 px-5 py-4">
+                    <div class="min-w-0 flex-1"><h2 class="break-words text-sm text-slate-900">{group.name}</h2><p class="mt-1 text-xs text-slate-500">{group.degreeName} · {group.year}. maila</p></div>
+                    <span class="text-xs text-slate-500">{group.students.length} ikasle</span>
+                </header>
+                <div class="border-t border-slate-100">
+                    <div class="flex flex-wrap items-center justify-end gap-3 bg-slate-50/50 px-5 py-2">
+                        <a href={`/api/admin/export-roster?classId=${group.id}`} class="flex min-h-11 items-center text-xs text-slate-500 hover:text-teal-700">CSV deskargatu</a>
+                        <a href={`/admin/classes?mode=edit&class=${group.id}#class-${group.id}`} class="flex min-h-11 items-center text-xs font-medium text-teal-700 hover:underline">Kudeatu →</a>
                     </div>
-                </details>;
-            })}
-            {groups.size === 0 && <p class="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Ez dago klaserik oraindik.</p>}
+                    <ul class="divide-y divide-slate-100 px-5">
+                        {group.students.map(student => <li class="flex flex-wrap items-start gap-x-8 gap-y-2 py-3 text-sm">
+                            <div class="min-w-0 flex-1 basis-40"><p class="break-words font-medium text-slate-800">{student.name}</p>{student.email && <a href={`mailto:${student.email}`} class="mt-0.5 block break-all text-xs text-slate-500 hover:text-teal-700">{student.email}</a>}</div>
+                            <div class="flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-500">{student.tutor && <span>Tutorea: {student.tutor}</span>}{student.academicStatus && <span>Ibilbidea: {student.academicStatus}</span>}{student.division && <span>{student.division === "sormena" ? "Sormena" : "Digitala"}</span>}</div>
+                        </li>)}
+                        {group.students.length === 0 && <li class="py-6 text-sm text-slate-500">Ikaslerik ez oraindik. <a href={`/admin/classes?mode=edit&class=${group.id}#class-${group.id}`} class="text-teal-700 hover:underline">Gehitu lehen ikaslea →</a></li>}
+                    </ul>
+                </div>
+            </section>)}
+            {visibleGroups.length === 0 && <div class="rounded-xl border-2 border-dashed border-slate-200 bg-white p-8 text-center"><p class="text-sm text-slate-500">{hasFilters ? "Ez da emaitzarik aurkitu. Aldatu bilaketa edo garbitu iragazkiak." : "Ez dago klaserik oraindik."}</p><a href={hasFilters ? `/admin/classes?${new URLSearchParams({ degree: classScope.degree, class: String(classScope.selectedClass?.id || "") })}` : `/admin/classes?mode=edit&degree=${classScope.degree}`} class="mt-4 inline-flex min-h-11 items-center rounded-lg bg-teal-600 px-4 text-sm font-medium text-white hover:bg-teal-700">{hasFilters ? "Garbitu iragazkiak" : "Sortu lehen klasea"}</a></div>}
         </div>}
-    </main>
+    </section>
 </AdminLayout>
+<script>
+    const fileInput = document.getElementById("roster-file") as HTMLInputElement | null;
+    const csv = document.querySelector<HTMLTextAreaElement>('textarea[name="csv"]');
+    fileInput?.addEventListener("change", async () => {
+        const file = fileInput.files?.[0];
+        if (!file || !csv) return;
+        try {
+            csv.value = await file.text();
+            csv.setCustomValidity("");
+            csv.focus();
+        } catch {
+            csv.setCustomValidity("Ezin izan da fitxategia irakurri. Itsatsi CSV datuak zuzenean.");
+            csv.reportValidity();
+        }
+    });
+    csv?.addEventListener("input", () => csv.setCustomValidity(""));
+</script>
 <style>
     details[open] > summary .chevron { transform: rotate(180deg); }
+    .classes-page :is(input, select, textarea) { min-width: 0; }
+    .classes-page :is(button, input:not([type="hidden"]), select) { min-height: 2.75rem; }
+    .classes-page :is(input, select, textarea, button, a, summary):focus-visible {
+        outline: 2px solid #0d9488;
+        outline-offset: 2px;
+    }
+    .classes-page :is(summary, a, button) { transition: background-color 150ms, color 150ms; }
+    .classes-page details[id] { scroll-margin-top: 6rem; }
+    .classes-page .roster-class > header { min-height: 5rem; }
 </style>

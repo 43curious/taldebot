@@ -1,12 +1,14 @@
 ---
 import Layout from "./Layout.astro";
 import AdminNav from "../components/AdminNav.astro";
+import "../styles/teacher.css";
 
 interface Props {
     title: string;
+    fullScreen?: boolean;
 }
 
-const { title } = Astro.props;
+const { title, fullScreen = false } = Astro.props;
 const currentPath = Astro.url.pathname;
 ---
 
@@ -25,13 +27,13 @@ const currentPath = Astro.url.pathname;
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
-            <div class="py-10 pt-20 lg:pt-10">
+            {fullScreen ? <main class="h-dvh overflow-hidden"><slot /></main> : <div class="py-10 pt-20 lg:pt-10">
                 <main>
                     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                         <slot />
                     </div>
                 </main>
-            </div>
+            </div>}
         </div>
     </div>
 </Layout>

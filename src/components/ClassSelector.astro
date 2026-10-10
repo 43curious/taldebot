@@ -1,0 +1,32 @@
+---
+import { classOptionLabel, type ClassOption, type DegreeOption } from "../lib/classSelection";
+interface Props {
+    degrees: DegreeOption[];
+    compact?: boolean;
+    scope: { degree: string; options: ClassOption[]; selectedClass?: ClassOption; hasUnassigned: boolean };
+}
+const { degrees, scope, compact = false } = Astro.props;
+---
+<form method="GET" class:list={["class-selector grid gap-3 sm:grid-cols-2", { "mb-5": !compact, "graph-scope": compact }]}>
+    <div class="teacher-label"><label for="scope-degree">Gradua</label><select id="scope-degree" name="degree" aria-controls="scope-class">
+        {degrees.map(degree => <option value={degree.id} selected={scope.degree === String(degree.id)}>{degree.name}</option>)}
+        {scope.hasUnassigned && <option value="none" selected={scope.degree === "none"}>Gradurik gabe</option>}
+        {degrees.length === 0 && !scope.hasUnassigned && <option value="">Ez dago gradurik</option>}
+    </select></div>
+    <div class="teacher-label"><label for="scope-class">Maila / Klasea</label><select id="scope-class" name="class" disabled={scope.options.length === 0}>
+        {scope.options.map(group => <option value={group.id} selected={scope.selectedClass?.id === group.id}>{classOptionLabel(group)}</option>)}
+        {scope.options.length === 0 && <option value="">Ez dago klaserik</option>}
+    </select></div>
+    <noscript><button class="teacher-button">Ikusi</button></noscript>
+</form>
+<script>
+    document.querySelectorAll<HTMLFormElement>(".class-selector").forEach(form => {
+        const degree = form.querySelector<HTMLSelectElement>('[name="degree"]');
+        const group = form.querySelector<HTMLSelectElement>('[name="class"]');
+        degree?.addEventListener("change", () => {
+            if (group) group.disabled = true;
+            form.requestSubmit();
+        });
+        group?.addEventListener("change", () => form.requestSubmit());
+    });
+</script>

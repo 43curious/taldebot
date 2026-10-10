@@ -17,13 +17,19 @@ it('keeps class and dashboard actions available after a real login', async () =>
         await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, hashed_password TEXT, role TEXT DEFAULT 'admin', full_name TEXT, email TEXT, created_at TEXT)");
         await db.execute({ sql: 'INSERT INTO users(username, hashed_password) VALUES (?, ?)', args: ['test', await hash('test-pass', 4)] });
         await migrateClasses(db);
-        await db.execute("INSERT INTO degrees(name) VALUES ('Media')");
-        await db.execute("INSERT INTO classes(name, year, degree_id) VALUES ('1. maila', 1, 1)");
-        await db.execute("INSERT INTO class_members(class_id, name, division) VALUES (1, 'Ane', 'sormena')");
+        await db.execute("INSERT INTO degrees(name) VALUES ('Media'), ('Engineering'), ('Arts')");
+        await db.execute("INSERT INTO classes(name, year, degree_id) VALUES ('1. maila', 1, 1), ('Lab class', 2, 2), ('Unassigned class', 3, NULL)");
+        await db.execute("INSERT INTO classes(name, year, degree_id) VALUES ('4. maila', 4, 1)");
+        await db.execute("INSERT INTO class_members(class_id, name, email, tutor, division) VALUES (1, 'Ane', 'ane@example.com', 'Maite', 'sormena'), (1, 'Iker', NULL, NULL, 'digitala'), (2, 'Leire', NULL, NULL, NULL)");
+        await db.execute("INSERT INTO class_members(class_id, name) VALUES (4, 'Miren')");
         await db.execute("CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT, num_teams INTEGER, target_team_size INTEGER, project_type TEXT NOT NULL, created_at TEXT, status TEXT, admin_email TEXT, access_code TEXT)");
         await db.execute("CREATE TABLE students (id INTEGER PRIMARY KEY, project_id INTEGER, name TEXT NOT NULL, email TEXT, has_completed INTEGER, is_excluded INTEGER)");
         await db.execute("INSERT INTO projects (id, name, project_type, status, access_code) VALUES (1, 'Film lab', 'balanced', 'active', '1234A')");
         await db.execute("INSERT INTO students (project_id, name, has_completed) VALUES (1, 'Ane', 1), (1, 'Iker', 0)");
+        await db.execute("INSERT INTO students (project_id, name, has_completed, is_excluded) VALUES (1, 'Absent Student', 1, 1)");
+        await db.execute("CREATE TABLE responses (id INTEGER PRIMARY KEY, student_id INTEGER, project_id INTEGER, skills_narrative TEXT, skills_technical TEXT, skills_management TEXT, skills_soft TEXT, prefer_with TEXT, prefer_avoid TEXT, comfort TEXT, completed_at TEXT)");
+        await db.execute("INSERT INTO responses (student_id, project_id, skills_narrative, skills_technical, skills_management, skills_soft, prefer_with, prefer_avoid, comfort) VALUES (1, 1, '{}', '{}', '{}', '{}', '[]', '[]', '[2]')");
+        await db.execute("INSERT INTO projects (id, name, project_type, status) VALUES (2, 'New project', 'balanced', 'setup')");
         const port = await new Promise((resolve) => {
             const listener = createServer().listen(0, '127.0.0.1', () => {
                 const port = listener.address().port;
@@ -33,15 +39,18 @@ it('keeps class and dashboard actions available after a real login', async () =>
         const base = `http://127.0.0.1:${port}`;
         server = spawn(process.execPath, ['node_modules/astro/bin/astro.mjs', 'dev', '--ignore-lock', '--port', String(port), '--host', '127.0.0.1'], {
             env: { ...process.env, NODE_ENV: 'development', VITEST: '', VITEST_WORKER_ID: '', TURSO_CONNECTION_URL: `file:${join(dir, 'test.db')}`, TURSO_AUTH_TOKEN: '' },
-            stdio: 'ignore',
+            stdio: ['ignore', 'pipe', 'pipe'],
         });
+        let serverOutput = '';
+        server.stdout.on('data', chunk => { serverOutput += chunk; });
+        server.stderr.on('data', chunk => { serverOutput += chunk; });
         let ready = false;
         for (let i = 0; i < 90; i++) {
             try { ready = (await fetch(`${base}/admin/login`, { signal: AbortSignal.timeout(500) })).ok; } catch { /* server starting */ }
             if (ready) break;
             await new Promise((resolve) => setTimeout(resolve, 100));
         }
-        expect(ready).toBe(true);
+        expect(ready, serverOutput).toBe(true);
         expect((await fetch(`${base}/admin/classes`, { headers: { cookie: 'admin_session=active' }, redirect: 'manual' })).status).toBe(302);
         expect((await fetch(`${base}/admin/users`, { headers: { cookie: 'astro-session=ad96f327-3f16-4615-9ff0-65e6152c586f' }, redirect: 'manual' })).status).toBe(302);
         const login = await fetch(`${base}/admin/login`, {
@@ -51,17 +60,115 @@ it('keeps class and dashboard actions available after a real login', async () =>
         expect(login.status).toBe(302);
         const cookie = login.headers.get('set-cookie')?.split(';')[0];
         expect(cookie).toMatch(/^astro-session=/);
-        const browse = await (await fetch(`${base}/admin/classes`, { headers: { cookie } })).text();
+        const entry = await (await fetch(`${base}/admin/classes`, { headers: { cookie } })).text();
+        expect(entry).toContain('id="scope-degree"');
+        expect(entry).toContain('Leire');
+        expect(entry).not.toContain('Miren');
+        const browse = await (await fetch(`${base}/admin/classes?degree=1`, { headers: { cookie } })).text();
         expect(browse).toContain('Media');
         expect(browse).toContain('Ane');
         expect(browse).toContain('Sormena');
+        expect(browse).toContain('id="scope-degree"');
+        expect(browse).toContain('id="scope-class"');
+        expect(browse).not.toContain('Miren');
+        expect(browse).not.toContain('Leire');
         const edit = await (await fetch(`${base}/admin/classes?mode=edit`, { headers: { cookie } })).text();
-        expect(edit).toContain('4. maila');
+        expect(edit).not.toContain('Klase gabe');
         expect(edit).toContain('Klasea gehitu');
+        expect(edit).toContain('Gorde aldaketak');
+        expect(edit).toContain('aria-describedby="csv-help"');
+        expect(browse).toContain('role="search"');
+        expect(browse).toContain('ane@example.com');
+        expect(browse).toMatch(/\/admin\/classes\?mode=edit(?:&amp;|&#38;|&)class=1#class-1/);
+
+        const classPage = async (query) => {
+            const params = new URLSearchParams(query);
+            if (!params.has('degree') && !params.has('mode')) params.set('degree', '1');
+            return (await fetch(`${base}/admin/classes?${params}`, { headers: { cookie } })).text();
+        };
+        for (const query of ['q=aNe', 'q=ane%40example.com', 'q=maite', 'q=ane&degree=1&year=1']) {
+            const results = await classPage(query);
+            expect(results).toContain('1 klase · 1 ikasle');
+            expect(results).toContain('Ane');
+            expect(results).not.toContain('Iker');
+            expect(results).not.toContain('Leire');
+        }
+        const degreeResults = await classPage('degree=2&year=2');
+        expect(degreeResults).toContain('Lab class');
+        expect(degreeResults).toContain('Leire');
+        expect(degreeResults).not.toContain('Ane');
+        const unassigned = await classPage('degree=none');
+        expect(unassigned).toContain('Unassigned class');
+        expect(unassigned).not.toContain('Lab class');
+        const fourthYear = await classPage('degree=1&class=4');
+        expect(fourthYear).toContain('Miren');
+        expect(fourthYear).not.toContain('ane@example.com');
+        const standaloneGraph = await (await fetch(`${base}/admin/graph?degree=1&class=1`, { headers: { cookie } })).text();
+        expect(standaloneGraph).toContain('Klasearen harremanen mapa');
+        expect(standaloneGraph).toContain('Film lab');
+        expect(standaloneGraph).toContain('Ane');
+        expect(standaloneGraph).toContain('Iker');
+        expect(standaloneGraph).not.toContain('Leire');
+        const otherGraph = await (await fetch(`${base}/admin/graph?degree=2&class=2`, { headers: { cookie } })).text();
+        expect(otherGraph).toContain('Leire');
+        expect(otherGraph).not.toContain('Film lab');
+        expect(otherGraph).toContain('inkesta-daturik ez dago');
+        const empty = await classPage('q=not-found');
+        expect(empty).toContain('Ez da emaitzarik aurkitu');
+        expect(empty).toContain('Garbitu iragazkiak');
+        const filteredEdit = await classPage('mode=edit&q=ane');
+        expect(filteredEdit).toContain('value="Ane"');
+        expect(filteredEdit).not.toContain('value="Iker"');
+        expect(filteredEdit).toContain('name="mode" value="edit"');
+        const directEdit = await classPage('mode=edit&class=1');
+        expect(directEdit).toMatch(/<details[^>]*id="degree-1"[^>]* open/);
+        expect(directEdit).toMatch(/<details open[^>]*id="class-1"/);
+        const importPage = await classPage('mode=edit&class=3&import=1');
+        expect(importPage).toMatch(/<details[^>]*id="import-students"[^>]* open/);
+        expect(importPage).toMatch(/<option value="3" selected/);
+
+        const saved = await (await fetch(`${base}/admin/classes?mode=edit`, {
+            method: 'POST', headers: { cookie, origin: base, 'content-type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'save-student', id: '1', classId: '1', name: 'Ane Updated', email: 'ane@example.com', tutor: 'Maite', division: 'sormena' }),
+        })).text();
+        expect(saved).toContain('Ikaslea eguneratu da.');
+        expect(saved).toContain('value="Ane Updated"');
+        expect(saved).toMatch(/<details[^>]*id="degree-1"[^>]* open/);
+        expect(saved).toMatch(/<details open[^>]*id="class-1"/);
+        expect(saved).toMatch(/<details[^>]*id="student-1"[^>]* open/);
+        const postClass = async (data) => (await fetch(`${base}/admin/classes?mode=edit`, {
+            method: 'POST', headers: { cookie, origin: base, 'content-type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(data),
+        })).text();
+        expect(await postClass({ action: 'add-student', classId: '1', name: 'New Student', email: 'new@example.com' })).toContain('Ikaslea gehitu da.');
+        expect(await postClass({ action: 'import', classId: '1', csv: 'izena,email\nNew Student,new@example.com\nAnother Student,another@example.com' })).toContain('1 ikasle inportatu dira. 1 errepikatu saltatu dira.');
+        const exported = await fetch(`${base}/api/admin/export-roster?classId=1`, { headers: { cookie } });
+        expect(exported.headers.get('content-type')).toContain('text/csv');
+        expect(await exported.text()).toContain('"New Student","new@example.com"');
+        const monitor = await (await fetch(`${base}/admin/monitor/1`, { headers: { cookie } })).text();
+        expect(monitor).toContain('aria-valuenow="50"');
+        expect(monitor).toContain('1 / 2');
+        expect(monitor).toContain('data-action="restore"');
+        expect(monitor).toContain('Inkestaren esteka kopiatu');
+        const pendingMonitor = await (await fetch(`${base}/admin/monitor/1?status=pending`, { headers: { cookie } })).text();
+        expect(pendingMonitor).toContain('Iker');
+        expect(pendingMonitor).not.toContain('Absent Student');
+        expect(pendingMonitor).not.toContain('data-action="reset"');
+        const graph = await (await fetch(`${base}/admin/monitor/1?view=map`, { headers: { cookie } })).text();
+        expect(graph).toContain('Klasearen harremanen mapa');
+        expect(graph).toContain('Ane');
+        expect(graph).toContain('Iker');
+        expect(graph).not.toContain('Absent Student');
         const dashboard = await (await fetch(`${base}/admin/dashboard`, { headers: { cookie } })).text();
         expect(dashboard).toContain('Film lab');
-        expect(dashboard).toContain('lg:grid-cols-[minmax(0,1fr)_15rem_11rem]');
+        expect(dashboard).toContain('xl:grid-cols-[minmax(0,1fr)_14rem_11rem]');
         expect(dashboard).toContain('aria-valuenow="50"');
+        expect(dashboard).toContain('1 / 2 ikaslek erantzun dute');
+        expect(dashboard).toContain('Ez dago ikaslerik oraindik');
+        expect(dashboard).toContain('data-access-code="1234A"');
+        expect(dashboard.match(/class="copy-code-btn /g)).toHaveLength(1);
+        expect(dashboard).toContain('aria-label="Kopiatu Film lab proiektuaren kodea: 1234A"');
+        expect(dashboard).toContain('role="status" aria-live="polite" aria-atomic="true"');
         expect(dashboard.indexOf('Film lab')).toBeLessThan(dashboard.indexOf('Kodea:'));
         expect(dashboard.indexOf('1234A')).toBeLessThan(dashboard.indexOf('aria-valuenow="50"'));
         expect(dashboard).toContain('/admin/create-project');

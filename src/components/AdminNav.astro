@@ -4,10 +4,13 @@ const adminUser = (await Astro.session?.get<string>('adminUser')) || "Admin";
 
 const links = [
     { href: "/admin/dashboard", label: "Arbel Nagusia", icon: "dashboard" },
-    { href: "/admin/classes", label: "Classes", icon: "classes" },
+    { href: "/admin/classes", label: "Klaseak", icon: "classes" },
+    { href: "/admin/graph", label: "Harremanen mapa", icon: "graph" },
     { href: "/admin/create-project", label: "Proiektu Berria", icon: "plus" },
     { href: "/admin/users", label: "Erabiltzaileak", icon: "users" },
 ];
+const isActive = (href: string) => currentPath === href ||
+    (href === "/admin/dashboard" && /^\/admin\/(monitor|teams)\//.test(currentPath));
 ---
 
 <aside
@@ -45,11 +48,11 @@ const links = [
                     href={link.href}
                     class:list={[
                         "sidebar-link flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-all duration-200",
-                        currentPath === link.href
+                        isActive(link.href)
                             ? "bg-teal-50 text-teal-700"
                             : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
                     ]}
-                    aria-current={currentPath === link.href ? "page" : undefined}
+                    aria-current={isActive(link.href) ? "page" : undefined}
                     title={link.label}
                 >
                     {link.icon === "dashboard" && (
@@ -60,6 +63,11 @@ const links = [
                     {link.icon === "classes" && (
                         <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19.5A2.5 2.5 0 016.5 17H20M6.5 2H20v15H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+                        </svg>
+                    )}
+                    {link.icon === "graph" && (
+                        <svg aria-hidden="true" class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                            <path d="m7 7 10 3M6 8l4 10m7-6-5 6" /><circle cx="5" cy="5" r="3" /><circle cx="19" cy="11" r="3" /><circle cx="11" cy="20" r="2" />
                         </svg>
                     )}
                     {link.icon === "plus" && (

@@ -6,246 +6,66 @@ import { projects, teams } from "../../../../db/schema";
 import { eq, and } from "drizzle-orm";
 import TeamCard from "../../../components/TeamCard.astro";
 
-const { projectId } = Astro.params;
-const pid = parseInt(projectId || "");
-const url = new URL(Astro.request.url);
-const versionParam = url.searchParams.get("version") || "v2";
-const selectedVersion = versionParam === "v1" ? "v1" : "v2";
-
-if (isNaN(pid)) return Astro.redirect("/admin/dashboard");
-
-const project = await db.query.projects.findFirst({
-    where: eq(projects.id, pid),
-});
-
+const pid = Number(Astro.params.projectId);
+const selectedVersion = Astro.url.searchParams.get("version") === "v1" ? "v1" : "v2";
+if (!Number.isInteger(pid) || pid < 1) return Astro.redirect("/admin/dashboard");
+const project = await db.query.projects.findFirst({ where: eq(projects.id, pid) });
 if (!project) return Astro.redirect("/admin/dashboard");
-
-// Fetch counts for both versions to know if they exist
-const teamsV1 = await db.query.teams.findMany({
-    where: and(eq(teams.projectId, pid), eq(teams.algorithmVersion, "v1")),
+const projectTeams = await db.query.teams.findMany({
+    where: and(eq(teams.projectId, pid), eq(teams.algorithmVersion, selectedVersion)),
+    orderBy: (teams, { asc }) => [asc(teams.teamNumber)],
 });
-const teamsV2 = await db.query.teams.findMany({
-    where: and(eq(teams.projectId, pid), eq(teams.algorithmVersion, "v2")),
-});
-
-const hasV1 = teamsV1.length > 0;
-const hasV2 = teamsV2.length > 0;
-
-const projectTeams = selectedVersion === "v1" ? teamsV1 : teamsV2;
-projectTeams.sort((a, b) => a.teamNumber - b.teamNumber);
+const generateUrl = `/api/admin/generate-teams?projectId=${pid}&version=${selectedVersion}`;
+const generationError = Astro.url.searchParams.get("error") === "no-students";
 ---
 
-<AdminLayout title={`Teams: ${project.name}`}>
-    <div class="md:flex md:items-center md:justify-between mb-8 print:hidden">
-        <div class="flex-1 min-w-0">
-            <nav class="flex mb-2" aria-label="Breadcrumb">
-                <ol class="flex items-center space-x-2">
-                    <li>
-                        <a
-                            href="/admin/dashboard"
-                            class="text-sm font-bold text-slate-400 hover:text-teal-600 transition-colors"
-                            >Proiektuak</a
-                        >
-                    </li>
-                    <li>
-                        <svg
-                            class="h-5 w-5 text-slate-300"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                            ><path
-                                fill-rule="evenodd"
-                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                clip-rule="evenodd"></path></svg
-                        >
-                    </li>
-                    <li class="text-sm font-bold text-slate-900">
-                        {project.name}
-                    </li>
-                </ol>
-            </nav>
-            <h2
-                class="text-3xl font-black leading-7 text-slate-900 tracking-tight"
-            >
-                Taldeen Esleipena
-            </h2>
+<AdminLayout title={`Taldeak: ${project.name}`}>
+    <section class="teacher-page" aria-labelledby="teams-heading">
+        <a href={`/admin/monitor/${pid}`} class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700 print:hidden">← Inkestaren jarraipena</a>
+        <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div><h1 id="teams-heading">{project.name}</h1><p class="mt-2 text-sm text-slate-500">{projectTeams.length ? `${projectTeams.length} talde · ${projectTeams.reduce((count, team) => count + team.memberIds.length, 0)} ikasle` : "Taldeen esleipena"}</p></div>
+            {projectTeams.length > 0 && <div class="teacher-toolbar print:hidden">
+                <a href={`/api/admin/export-teams-txt?projectId=${pid}&version=${selectedVersion}`} class="teacher-button">Zerrenda deskargatu</a>
+                <button type="button" onclick="window.print()" class="teacher-button">Inprimatu</button>
+            </div>}
+        </header>
+        <details class="mb-6 print:hidden">
+            <summary class="flex cursor-pointer items-center gap-2 text-sm text-slate-500">Taldeen aukerak <span aria-hidden="true">⌄</span></summary>
+            <div class="teacher-panel mt-2 flex flex-wrap items-end gap-4 p-4">
+                <form method="GET" class="flex flex-wrap items-end gap-3"><label class="teacher-label">Esleipen-eredua<select name="version"><option value="v2" selected={selectedVersion === "v2"}>Egungo eredua</option><option value="v1" selected={selectedVersion === "v1"}>Aurreko eredua</option></select></label><button class="teacher-button">Ikusi</button></form>
+                {projectTeams.length > 0 && <>
+                    <a href={`/api/admin/export-data?projectId=${pid}&version=${selectedVersion}`} class="teacher-button">Excel deskargatu</a>
+                    <form action={generateUrl} method="POST" data-regenerate><button class="teacher-button">Taldeak berriro sortu</button></form>
+                </>}
+            </div>
+        </details>
+        {generationError && <p role="alert" class="mb-4 text-sm text-amber-700">Gehitu ikasleak proiektuan taldeak sortu aurretik.</p>}
+        <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3 print:grid-cols-2">
+            {projectTeams.map(team => <TeamCard teamNumber={team.teamNumber} memberIds={team.memberIds} justification={team.justification} />)}
+            {projectTeams.length === 0 && <div class="teacher-panel col-span-full p-10 text-center">
+                <h2 class="text-base text-slate-800">Ez dago talderik sortuta oraindik.</h2>
+                <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">Sortu taldeak ikasleen gaitasunak eta lan-hobespenak erabiliz. Erantzun gabeko ikasleek batez besteko profila erabiliko dute.</p>
+                <form action={generateUrl} method="POST" class="mt-5"><button class="teacher-button teacher-button-primary">Taldeak sortu</button></form>
+            </div>}
         </div>
-        <div class="mt-4 flex flex-wrap md:mt-0 md:ml-4 gap-3 items-center">
-            {
-                (hasV1 || hasV2) && (
-                    <div class="relative inline-block text-left mr-2">
-                        <select
-                            onchange={`window.location.href = window.location.pathname + '?version=' + this.value`}
-                            class="block w-full pl-3 pr-10 py-2 text-xs font-bold border border-slate-200 rounded-xl focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white text-slate-600 uppercase tracking-widest cursor-pointer hover:bg-slate-50 transition-all shadow-sm"
-                        >
-                            <option
-                                value="v2"
-                                selected={selectedVersion === "v2"}
-                            >
-                                Algoritmoa v2 {hasV2 ? "" : "(Sortu gabe)"}
-                            </option>
-                            <option
-                                value="v1"
-                                selected={selectedVersion === "v1"}
-                            >
-                                Algoritmoa v1 {hasV1 ? "" : "(Sortu gabe)"}
-                            </option>
-                        </select>
-                    </div>
-                )
-            }
-            <form
-                action={`/api/admin/generate-teams?projectId=${pid}&version=${selectedVersion}`}
-                method="POST"
-            >
-                <button
-                    type="submit"
-                    class="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest active:scale-95"
-                >
-                    Berritu
-                </button>
-            </form>
-            <details class="relative">
-                <summary
-                    class="list-none inline-flex items-center gap-2 px-4 py-2 bg-white border border-teal-600 rounded-xl shadow-sm text-xs font-bold text-teal-600 hover:bg-teal-50 transition-all uppercase tracking-widest cursor-pointer active:scale-95"
-                >
-                    Esportatu
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width={2}
-                            d="M19 9l-7 7-7-7"
-                        />
-                    </svg>
-                </summary>
-                <div class="absolute right-0 z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-xl p-2">
-                    <a
-                        href={`/api/admin/export-teams-txt?projectId=${pid}&version=v2`}
-                        class="block px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all uppercase tracking-wider"
-                    >
-                        Algoritmoa v2 - Zerrenda (TXT)
-                    </a>
-                    {
-                        hasV1 ? (
-                            <a
-                                href={`/api/admin/export-teams-txt?projectId=${pid}&version=v1`}
-                                class="block px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all uppercase tracking-wider"
-                            >
-                                Algoritmoa v1 - Zerrenda (TXT)
-                            </a>
-                        ) : (
-                            <span class="block px-3 py-2 rounded-lg text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                Algoritmoa v1 - Zerrenda (TXT) (Sortu gabe)
-                            </span>
-                        )
-                    }
-                    <a
-                        href={`/api/admin/export-data?projectId=${pid}&version=v2`}
-                        class="block px-3 py-2 rounded-lg text-xs font-bold text-teal-700 hover:bg-teal-50 transition-all uppercase tracking-wider"
-                    >
-                        Algoritmoa v2 - Excel
-                    </a>
-                    {
-                        hasV1 ? (
-                            <a
-                                href={`/api/admin/export-data?projectId=${pid}&version=v1`}
-                                class="block px-3 py-2 rounded-lg text-xs font-bold text-teal-700 hover:bg-teal-50 transition-all uppercase tracking-wider"
-                            >
-                                Algoritmoa v1 - Excel
-                            </a>
-                        ) : (
-                            <span class="block px-3 py-2 rounded-lg text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                Algoritmoa v1 - Excel (Sortu gabe)
-                            </span>
-                        )
-                    }
-                </div>
-            </details>
-            <button
-                onclick="window.print()"
-                class="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest active:scale-95"
-            >
-                Inprimatzeko Bista
-            </button>
-        </div>
-    </div>
-
-    <div
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 print:grid-cols-2 print:gap-4"
-    >
-        {
-            projectTeams.map((team) => (
-                <TeamCard
-                    teamNumber={team.teamNumber}
-                    memberIds={team.memberIds}
-                    justification={team.justification}
-                />
-            ))
-        }
-
-        {
-            projectTeams.length === 0 && (
-                <div class="col-span-full py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center">
-                    <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 text-slate-300">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-8 w-8"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width={1.5}
-                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                            />
-                        </svg>
-                    </div>
-                    <p class="text-slate-500 font-bold text-lg">
-                        Ez dago talderik sortuta oraindik.
-                    </p>
-                    <form
-                        action={`/api/admin/generate-teams?projectId=${pid}&version=${selectedVersion}`}
-                        method="POST"
-                        class="mt-4"
-                    >
-                        <button
-                            type="submit"
-                            class="text-teal-600 font-bold hover:underline transition-all active:scale-95"
-                        >
-                            Klik egin hemen taldeak sortzeko
-                        </button>
-                    </form>
-                </div>
-            )
-        }
-    </div>
-
-    <style>
-        @media print {
-            body {
-                background-color: white !important;
-            }
-            .bg-gray-50 {
-                background-color: white !important;
-                border-bottom: 1px solid #eee;
-            }
-            .shadow {
-                box-shadow: none !important;
-            }
-            .border {
-                border: 1px solid #ddd !important;
-            }
-            .print\:hidden {
-                display: none !important;
-            }
-        }
-    </style>
+    </section>
 </AdminLayout>
+<script>
+    document.querySelector<HTMLFormElement>("[data-regenerate]")?.addEventListener("submit", event => {
+        if (!confirm("Taldeak berriro sortu? Eredu honetako egungo esleipena ordeztuko da.")) event.preventDefault();
+    });
+    document.querySelectorAll<HTMLFormElement>('form[action*="generate-teams"]').forEach(form => {
+        form.addEventListener("submit", event => {
+            if (event.defaultPrevented) return;
+            const button = form.querySelector<HTMLButtonElement>("button");
+            if (button) { button.disabled = true; button.textContent = "Taldeak sortzen…"; }
+        });
+    });
+</script>
+<style is:global>
+    @media print {
+        #admin-sidebar, #mobile-menu-button, #sidebar-backdrop { display: none !important; }
+        #admin-content { padding-left: 0 !important; }
+        .teacher-page .teacher-panel { break-inside: avoid; }
+    }
+</style>

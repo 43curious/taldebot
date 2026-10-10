@@ -1,0 +1,94 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import ClassSelector from "../../components/ClassSelector.astro";
+import ClassGraph from "../../components/ClassGraph";
+import { db } from "../../lib/db";
+import { classes, classMembers, degrees, responses } from "../../../db/schema";
+import { asc, eq } from "drizzle-orm";
+import { selectClassScope } from "../../lib/classSelection";
+import { matchRosterStudents } from "../../lib/rosterGraph";
+import { classRelationships } from "../../lib/tracking";
+import { projectAssessments } from "../../lib/studentReport";
+
+const [allDegrees, allClasses, members, projects, participants] = await Promise.all([
+    db.select().from(degrees).orderBy(asc(degrees.name)),
+    db.select().from(classes).orderBy(asc(classes.year), asc(classes.name)),
+    db.select({ id: classMembers.id, classId: classMembers.classId, name: classMembers.name, email: classMembers.email, tutor: classMembers.tutor, division: classMembers.division }).from(classMembers).orderBy(asc(classMembers.name)),
+    db.query.projects.findMany({ orderBy: (projects, { desc }) => [desc(projects.createdAt), desc(projects.id)] }),
+    db.query.students.findMany(),
+]);
+const counts = new Map<number, number>();
+for (const member of members) counts.set(member.classId, (counts.get(member.classId) ?? 0) + 1);
+const scope = selectClassScope(allDegrees, allClasses.map(group => ({ ...group, studentCount: counts.get(group.id) ?? 0 })), Astro.url.searchParams);
+const roster = members.filter(member => member.classId === scope.selectedClass?.id);
+const projectOptions = projects.map(project => {
+    const students = participants.filter(student => student.projectId === project.id);
+    return { ...project, students, matches: matchRosterStudents(roster, members, students) };
+}).filter(project => project.matches.size > 0);
+const source = projectOptions.find(project => String(project.id) === Astro.url.searchParams.get("project")) ?? projectOptions[0];
+const surveyResponses = source ? await db.query.responses.findMany({ where: eq(responses.projectId, source.id) }) : [];
+const assessments = projectAssessments(surveyResponses, source?.id ?? 0);
+const snapshots = new Map(source?.students.flatMap(student => {
+    const memberId = source.matches.get(student.id);
+    return memberId === undefined ? [] : [[memberId, student] as const];
+}) ?? []);
+const nodes = roster.map(member => {
+    const snapshot = snapshots.get(member.id);
+    return {
+        id: member.id, name: member.name, email: member.email, tutor: member.tutor, division: member.division,
+        hasSurvey: Boolean(snapshot),
+        assessment: snapshot?.hasCompleted ? assessments.get(snapshot.id) : undefined,
+        hasCompleted: snapshot?.hasCompleted ?? false,
+        isExcluded: snapshot?.isExcluded ?? false,
+    };
+});
+const links = classRelationships(source?.students ?? [], surveyResponses).flatMap(link => {
+    const sourceId = source?.matches.get(link.source);
+    const targetId = source?.matches.get(link.target);
+    return sourceId === undefined || targetId === undefined ? [] : [{ ...link, source: sourceId, target: targetId }];
+});
+---
+
+<AdminLayout title="Harremanen mapa" fullScreen>
+    <section class="teacher-page graph-page" aria-labelledby="graph-heading">
+        <h1 id="graph-heading" class="sr-only">Harremanen mapa</h1>
+        <header class="graph-page-header">
+            <ClassSelector degrees={allDegrees} scope={scope} compact />
+            {projectOptions.length > 1 && <details class="graph-project-menu teacher-menu">
+                <summary aria-label="Maparen proiektua">Proiektua</summary>
+                <form method="GET" id="graph-project-form" class="teacher-menu-content">
+                    <input type="hidden" name="degree" value={scope.degree} /><input type="hidden" name="class" value={scope.selectedClass?.id} />
+                    <label for="graph-project" class="teacher-label">Proiektua</label>
+                    <select id="graph-project" name="project" class="mt-2 w-full">{projectOptions.map(project => <option value={project.id} selected={project.id === source?.id}>{project.name}</option>)}</select>
+                    <noscript><button class="teacher-button">Ikusi</button></noscript>
+                </form>
+            </details>}
+        </header>
+        <div class="graph-page-canvas">
+            {scope.selectedClass ? <ClassGraph client:load fullScreen students={nodes.filter(student => !student.isExcluded)} relationships={links} sourceLabel={source ? `${source.name} · ${source.matches.size} / ${roster.length} inkesta-erregistro` : undefined} noSurvey={!source} /> : <div class="graph-page-empty"><p class="text-sm text-slate-500">{allDegrees.length ? "Gradu honek ez du klaserik oraindik." : "Ez dago gradurik oraindik."}</p><a href={`/admin/classes?mode=edit&degree=${scope.degree}`} class="mt-4 inline-flex min-h-11 items-center text-sm text-teal-700">Klaseak kudeatu →</a></div>}
+        </div>
+    </section>
+</AdminLayout>
+<style>
+    .graph-page { height: 100%; display: flex; flex-direction: column; padding: 0; }
+    .graph-page-header { position: relative; z-index: 25; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; background: #fff; }
+    .graph-page-header :global(.graph-scope) { width: min(100%, 680px); }
+    .graph-page-canvas { flex: 1; min-height: 0; position: relative; }
+    .graph-page-canvas :global(astro-island) { display: block; height: 100%; }
+    .graph-project-menu { margin-left: auto; flex-shrink: 0; }
+    .graph-page-empty { display: grid; place-content: center; text-align: center; height: 100%; padding: 24px; }
+    @media (max-width: 1023px) { .graph-page-header { padding-left: 72px; padding-right: 16px; } }
+    @media (max-width: 639px) {
+        .graph-page-header { gap: 8px; align-items: flex-start; padding: 12px 12px 12px 64px; }
+        .graph-page-header :global(.graph-scope) { gap: 8px; }
+        .graph-page-header :global(select) { width: 100%; padding-right: 24px; font-size: 12px; }
+        .graph-project-menu { position: absolute; top: 62px; left: 12px; margin: 0; }
+        .graph-project-menu :global(summary) { font-size: 10px; padding: 4px; }
+        .graph-project-menu :global(.teacher-menu-content) { left: 0; right: auto; }
+    }
+</style>
+<script>
+    const projectForm = document.getElementById("graph-project-form") as HTMLFormElement | null;
+    projectForm?.querySelector("select")?.addEventListener("change", () => projectForm.requestSubmit());
+</script>
