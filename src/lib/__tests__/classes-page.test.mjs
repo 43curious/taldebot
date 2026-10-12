@@ -7,27 +7,24 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
-import { migrateClasses } from '../../../scripts/migrate-classes.mjs';
+import { migrateDatabase } from '../../../scripts/migrations';
+import { skillGroups } from '../skills';
 
 it('keeps class and dashboard actions available after a real login', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'taldebot-page-'));
     const db = createClient({ url: `file:${join(dir, 'test.db')}` });
     let server;
     try {
-        await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, hashed_password TEXT, role TEXT DEFAULT 'admin', full_name TEXT, email TEXT, created_at TEXT)");
+        await migrateDatabase(db);
         await db.execute({ sql: 'INSERT INTO users(username, hashed_password) VALUES (?, ?)', args: ['test', await hash('test-pass', 4)] });
-        await migrateClasses(db);
         await db.execute("INSERT INTO degrees(name) VALUES ('Media'), ('Engineering'), ('Arts')");
         await db.execute("INSERT INTO classes(name, year, degree_id) VALUES ('1. maila', 1, 1), ('Lab class', 2, 2), ('Unassigned class', 3, NULL)");
         await db.execute("INSERT INTO classes(name, year, degree_id) VALUES ('4. maila', 4, 1)");
         await db.execute("INSERT INTO class_members(class_id, name, email, tutor, division) VALUES (1, 'Ane', 'ane@example.com', 'Maite', 'sormena'), (1, 'Iker', NULL, NULL, 'digitala'), (2, 'Leire', NULL, NULL, NULL)");
         await db.execute("INSERT INTO class_members(class_id, name) VALUES (4, 'Miren')");
-        await db.execute("CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT, num_teams INTEGER, target_team_size INTEGER, project_type TEXT NOT NULL, created_at TEXT, status TEXT, admin_email TEXT, access_code TEXT)");
-        await db.execute("CREATE TABLE students (id INTEGER PRIMARY KEY, project_id INTEGER, name TEXT NOT NULL, email TEXT, has_completed INTEGER, is_excluded INTEGER)");
         await db.execute("INSERT INTO projects (id, name, project_type, status, access_code) VALUES (1, 'Film lab', 'balanced', 'active', '1234A')");
         await db.execute("INSERT INTO students (project_id, name, has_completed) VALUES (1, 'Ane', 1), (1, 'Iker', 0)");
         await db.execute("INSERT INTO students (project_id, name, has_completed, is_excluded) VALUES (1, 'Absent Student', 1, 1)");
-        await db.execute("CREATE TABLE responses (id INTEGER PRIMARY KEY, student_id INTEGER, project_id INTEGER, skills_narrative TEXT, skills_technical TEXT, skills_management TEXT, skills_soft TEXT, prefer_with TEXT, prefer_avoid TEXT, comfort TEXT, completed_at TEXT)");
         await db.execute("INSERT INTO responses (student_id, project_id, skills_narrative, skills_technical, skills_management, skills_soft, prefer_with, prefer_avoid, comfort) VALUES (1, 1, '{}', '{}', '{}', '{}', '[]', '[]', '[2]')");
         await db.execute("INSERT INTO projects (id, name, project_type, status) VALUES (2, 'New project', 'balanced', 'setup')");
         const port = await new Promise((resolve) => {
@@ -38,7 +35,7 @@ it('keeps class and dashboard actions available after a real login', async () =>
         });
         const base = `http://127.0.0.1:${port}`;
         server = spawn(process.execPath, ['node_modules/astro/bin/astro.mjs', 'dev', '--ignore-lock', '--port', String(port), '--host', '127.0.0.1'], {
-            env: { ...process.env, NODE_ENV: 'development', VITEST: '', VITEST_WORKER_ID: '', TURSO_CONNECTION_URL: `file:${join(dir, 'test.db')}`, TURSO_AUTH_TOKEN: '' },
+            env: { ...process.env, NODE_ENV: 'development', VITEST: '', VITEST_WORKER_ID: '', LOCAL_DATABASE_URL: `file:${join(dir, 'test.db')}`, TURSO_CONNECTION_URL: '', TURSO_AUTH_TOKEN: '' },
             stdio: ['ignore', 'pipe', 'pipe'],
         });
         let serverOutput = '';
@@ -60,6 +57,15 @@ it('keeps class and dashboard actions available after a real login', async () =>
         expect(login.status).toBe(302);
         const cookie = login.headers.get('set-cookie')?.split(';')[0];
         expect(cookie).toMatch(/^astro-session=/);
+        const malformedDeletion = await fetch(`${base}/api/admin/delete-project`, {
+            method: 'POST', headers: { cookie, origin: base, 'content-type': 'application/json' }, body: JSON.stringify({ projectId: true }),
+        });
+        expect(malformedDeletion.status).toBe(400);
+        expect((await db.execute('SELECT COUNT(*) AS n FROM projects')).rows[0].n).toBe(2);
+        const malformedReset = await fetch(`${base}/api/admin/reset-student?projectId=1&studentId=2x`, {
+            method: 'POST', headers: { cookie, origin: base },
+        });
+        expect(malformedReset.status).toBe(400);
         const entry = await (await fetch(`${base}/admin/classes`, { headers: { cookie } })).text();
         expect(entry).toContain('id="scope-degree"');
         expect(entry).toContain('Leire');
@@ -103,6 +109,37 @@ it('keeps class and dashboard actions available after a real login', async () =>
         const fourthYear = await classPage('degree=1&class=4');
         expect(fourthYear).toContain('Miren');
         expect(fourthYear).not.toContain('ane@example.com');
+        // Both public locales render the shared survey and use the same validated route.
+        for (const lang of ['eu', 'en']) {
+            const prefix = lang === 'en' ? '/en' : '';
+            const survey = await fetch(`${base}${prefix}/student/form/1234A?studentId=2`);
+            expect(survey.status).toBe(200);
+            const html = await survey.text();
+            expect(html).toContain(`lang="${lang}"`);
+            expect(html).toContain(`name="lang" value="${lang}"`);
+            expect(html).toMatch(/value="2" selected/);
+            expect(html.match(/<select[^>]*id="studentSelect"[\s\S]*?<\/select>/)[0]).not.toContain('Absent Student');
+            expect(html).toContain(lang === 'en' ? 'Who are you?' : 'Nor zara?');
+            const missing = await fetch(`${base}${prefix}/student/form/9999Z`, { redirect: 'manual' });
+            expect(missing.headers.get('location')).toBe(`${prefix}/?error=not_found`);
+            const data = new URLSearchParams({
+                projectId: '1', studentId: '2', lang, email: 'iker@example.com', comfort: '[1]', preferWith: '[]', preferAvoid: '[]',
+                ...Object.fromEntries(skillGroups.flatMap(group => group.keys.map(key => [`${group.prefix}_${key}`, '5']))),
+            });
+            const malformed = new URLSearchParams(data);
+            malformed.set('comfort', '[999]');
+            const invalid = await fetch(`${base}/api/student/submit-form`, { method: 'POST', headers: { origin: base }, body: malformed, redirect: 'manual' });
+            expect(invalid.status).toBe(400);
+            expect(invalid.headers.get('content-type')).toContain('application/json');
+            const submitted = await fetch(`${base}/api/student/submit-form`, { method: 'POST', headers: { origin: base }, body: data, redirect: 'manual' });
+            expect(submitted.status).toBe(302);
+            expect(submitted.headers.get('location')).toBe(`${prefix}/student/confirmation`);
+            const duplicate = await fetch(`${base}/api/student/submit-form`, { method: 'POST', headers: { origin: base }, body: data, redirect: 'manual' });
+            expect(duplicate.status).toBe(400);
+            const reset = await fetch(`${base}/api/admin/reset-student?projectId=1&studentId=2`, { method: 'POST', headers: { cookie, origin: base } });
+            expect(reset.status).toBe(200);
+        }
+
         const standaloneGraph = await (await fetch(`${base}/admin/graph?degree=1&class=1`, { headers: { cookie } })).text();
         expect(standaloneGraph).toContain('Klasearen harremanen mapa');
         expect(standaloneGraph).toContain('Film lab');

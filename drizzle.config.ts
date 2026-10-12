@@ -1,13 +1,8 @@
 import { defineConfig } from 'drizzle-kit';
-import * as dotenv from 'dotenv';
-dotenv.config();
 
+// Generation only. Applying changes requires an explicit target via db:migrate.
 export default defineConfig({
     schema: './db/schema.ts',
-    out: './drizzle',
+    out: './db/migrations',
     dialect: 'turso',
-    dbCredentials: {
-        url: process.env.TURSO_CONNECTION_URL || 'file:sqlite.db',
-        authToken: process.env.TURSO_AUTH_TOKEN,
-    },
 });

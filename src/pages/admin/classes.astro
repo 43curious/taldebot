@@ -83,7 +83,7 @@ if (Astro.request.method === "POST") {
                 name,
                 email: email || null,
                 tutor: value(form, "tutor") || null,
-                division: division || null,
+                division: division === "sormena" || division === "digitala" ? division : null,
                 academicStatus: value(form, "academicStatus") || null,
                 notes: value(form, "notes") || null,
             }).where(and(eq(classMembers.id, id), eq(classMembers.classId, activeClassId)));

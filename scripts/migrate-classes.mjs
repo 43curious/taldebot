@@ -1,8 +1,7 @@
-import { createClient } from '@libsql/client';
-import { pathToFileURL } from 'node:url';
-
+/** @param {import('@libsql/client').Client | import('@libsql/client').Transaction} client
+ * @param {import('@libsql/client').Transaction | null} transaction */
 // Safe to run again: only legacy classes tables need rebuilding.
-export async function migrateClasses(client) {
+export async function migrateClasses(client, transaction = null) {
     const existing = await client.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'classes'");
     const legacy = existing.rows[0] && !/UNIQUE\s*\(\s*degree_id\s*,\s*name\s*\)/i.test(existing.rows[0].sql);
     let hasProjectClass = false;
@@ -20,7 +19,7 @@ export async function migrateClasses(client) {
         degreeColumn = (await client.execute('PRAGMA table_info(classes)')).rows.some((row) => row.name === 'degree_id');
     }
 
-    const tx = await client.transaction('write');
+    const tx = transaction ?? await client.transaction('write');
     try {
         await tx.execute(`CREATE TABLE IF NOT EXISTS degrees (
             id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -59,31 +58,9 @@ export async function migrateClasses(client) {
         }
         const violations = await tx.execute('PRAGMA foreign_key_check');
         if (violations.rows.length) throw new Error('Migration would break foreign keys');
-        await tx.commit();
+        if (!transaction) await tx.commit();
     } catch (error) {
-        await tx.rollback();
+        if (!transaction) await tx.rollback();
         throw error;
-    }
-}
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-    if (!['--local', '--remote'].includes(process.argv[2]) || process.argv.length !== 3) {
-        console.error('Usage: node scripts/migrate-classes.mjs --local|--remote');
-        process.exitCode = 1;
-    } else {
-        if (process.argv[2] === '--remote') await import('dotenv/config');
-        const url = process.argv[2] === '--local' ? 'file:sqlite.db' : process.env.TURSO_CONNECTION_URL;
-        if (!url || (process.argv[2] === '--remote' && url.startsWith('file:'))) {
-            console.error('A remote TURSO_CONNECTION_URL is required for --remote');
-            process.exitCode = 1;
-        } else {
-            const client = createClient({ url, authToken: process.argv[2] === '--remote' ? process.env.TURSO_AUTH_TOKEN : undefined });
-            try {
-                await migrateClasses(client);
-                console.log('Class schema migration complete.');
-            } finally {
-                client.close();
-            }
-        }
     }
 }

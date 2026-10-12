@@ -1,15 +1,18 @@
 import type { APIRoute } from 'astro';
+import { parseId, routeError } from '../../../lib/input';
+import { indexResponses } from '../../../lib/projectData';
 import { db } from '../../../lib/db';
 import { projects, students, responses, teams } from '../../../../db/schema';
 import { eq, and } from 'drizzle-orm';
+import { scoredSkills } from '../../../lib/skills';
 import * as XLSX from 'xlsx';
 
 export const GET: APIRoute = async ({ request }) => {
     const url = new URL(request.url);
-    const projectId = parseInt(url.searchParams.get('projectId') || '');
+    const projectId = parseId(url.searchParams.get('projectId'));
     const version = url.searchParams.get('version') || 'v2';
 
-    if (isNaN(projectId)) {
+    if (!projectId) {
         return new Response('Missing or invalid projectId', { status: 400 });
     }
 
@@ -37,10 +40,16 @@ export const GET: APIRoute = async ({ request }) => {
 
         const studentMap = new Map(allStudents.map(s => [s.id, s.name]));
 
+        const responseMap = indexResponses(allResponses);
+        const teamMap = new Map<number, typeof teams.$inferSelect>();
+        for (const team of allTeams) {
+            for (const id of team.memberIds) if (!teamMap.has(id)) teamMap.set(id, team);
+        }
+
         // --- SHEET 1: Detailed Responses (All Students) ---
         const studentRows = allStudents.map(student => {
-            const resp = allResponses.find(r => r.studentId === student.id);
-            const team = allTeams.find(t => t.memberIds.includes(student.id));
+            const resp = responseMap.get(student.id);
+            const team = teamMap.get(student.id);
 
             let average = 0;
             if (resp) {
@@ -75,21 +84,7 @@ export const GET: APIRoute = async ({ request }) => {
                 "Gustukoak": resp ? resp.preferWith.map(id => studentMap.get(id) || id).join(', ') : "---",
                 "Saihestu": resp ? resp.preferAvoid.map(id => studentMap.get(id) || id).join(', ') : "---",
                 "Ezagunak": resp ? resp.comfort.map(id => studentMap.get(id) || id).join(', ') : "---",
-                "Sormena": resp?.skillsNarrative.creativity || 0,
-                "Idazketa": resp?.skillsNarrative.writing || 0,
-                "Erreferentziak": resp?.skillsNarrative.references || 0,
-                "Komunikazioa": resp?.skillsNarrative.communication || 0,
-                "Kamera": resp?.skillsTechnical.camera || 0,
-                "Soinua": resp?.skillsTechnical.sound || 0,
-                "Edizioa": resp?.skillsTechnical.editing || 0,
-                "Plangintza": resp?.skillsManagement.planning || 0,
-                "Ekoizpena": resp?.skillsManagement.production || 0,
-                "Lidergoa": resp?.skillsSoft.leadership || 0,
-                "Entzumena": resp?.skillsSoft.listening || 0,
-                "Ekimen-gaitasuna": resp?.skillsSoft.proactivity || 0,
-                "Talde-lana": resp?.skillsSoft.teamwork || 0,
-                "Motibazioa": resp?.skillsSoft.motivation || 0,
-                "Gatazkak": resp?.skillsSoft.conflict || 0,
+                ...Object.fromEntries(scoredSkills(resp ?? {}).map(skill => [skill.label, skill.val ?? 0])),
                 "Media Orokorra": average > 0 ? average.toFixed(2) : "---",
                 "Algoritmoaren Arrazoia": personalJustification
             };
@@ -129,7 +124,6 @@ export const GET: APIRoute = async ({ request }) => {
             },
         });
     } catch (error) {
-        console.error('Export error:', error);
-        return new Response('Error exporting project data', { status: 500 });
+        return routeError(error);
     }
 };

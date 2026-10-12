@@ -106,8 +106,8 @@ export function createTeamsV1(
                     "skillsManagement",
                 ];
                 for (const cat of categories) {
-                    const skillSet = student.skills[cat];
-                    const teamSkills = team.members.map((m) => m.skills[cat]);
+                    const skillSet: Record<string, number> = student.skills[cat];
+                    const teamSkills: Record<string, number>[] = team.members.map((m) => m.skills[cat]);
 
                     let weight = 1;
                     const shortCat = cat.replace("skills", "").toLowerCase();
@@ -116,8 +116,8 @@ export function createTeamsV1(
                     else weight = 0.5;
 
                     for (const skillName in skillSet) {
-                        const val = (skillSet as any)[skillName];
-                        const teamVals = teamSkills.map((ts) => (ts as any)[skillName]);
+                        const val = skillSet[skillName];
+                        const teamVals = teamSkills.map((ts) => ts[skillName]);
                         const teamMax = teamVals.length > 0 ? Math.max(...teamVals) : 0;
                         const teamAvg =
                             teamVals.length > 0

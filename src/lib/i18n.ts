@@ -1,5 +1,10 @@
 export type Language = 'eu' | 'en';
 
+export function language(value: string | undefined): Language { return value === 'en' ? 'en' : 'eu'; }
+export function studentPath(lang: Language, path = '/'): string {
+    return lang === 'en' ? `/en${path}` : path;
+}
+
 export const translations = {
     eu: {
         // Landing page
@@ -7,11 +12,14 @@ export const translations = {
             tagline: 'Taldeak sortzen, denok bat egiteko.',
             adminAccess: 'Admin Sarbidea',
             start: 'Hasi',
-            codeError: "This code doesn't exist",
+            codeError: 'Kode hau ez da existitzen',
         },
 
         // Form - Section titles
         form: {
+            title: 'Inkesta',
+            submissionError: 'Ezin izan da inkesta bidali. Egiaztatu datuak eta saiatu berriro.',
+            submitting: 'Bidaltzen…',
             section1Title: 'Nor zara?',
             section2Title: 'Talde-dinamikak',
             section3Title: 'Gaitasun Profesionalak',
@@ -113,6 +121,9 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
 
         // Form - Section titles
         form: {
+            title: 'Form',
+            submissionError: 'Unable to submit. Check your answers and try again.',
+            submitting: 'Sending…',
             section1Title: 'Who are you?',
             section2Title: 'Group Dynamics',
             section3Title: 'Professional Skills',

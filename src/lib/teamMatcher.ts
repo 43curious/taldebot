@@ -1,12 +1,8 @@
+import type { Skills } from './skills';
 export interface StudentData {
     id: number;
     name: string;
-    skills: {
-        skillsNarrative: { creativity: number; writing: number; references: number; communication: number };
-        skillsTechnical: { camera: number; sound: number; editing: number };
-        skillsManagement: { planning: number; production: number };
-        skillsSoft: { leadership: number; listening: number; proactivity: number; teamwork: number; motivation: number; conflict: number };
-    };
+    skills: Skills;
     preferWith: number[];
     preferAvoid: number[];
     comfort: number[];
@@ -144,8 +140,8 @@ export function createTeams(
             // SKILL BALANCE
             const categories: (keyof StudentData['skills'])[] = ['skillsNarrative', 'skillsTechnical', 'skillsManagement'];
             for (const cat of categories) {
-                const skillSet = student.skills[cat];
-                const teamSkills = team.members.map(m => m.skills[cat]);
+                const skillSet: Record<string, number> = student.skills[cat];
+                const teamSkills: Record<string, number>[] = team.members.map(m => m.skills[cat]);
 
                 // Weighting based on projectType
                 let weight = 1;
@@ -155,8 +151,8 @@ export function createTeams(
                 else weight = 0.5;
 
                 for (const skillName in skillSet) {
-                    const val = (skillSet as any)[skillName];
-                    const teamVals = teamSkills.map(ts => (ts as any)[skillName]);
+                    const val = skillSet[skillName];
+                    const teamVals = teamSkills.map(ts => ts[skillName]);
                     const teamMax = teamVals.length > 0 ? Math.max(...teamVals) : 0;
                     const teamAvg = teamVals.length > 0 ? teamVals.reduce((a, b) => a + b, 0) / teamVals.length : 0;
 

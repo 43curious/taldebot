@@ -7,7 +7,7 @@ import { db } from "../../lib/db";
 import { classes, classMembers, degrees, responses } from "../../../db/schema";
 import { asc, eq } from "drizzle-orm";
 import { selectClassScope } from "../../lib/classSelection";
-import { matchRosterStudents } from "../../lib/rosterGraph";
+import { rosterMatcher } from "../../lib/rosterGraph";
 import { classRelationships } from "../../lib/tracking";
 import { projectAssessments } from "../../lib/studentReport";
 
@@ -15,16 +15,23 @@ const [allDegrees, allClasses, members, projects, participants] = await Promise.
     db.select().from(degrees).orderBy(asc(degrees.name)),
     db.select().from(classes).orderBy(asc(classes.year), asc(classes.name)),
     db.select({ id: classMembers.id, classId: classMembers.classId, name: classMembers.name, email: classMembers.email, tutor: classMembers.tutor, division: classMembers.division }).from(classMembers).orderBy(asc(classMembers.name)),
-    db.query.projects.findMany({ orderBy: (projects, { desc }) => [desc(projects.createdAt), desc(projects.id)] }),
-    db.query.students.findMany(),
+    db.query.projects.findMany({ columns: { id: true, name: true }, orderBy: (projects, { desc }) => [desc(projects.createdAt), desc(projects.id)] }),
+    db.query.students.findMany({ columns: { id: true, projectId: true, name: true, email: true, hasCompleted: true, isExcluded: true } }),
 ]);
 const counts = new Map<number, number>();
 for (const member of members) counts.set(member.classId, (counts.get(member.classId) ?? 0) + 1);
 const scope = selectClassScope(allDegrees, allClasses.map(group => ({ ...group, studentCount: counts.get(group.id) ?? 0 })), Astro.url.searchParams);
 const roster = members.filter(member => member.classId === scope.selectedClass?.id);
+const matchParticipants = rosterMatcher(roster, members);
+const participantsByProject = new Map<number | null, typeof participants>();
+for (const participant of participants) {
+    const grouped = participantsByProject.get(participant.projectId) ?? [];
+    grouped.push(participant);
+    participantsByProject.set(participant.projectId, grouped);
+}
 const projectOptions = projects.map(project => {
-    const students = participants.filter(student => student.projectId === project.id);
-    return { ...project, students, matches: matchRosterStudents(roster, members, students) };
+    const students = participantsByProject.get(project.id) ?? [];
+    return { ...project, students, matches: matchParticipants(students) };
 }).filter(project => project.matches.size > 0);
 const source = projectOptions.find(project => String(project.id) === Astro.url.searchParams.get("project")) ?? projectOptions[0];
 const surveyResponses = source ? await db.query.responses.findMany({ where: eq(responses.projectId, source.id) }) : [];

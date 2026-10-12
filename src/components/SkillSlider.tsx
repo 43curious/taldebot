@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { skillScale } from '../lib/skills';
 
 interface SkillSliderProps {
     label: string;
@@ -12,22 +13,30 @@ interface SkillSliderProps {
 export const SkillSlider: React.FC<SkillSliderProps> = ({
     label,
     name,
-    min = 1,
-    max = 10,
-    defaultValue = 5,
-    description
+    min = skillScale.min,
+    max = skillScale.max,
+    defaultValue = skillScale.defaultValue,
+    description,
 }) => {
     const [value, setValue] = useState(defaultValue);
 
     return (
         <div className="mb-6">
             <div className="flex justify-between items-center mb-1">
-                <label className="text-sm font-medium text-slate-700">{label}</label>
+                <label
+                    htmlFor={name}
+                    className="text-sm font-medium text-slate-700"
+                >
+                    {label}
+                </label>
                 <span className="text-teal-600 font-bold text-lg">{value}</span>
             </div>
-            {description && <p className="text-xs text-slate-500 mb-2">{description}</p>}
+            {description && (
+                <p className="text-xs text-slate-500 mb-2">{description}</p>
+            )}
             <input
                 type="range"
+                id={name}
                 name={name}
                 min={min}
                 max={max}

@@ -3,13 +3,14 @@ import '../styles/tailwind.css';
 
 interface Props {
 	title: string;
+    lang?: 'eu' | 'en';
 }
 
-const { title } = Astro.props;
+const { title, lang = 'eu' } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="eu">
+<html lang={lang}>
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="description" content="TaldeBOT - Taldeak Eratzeko Sistema" />

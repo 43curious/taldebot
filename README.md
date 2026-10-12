@@ -1,32 +1,84 @@
-# TaldeBot ✈️
+# TaldeBot
 
-## Zer da?
-TaldeBot talde-lanaren kudeaketa optimizatzeko tresna bat da. Haren helburu nagusia lantalde **orekatuagoak, emankorragoak eta harreman osasuntsuagoak** dituztenak sortzea da, ikasleen profil profesionalak eta pertsonalak modu adimentsuan gurutzatuz.
+Irakasleentzako tresna: klaseetako ikasleak kudeatzeko, proiektuen inkestak jarraitzeko eta taldeak osatzeko. Astro SSR, React, Tailwind, Drizzle eta LibSQL erabiltzen ditu; argitalpena Netlify-n egiten da.
 
-## Nola funtzionatzen du? (Algoritmoa)
-TaldeBot-ek hiru geruzatako algoritmo bat erabiltzen du taldeak osatzeko:
+## Tokiko konfigurazioa
 
-1.  **Gaitasunen Normalizazioa**: Ikasle bakoitzaren auto-ebaluazioak aztertzen ditu (narratiba, teknika, kudeaketa eta soft-skill-ak), bakoitzaren "power-up" edo indargune nagusiak identifikatzeko.
-2.  **Fit Score (Egokitasuna)**: Proiektu bakoitzak helburu ezberdin bat du (adib. teknikoagoa edo sortzaileagoa). Algoritmoak ikasle bakoitzaren profila proiektuaren izaerarekin alderatzen du.
-3.  **Optimizazio Gurutzatua**: Hau da gakoa. Binaka aztertzen ditu ikasleak:
-    -   **Gaitasun osagarriak**: Talde bakoitzean profil ezberdinak (gidoilaria, editorea, ekoizlea...) daudela bermatzen du.
-    -   **Harreman dinamikak**: Ikasleak adierazitako "Konfort-Zona" (norekin lan egin nahi duen) eta "Mugak" (nor saihestu nahi duen) kontuan hartzen ditu blokeoak ekiditeko.
+Node **22.12 edo berriagoa** eta npm behar dira. Ez da Turso konturik behar tokian lan egiteko.
 
-## Nork erabili dezake?
--   **Irakasleek/Administratzaileek**: Proiektuak sortu, ikasleen parte-hartzea monitorizatu eta algoritmoari botoia sakatuz taldeak automatikoki sortzeko.
--   **Ikasleek**: Beraien profilaren fitxa osatzeko eta talde-hobespenak modu pribatu eta seguruan adierazteko.
+```sh
+npm ci
+cp .env.example .env
+npm run db:migrate -- --local
+```
 
-## Teknologia Pilatua
-- **Framework**: Astro (SSR)
-- **Frontend**: React + Tailwind CSS
-- **Datu-basea**: Turso (SQLite/LibSQL)
-- **ORM**: Drizzle ORM
-- **Inplementazioa**: Netlify
+Jarri `INITIAL_ADMIN_PASSWORD` `.env` fitxategian eta sortu lehen administratzailea:
 
-## Klaseen datu-basea eguneratu
+```sh
+npm run db:admin -- --local
+npm run dev
+```
 
-Klaseen orria argitaratu **aurretik**, egin Turso datu-basearen babeskopia eta exekutatu `node scripts/migrate-classes.mjs --remote` (`TURSO_CONNECTION_URL` eta `TURSO_AUTH_TOKEN` behar dira). Scriptak dauden klaseak, ikasleak eta proiektuen loturak gordetzen ditu; berriro exekutatzea segurua da. Tokiko datu-basea prestatzeko: `node scripts/migrate-classes.mjs --local` (honek `sqlite.db` aldatzen du).
+Ireki `http://localhost:4321/admin/login`. Erabiltzailea `admin` da, `INITIAL_ADMIN_USERNAME` aldatu ezean. Kontua badago, komandoak ez du pasahitza aldatzen. Pasahitza berrezartzeko, ezarri balio berria `.env` fitxategian eta exekutatu:
 
-Administratzaileek berriz hasi beharko dute saioa argitaratu ondoren; aurreko `admin_session` cookieak ez du balio.
+```sh
+npm run db:admin -- --local --reset-password
+```
 
+Datu sintetikoak aukeran:
 
+```sh
+npm run db:seed -- --local
+```
+
+Demo proiektuaren kodea `1234D` da. Komandoak ez du urruneko datu-baserik aldatzen, eta berriro exekutatzean dagoen demoa mantentzen du.
+
+## Komandoak eta konfigurazioa
+
+CLI komandoek `.env` irakurtzen dute. Astro-k garapenean `.env` kargatzen du; argitaratutako aplikazioak zerbitzariaren ingurune-aldagaiak erabiltzen ditu. Ikusi [.env.example](.env.example).
+
+| Komandoa | Helburua eta baldintzak |
+| --- | --- |
+| `npm run dev` | Astro garapen-zerbitzaria; tokiko DB erabiltzen du Turso konfiguraziorik gabe. |
+| `npm run db:migrate -- --local` | Eskema osoa sortu edo eguneratu; `LOCAL_DATABASE_URL` (`file:sqlite.db` lehenetsita). Migrazio aplikatuak erregistratzen ditu. |
+| `npm run db:migrate -- --remote` | Turso eguneratu; `TURSO_CONNECTION_URL` eta `TURSO_AUTH_TOKEN` derrigorrezkoak. Egin babeskopia lehenago. |
+| `npm run db:admin -- --local` | Lehen master kontua sortu; `INITIAL_ADMIN_PASSWORD` behar du. `--remote` ere onartzen du. |
+| `npm run db:admin -- --local --reset-password` | Dagoen kontuaren pasahitza berrezarri; ez du rola aldatzen. |
+| `npm run db:seed -- --local` | Aukerako demoa; migrazioak lehenago aplikatu. |
+| `npm run db:generate` | `db/schema.ts`-ren aldaketetatik SQL migrazioa sortu; ez da DB batera konektatzen. Berrikusi SQL-a aplikatu aurretik. |
+| `npm run check` | TypeScript eta Astro txantiloien egiaztapena. |
+| `npm test` | Vitest; datu-base eta zerbitzari probek aldi baterako datu sintetikoak erabiltzen dituzte. |
+| `npm run build` | Netlify-rako SSR aplikazioa eraiki. |
+| `npm run benchmark:data` | Aldi baterako DB batean jatorrizko eta egungo datu-karga alderatu. |
+| `npm run format -- path/to/file` | Prettier-en konbentzioa aplikatu. Formatu-aldaketa masiboak aparte egin. |
+
+`--local` komandoek beti tokiko fitxategia erabiltzen dute, Turso kredentzialak egonda ere. `--remote` ez da inoiz automatikoki aukeratzen. Komando okerrek edo huts egindako idazketek irteera-kode ez-zeroa ematen dute. Pasahitzak ez dira inprimatzen.
+
+SMTP aukerakoa da: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`. Hostik gabe, jakinarazpenak tokian simulatzen dira. Argitaratzean bete SMTP konfigurazioa mezu errealak bidaltzeko.
+
+## Dauden instalazioak eta argitalpena
+
+Ez ezabatu zure `sqlite.db`: jada ez da versionatzen, baina tokiko kopia mantentzen da. Lehen migrazioak aurreko instalazio ezagunak hartzen ditu, klaseak eta proiektuen loturak gordez. Bertsio-zutaberik ez zuten taldeak bakarrik markatzen ditu `v1` gisa; dauden `v2` taldeak mantentzen ditu. Eskema ezezagunen aurrean huts egiten du, aldaketak deseginez. Xehetasunak: [arkitektura eta migrazioak](docs/architecture.md).
+
+Netlify-k `npm run build` exekutatzen du. Konfiguratu Turso-ren bi aldagaiak Netlify-n eta aplikatu migrazioak argitaratu **aurretik**. Produkzioan DB konfigurazio faltak errorea eragiten du; ez du tokiko DB huts batera jotzen. Ez dira migrazioak automatikoki exekutatzen eskaeretan edo build-ean.
+
+Saioak 8 ordukoak dira: tokian `.astro/sessions`, Netlify-n Blobs. Cookie zaharrak (`admin_session`) ez dira onartzen; berriro hasi saioa.
+
+## Egiaztatu eta versionatu
+
+```sh
+npm run check
+npm test
+npm run build
+```
+
+[CI-k](.github/workflows/check.yml) komando berdinak exekutatzen ditu, DB sintetiko batekin eta Turso/SMTP kredentzialik gabe. `sqlite.db`, bere sidecar-ak, `.env*`, `.astro/`, `.netlify/`, `dist/` eta `node_modules/` sortutako edo tokiko fitxategiak dira. Versionatu iturri-kodea, `package-lock.json`, `.env.example` eta `db/migrations/`-eko SQL/snapshot/journal fitxategiak. Ez aldatu jada aplikatutako migrazioak.
+
+## Dokumentazioa
+
+- [Irakaslearen gida](docs/teacher-guide.md): klaseak, inkestak, taldeak eta esportazioak.
+- [Arkitektura](docs/architecture.md): moduluak, datuak, saioak eta migrazioak.
+- [Garapen-irizpideak](AGENTS.md): diseinua eta inplementazioa.
+- [Cleanup neurketak](docs/cleanup-measurements.md).
+
+Etengabeko ikasle-jarraipenaren domeinu-aldaketak [#3](https://github.com/43curious/taldebot/issues/3) issuean daude; cleanup honek egungo proiektu-mugak mantentzen ditu.

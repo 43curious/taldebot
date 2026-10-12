@@ -12,7 +12,10 @@ interface GroupDynamicsProps {
     lang?: Language;
 }
 
-export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options, lang = 'eu' }) => {
+export const GroupDynamics: React.FC<GroupDynamicsProps> = ({
+    options,
+    lang = 'eu',
+}) => {
     const [comfort, setComfort] = useState<number[]>([]);
     const [preferWith, setPreferWith] = useState<number[]>([]);
     const [preferAvoid, setPreferAvoid] = useState<number[]>([]);
@@ -21,18 +24,27 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({ options, lang = 'e
     const tr = t(lang).groupDynamics;
 
     React.useEffect(() => {
-        const handleStudentSelected = (e: any) => {
+        const handleStudentSelected = (
+            e: WindowEventMap['student-selected'],
+        ) => {
             setSelfId(e.detail.studentId);
 
             // Clear selections if they happen to be the selfId (safety check)
             const sid = e.detail.studentId;
-            setComfort(prev => prev.filter(id => id !== sid));
-            setPreferWith(prev => prev.filter(id => id !== sid));
-            setPreferAvoid(prev => prev.filter(id => id !== sid));
+            setComfort((prev) => prev.filter((id) => id !== sid));
+            setPreferWith((prev) => prev.filter((id) => id !== sid));
+            setPreferAvoid((prev) => prev.filter((id) => id !== sid));
         };
 
         window.addEventListener('student-selected', handleStudentSelected);
-        return () => window.removeEventListener('student-selected', handleStudentSelected);
+        const select =
+            document.querySelector<HTMLSelectElement>('#studentSelect');
+        if (select?.value) setSelfId(Number(select.value));
+        return () =>
+            window.removeEventListener(
+                'student-selected',
+                handleStudentSelected,
+            );
     }, []);
 
     const baseExclusions = selfId !== null ? [selfId] : [];

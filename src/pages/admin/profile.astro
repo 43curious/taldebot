@@ -19,7 +19,7 @@ if (Astro.request.method === "POST") {
         const password = formData.get("password")?.toString();
 
         if (currentUser) {
-            const updates: any = {};
+            const updates: Partial<typeof users.$inferInsert> = {};
             if (username) updates.username = username;
             if (password) updates.hashedPassword = await hashPassword(password);
 

@@ -14,8 +14,16 @@ pnpm-debug.log*
 
 
 # environment variables
-.env
-.env.production
+.env*
+!.env.example
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
 
 # macOS-specific files
 .DS_Store

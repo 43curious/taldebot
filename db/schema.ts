@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer, blob, unique } from 'drizzle-orm/sqlite-core';
+import type { Skills } from '../src/lib/skills';
+import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 export const degrees = sqliteTable('degrees', {
@@ -58,29 +59,10 @@ export const responses = sqliteTable('responses', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   studentId: integer('student_id').references(() => students.id, { onDelete: 'cascade' }),
   projectId: integer('project_id').references(() => projects.id, { onDelete: 'cascade' }),
-  skillsNarrative: text('skills_narrative', { mode: 'json' }).$type<{
-    creativity: number;
-    writing: number;
-    references: number;
-    communication: number;
-  }>().notNull(),
-  skillsTechnical: text('skills_technical', { mode: 'json' }).$type<{
-    camera: number;
-    sound: number;
-    editing: number;
-  }>().notNull(),
-  skillsManagement: text('skills_management', { mode: 'json' }).$type<{
-    planning: number;
-    production: number;
-  }>().notNull(),
-  skillsSoft: text('skills_soft', { mode: 'json' }).$type<{
-    leadership: number;
-    listening: number;
-    proactivity: number;
-    teamwork: number;
-    motivation: number;
-    conflict: number;
-  }>().notNull(),
+  skillsNarrative: text('skills_narrative', { mode: 'json' }).$type<Skills['skillsNarrative']>().notNull(),
+  skillsTechnical: text('skills_technical', { mode: 'json' }).$type<Skills['skillsTechnical']>().notNull(),
+  skillsManagement: text('skills_management', { mode: 'json' }).$type<Skills['skillsManagement']>().notNull(),
+  skillsSoft: text('skills_soft', { mode: 'json' }).$type<Skills['skillsSoft']>().notNull(),
   preferWith: text('prefer_with', { mode: 'json' }).$type<number[]>().notNull(),
   preferAvoid: text('prefer_avoid', { mode: 'json' }).$type<number[]>().notNull(),
   comfort: text('comfort', { mode: 'json' }).$type<number[]>().notNull(),

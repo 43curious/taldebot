@@ -2,36 +2,10 @@
 export const prerender = false;
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { db } from "../../lib/db";
-import { students } from "../../../db/schema";
-import { sql, eq } from "drizzle-orm";
-
-const allProjects = await db.query.projects.findMany({
-    orderBy: (projects, { desc }) => [desc(projects.createdAt)],
-});
+import { loadDashboard } from "../../lib/projectData";
 
 const adminUser = (await Astro.session?.get<string>('adminUser')) || "Admin";
-
-// Fetch completion stats for each project
-const projectStats = await Promise.all(
-    allProjects.map(async (p) => {
-        const result = await db
-            .select({
-                total: sql<number>`sum(case when coalesce(${students.isExcluded}, 0) = 0 then 1 else 0 end)`,
-                completed: sql<number>`sum(case when ${students.hasCompleted} = 1 and coalesce(${students.isExcluded}, 0) = 0 then 1 else 0 end)`,
-            })
-            .from(students)
-            .where(eq(students.projectId, p.id));
-
-        return {
-            ...p,
-            totalStudents: result[0]?.total || 0,
-            completedStudents: result[0]?.completed || 0,
-            percentage: result[0]?.total
-                ? Math.round((result[0].completed / result[0].total) * 100)
-                : 0,
-        };
-    }),
-);
+const projectStats = await loadDashboard(db);
 ---
 
 <AdminLayout title="Arbel nagusia">

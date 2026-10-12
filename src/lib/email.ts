@@ -1,13 +1,6 @@
 import nodemailer from 'nodemailer';
 
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.example.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    auth: {
-        user: process.env.SMTP_USER || 'user@example.com',
-        pass: process.env.SMTP_PASS || 'password',
-    },
-});
+import { smtpConfig } from './config';
 
 export interface TeamAssignmentEmail {
     to: string;
@@ -22,11 +15,14 @@ export async function sendTeamNotification(data: TeamAssignmentEmail) {
     const { to, studentName, projectName, teamNumber, members } = data;
 
     // Check if email is configured
-    if (!process.env.SMTP_HOST) {
+    const config = smtpConfig({ ...import.meta.env, ...process.env });
+    if (!config) {
         console.log('--- EMAIL SIMULATION (SMTP_HOST not set) ---');
         console.log(`To: ${to}`);
         console.log(`Subject: ${projectName} proiekturako zure taldea`);
-        console.log(`Body: Kaixo ${studentName}, ${projectName} proiektuan talde honetan zaude: ${teamNumber}...`);
+        console.log(
+            `Body: Kaixo ${studentName}, ${projectName} proiektuan talde honetan zaude: ${teamNumber}...`,
+        );
         console.log('-------------------------------------------');
         return { success: true };
     }
@@ -55,7 +51,7 @@ Zorte on proiektuarekin!
           <h2 style="margin-top: 0;">${teamNumber}. taldea</h2>
           <p><strong>Zure taldekideak:</strong></p>
           <ul>
-            ${members.map(m => `<li>${m}</li>`).join('')}
+            ${members.map((m) => `<li>${m}</li>`).join('')}
           </ul>
         </div>
         
@@ -67,7 +63,7 @@ Zorte on proiektuarekin!
     };
 
     try {
-        await transporter.sendMail(mailOptions);
+        await nodemailer.createTransport(config).sendMail(mailOptions);
         console.log(`Email sent to ${to}`);
         return { success: true };
     } catch (error) {

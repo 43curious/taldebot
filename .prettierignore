@@ -1,0 +1,5 @@
+package-lock.json
+db/migrations/
+dist/
+.astro/
+.netlify/

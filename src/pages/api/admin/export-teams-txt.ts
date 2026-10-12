@@ -1,14 +1,15 @@
 import type { APIRoute } from 'astro';
+import { parseId, routeError } from '../../../lib/input';
 import { db } from '../../../lib/db';
 import { projects, students, teams } from '../../../../db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 export const GET: APIRoute = async ({ request }) => {
     const url = new URL(request.url);
-    const projectId = parseInt(url.searchParams.get('projectId') || '');
+    const projectId = parseId(url.searchParams.get('projectId'));
     const version = url.searchParams.get('version') || 'v2';
 
-    if (isNaN(projectId)) {
+    if (!projectId) {
         return new Response('Missing or invalid projectId', { status: 400 });
     }
 
@@ -21,18 +22,26 @@ export const GET: APIRoute = async ({ request }) => {
         const projectTeams = await db.query.teams.findMany({
             where: and(
                 eq(teams.projectId, projectId),
-                eq(teams.algorithmVersion, version)
+                eq(teams.algorithmVersion, version),
             ),
             orderBy: (teams, { asc }) => [asc(teams.teamNumber)],
         });
 
+        const participants = await db.query.students.findMany({
+            where: eq(students.projectId, projectId),
+        });
+        const membersById = new Map(
+            participants.map((student) => [student.id, student]),
+        );
         let textContent = `${project.name.toUpperCase()} - TALDEEN ZERRENDA\n`;
-        textContent += "=".repeat(textContent.length - 1) + "\n\n";
+        textContent += '='.repeat(textContent.length - 1) + '\n\n';
 
         for (const team of projectTeams) {
-            const memberData = await db.query.students.findMany({
-                where: inArray(students.id, team.memberIds),
-            });
+            const memberData = team.memberIds
+                .map((id) => membersById.get(id))
+                .filter((member): member is NonNullable<typeof member> =>
+                    Boolean(member),
+                );
 
             // SORTING LOGIC: Alphabetical by first surname
             // Heuristic: Take the first word after the first space as the surname.
@@ -40,17 +49,19 @@ export const GET: APIRoute = async ({ request }) => {
             const sortedMembers = memberData.sort((a, b) => {
                 const getSurname = (name: string) => {
                     const parts = name.trim().split(/\s+/);
-                    return parts.length > 1 ? parts[1].toLowerCase() : parts[0].toLowerCase();
+                    return parts.length > 1
+                        ? parts[1].toLowerCase()
+                        : parts[0].toLowerCase();
                 };
                 return getSurname(a.name).localeCompare(getSurname(b.name));
             });
 
             textContent += `TALDEA ${team.teamNumber}\n`;
-            textContent += "-".repeat(10) + "\n";
-            sortedMembers.forEach(m => {
+            textContent += '-'.repeat(10) + '\n';
+            sortedMembers.forEach((m) => {
                 textContent += `• ${m.name}\n`;
             });
-            textContent += "\n";
+            textContent += '\n';
         }
 
         return new Response(textContent, {
@@ -61,7 +72,6 @@ export const GET: APIRoute = async ({ request }) => {
             },
         });
     } catch (error) {
-        console.error('Text export error:', error);
-        return new Response('Error exporting text file', { status: 500 });
+        return routeError(error);
     }
 };

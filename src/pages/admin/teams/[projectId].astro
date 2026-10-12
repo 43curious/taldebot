@@ -2,9 +2,11 @@
 export const prerender = false;
 import AdminLayout from "../../../layouts/AdminLayout.astro";
 import { db } from "../../../lib/db";
-import { projects, teams } from "../../../../db/schema";
+import { projects, teams, students, responses } from "../../../../db/schema";
 import { eq, and } from "drizzle-orm";
 import TeamCard from "../../../components/TeamCard.astro";
+
+import { teamMembers } from "../../../lib/projectData";
 
 const pid = Number(Astro.params.projectId);
 const selectedVersion = Astro.url.searchParams.get("version") === "v1" ? "v1" : "v2";
@@ -15,6 +17,12 @@ const projectTeams = await db.query.teams.findMany({
     where: and(eq(teams.projectId, pid), eq(teams.algorithmVersion, selectedVersion)),
     orderBy: (teams, { asc }) => [asc(teams.teamNumber)],
 });
+const [participants, records] = await Promise.all([
+    db.query.students.findMany({ where: eq(students.projectId, pid), orderBy: (row, { asc }) => [asc(row.id)] }),
+    db.query.responses.findMany({ where: eq(responses.projectId, pid) }),
+]);
+const members = teamMembers(participants, records);
+const cards = projectTeams.map(team => ({ ...team, membersWithSkills: team.memberIds.map(id => members.get(id)).filter((member): member is NonNullable<typeof member> => Boolean(member)).sort((a, b) => a.id - b.id) }));
 const generateUrl = `/api/admin/generate-teams?projectId=${pid}&version=${selectedVersion}`;
 const generationError = Astro.url.searchParams.get("error") === "no-students";
 ---
@@ -41,7 +49,7 @@ const generationError = Astro.url.searchParams.get("error") === "no-students";
         </details>
         {generationError && <p role="alert" class="mb-4 text-sm text-amber-700">Gehitu ikasleak proiektuan taldeak sortu aurretik.</p>}
         <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3 print:grid-cols-2">
-            {projectTeams.map(team => <TeamCard teamNumber={team.teamNumber} memberIds={team.memberIds} justification={team.justification} />)}
+            {cards.map(team => <TeamCard teamNumber={team.teamNumber} membersWithSkills={team.membersWithSkills} justification={team.justification} />)}
             {projectTeams.length === 0 && <div class="teacher-panel col-span-full p-10 text-center">
                 <h2 class="text-base text-slate-800">Ez dago talderik sortuta oraindik.</h2>
                 <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">Sortu taldeak ikasleen gaitasunak eta lan-hobespenak erabiliz. Erantzun gabeko ikasleek batez besteko profila erabiliko dute.</p>

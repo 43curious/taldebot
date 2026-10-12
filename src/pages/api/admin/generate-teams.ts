@@ -1,9 +1,18 @@
 import type { APIRoute } from 'astro';
+import { indexResponses } from '../../../lib/projectData';
 import { db } from '../../../lib/db';
-import { projects, students, responses, teamHistory, teams as teamsTable } from '../../../../db/schema';
-import { eq, and } from 'drizzle-orm';
+import {
+    projects,
+    students,
+    responses,
+    teamHistory,
+} from '../../../../db/schema';
+import { eq } from 'drizzle-orm';
 import { createTeams, type StudentData } from '../../../lib/teamMatcher';
 import { createTeamsV1 } from '../../../lib/teamMatcherV1';
+
+import { parseId, routeError } from '../../../lib/input';
+import { replaceTeams } from '../../../lib/projectOperations';
 
 type AlgorithmVersion = 'v1' | 'v2';
 
@@ -15,10 +24,10 @@ function getRequestedAlgorithmVersion(requestUrl: string): AlgorithmVersion {
 
 export const POST: APIRoute = async ({ request, redirect }) => {
     const url = new URL(request.url);
-    const projectId = parseInt(url.searchParams.get('projectId') || '');
+    const projectId = parseId(url.searchParams.get('projectId'));
     const algorithmVersion = getRequestedAlgorithmVersion(request.url);
 
-    if (isNaN(projectId)) {
+    if (!projectId) {
         return new Response('Invalid project ID', { status: 400 });
     }
 
@@ -34,7 +43,9 @@ export const POST: APIRoute = async ({ request, redirect }) => {
             where: eq(students.projectId, projectId),
         });
         if (allStudents.length === 0) {
-            return redirect(`/admin/teams/${projectId}?version=${algorithmVersion}&error=no-students`);
+            return redirect(
+                `/admin/teams/${projectId}?version=${algorithmVersion}&error=no-students`,
+            );
         }
 
         const allResponses = await db.query.responses.findMany({
@@ -43,12 +54,13 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
         // 3. Fetch history
         const history = await db.query.teamHistory.findMany({
-            where: eq(teamHistory.projectId, projectId), // Or a more global history if available
+            where: eq(teamHistory.projectId, projectId),
         });
 
         // 4. Prepare data for the algorithm
-        const studentDataList: StudentData[] = allStudents.map(student => {
-            const resp = allResponses.find(r => r.studentId === student.id);
+        const responsesByStudent = indexResponses(allResponses);
+        const studentDataList: StudentData[] = allStudents.map((student) => {
+            const resp = responsesByStudent.get(student.id);
 
             if (resp) {
                 return {
@@ -71,10 +83,22 @@ export const POST: APIRoute = async ({ request, redirect }) => {
                     id: student.id,
                     name: student.name,
                     skills: {
-                        skillsNarrative: { creativity: 5, writing: 5, references: 5, communication: 5 },
+                        skillsNarrative: {
+                            creativity: 5,
+                            writing: 5,
+                            references: 5,
+                            communication: 5,
+                        },
                         skillsTechnical: { camera: 5, sound: 5, editing: 5 },
                         skillsManagement: { planning: 5, production: 5 },
-                        skillsSoft: { leadership: 5, listening: 5, proactivity: 5, teamwork: 5, motivation: 5, conflict: 5 },
+                        skillsSoft: {
+                            leadership: 5,
+                            listening: 5,
+                            proactivity: 5,
+                            teamwork: 5,
+                            motivation: 5,
+                            conflict: 5,
+                        },
                     },
                     preferWith: [],
                     preferAvoid: [],
@@ -87,42 +111,44 @@ export const POST: APIRoute = async ({ request, redirect }) => {
         // 5. Calculate number of teams
         let numTeams = project.numTeams;
         if (!numTeams && project.targetTeamSize) {
-            const activeCount = studentDataList.filter(s => !s.isExcluded).length;
-            numTeams = Math.max(2, Math.round(activeCount / project.targetTeamSize));
+            const activeCount = studentDataList.filter(
+                (s) => !s.isExcluded,
+            ).length;
+            numTeams = Math.max(
+                2,
+                Math.round(activeCount / project.targetTeamSize),
+            );
         }
 
         if (!numTeams) {
-            return new Response('Project configuration missing team count or size', { status: 400 });
+            return new Response(
+                'Project configuration missing team count or size',
+                { status: 400 },
+            );
         }
 
         // 6. Run requested algorithm version on persisted responses
         const generatedTeams =
             algorithmVersion === 'v1'
-                ? createTeamsV1(studentDataList, numTeams, project.projectType, history)
-                : createTeams(studentDataList, numTeams, project.projectType, history);
+                ? createTeamsV1(
+                      studentDataList,
+                      numTeams,
+                      project.projectType,
+                      history,
+                  )
+                : createTeams(
+                      studentDataList,
+                      numTeams,
+                      project.projectType,
+                      history,
+                  );
 
-        // 7. Save to database
-        // Clear only the version being regenerated; keep the other one for comparison.
-        await db.delete(teamsTable).where(
-            and(
-                eq(teamsTable.projectId, projectId),
-                eq(teamsTable.algorithmVersion, algorithmVersion)
-            )
+        await replaceTeams(db, projectId, algorithmVersion, generatedTeams);
+
+        return redirect(
+            `/admin/teams/${projectId}?version=${algorithmVersion}`,
         );
-
-        const insertChunks = generatedTeams.map(t => ({
-            projectId,
-            teamNumber: t.teamNumber,
-            memberIds: t.memberIds,
-            justification: t.justification,
-            algorithmVersion,
-        }));
-
-        await db.insert(teamsTable).values(insertChunks);
-
-        return redirect(`/admin/teams/${projectId}?version=${algorithmVersion}`);
     } catch (error) {
-        console.error('Team generation error:', error);
-        return new Response('Error generating teams', { status: 500 });
+        return routeError(error);
     }
 };

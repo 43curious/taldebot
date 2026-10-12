@@ -1,40 +1,48 @@
-import * as dotenv from 'dotenv';
-dotenv.config();
-
-import { db } from '../src/lib/db';
+import { eq } from 'drizzle-orm';
+import { hash } from 'bcryptjs';
 import { users } from '../db/schema';
-import { hashPassword } from '../src/lib/auth';
+import { withDatabase, reportFailure } from './database';
 
-
-async function createAdmin() {
-    const username = 'admin';
+withDatabase(async (db, _client, args) => {
+    if (
+        args.length > 1 ||
+        (args.length === 1 && args[0] !== '--reset-password')
+    ) {
+        throw new Error(
+            'Usage: npm run db:admin -- --local|--remote [--reset-password]',
+        );
+    }
+    const username = process.env.INITIAL_ADMIN_USERNAME || 'admin';
     const password = process.env.INITIAL_ADMIN_PASSWORD;
-
-    if (!password) {
-        console.error('❌ Error: INITIAL_ADMIN_PASSWORD not set in .env');
-        process.exit(1);
-    }
-
-    console.log(`🚀 Creating admin user: ${username}...`);
-
-    try {
-        const hashedPassword = await hashPassword(password);
-
-        await db.insert(users).values({
-            username,
-            hashedPassword,
-            role: 'master',
-            fullName: 'Administrator',
-            email: process.env.SMTP_USER || 'admin@example.com',
-        }).onConflictDoUpdate({
-            target: users.username,
-            set: { hashedPassword }
+    if (!password) throw new Error('INITIAL_ADMIN_PASSWORD is required');
+    await db.transaction(async (tx) => {
+        const existing = await tx.query.users.findFirst({
+            where: eq(users.username, username),
         });
-
-        console.log('✅ Admin user created/updated successfully!');
-    } catch (error) {
-        console.error('❌ Error creating admin user:', error);
-    }
-}
-
-createAdmin();
+        if (args.includes('--reset-password')) {
+            if (!existing)
+                throw new Error(
+                    'Account does not exist; create it without --reset-password',
+                );
+            await tx
+                .update(users)
+                .set({ hashedPassword: await hash(password, 10) })
+                .where(eq(users.id, existing.id));
+            console.log('Administrator password reset.');
+        } else {
+            if (existing) {
+                console.log('Account already exists; password unchanged.');
+                return;
+            }
+            await tx
+                .insert(users)
+                .values({
+                    username,
+                    hashedPassword: await hash(password, 10),
+                    role: 'master',
+                    fullName: 'Administrator',
+                });
+            console.log('Administrator created.');
+        }
+    });
+}).catch(reportFailure);
