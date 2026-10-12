@@ -1,11 +1,13 @@
 import { sql } from 'drizzle-orm';
 import { students, responses } from '../../db/schema';
 import type { AppDatabase } from './db';
+import { projectFilter, type TeacherAccess } from './access';
 import { scoredSkills } from './skills';
 
-export async function loadDashboard(db: AppDatabase) {
+export async function loadDashboard(db: AppDatabase, access?: TeacherAccess) {
     const [projects, counts] = await Promise.all([
         db.query.projects.findMany({
+            where: access ? projectFilter(access) : undefined,
             orderBy: (row, { desc }) => [desc(row.createdAt)],
         }),
         db
@@ -37,7 +39,8 @@ export async function loadDashboard(db: AppDatabase) {
 export function indexResponses(records: (typeof responses.$inferSelect)[]) {
     const index = new Map<number | null, typeof responses.$inferSelect>();
     for (const response of records) {
-        if (!index.has(response.studentId)) index.set(response.studentId, response);
+        if (!index.has(response.studentId))
+            index.set(response.studentId, response);
     }
     return index;
 }

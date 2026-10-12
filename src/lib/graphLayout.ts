@@ -36,7 +36,7 @@ export function stepGraph(points: GraphPoint[], links: Relationship[], pinnedId:
     const byId = new Map(points.map(point => [point.id, point]));
     const connected = new Set<string>();
     for (const link of links) {
-        if (link.kind === 'preferAvoid') continue;
+        if (link.kind === 'preferAvoid' || link.kind === 'restriction') continue;
         const key = `${Math.min(link.source, link.target)}-${Math.max(link.source, link.target)}`;
         if (connected.has(key)) continue;
         connected.add(key);

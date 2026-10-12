@@ -1,12 +1,11 @@
 import { eq } from 'drizzle-orm';
+import { classes, degrees, projects, students, responses } from '../db/schema';
 import {
-    classes,
-    classMembers,
-    degrees,
-    projects,
-    students,
-    responses,
-} from '../db/schema';
+    resolveStudent,
+    enrollStudent,
+    academicPeriod,
+} from '../src/lib/studentIdentity';
+import { saveKnowledge } from '../src/lib/studentUpdates';
 import { withDatabase, reportFailure } from './database';
 
 // Synthetic, deterministic, and local-only. Reruns leave an existing demo untouched.
@@ -46,6 +45,7 @@ withDatabase(async (db, _client, args) => {
         const [project] = await tx
             .insert(projects)
             .values({
+                academicPeriod: academicPeriod(),
                 name: 'Demo proiektua',
                 projectType: 'balanced',
                 numTeams: 2,
@@ -57,39 +57,61 @@ withDatabase(async (db, _client, args) => {
         for (let index = 1; index <= 8; index++) {
             const name = `Demo ${index}`;
             const email = `demo${index}@example.com`;
-            await tx.insert(classMembers).values({ classId, name, email });
+            const person = await resolveStudent(tx, { name, email });
+            await enrollStudent(tx, person, classId, academicPeriod());
             const [student] = await tx
                 .insert(students)
                 .values({
                     projectId: project.id,
+                    studentRecordId: person.id,
                     name,
                     email,
                     hasCompleted: true,
                 })
                 .returning();
             const score = 3 + (index % 7);
-            await tx.insert(responses).values({
+            const [response] = await tx
+                .insert(responses)
+                .values({
+                    projectId: project.id,
+                    studentId: student.id,
+                    skillsNarrative: {
+                        creativity: score,
+                        writing: 5,
+                        references: 5,
+                        communication: 5,
+                    },
+                    skillsTechnical: { camera: score, sound: 5, editing: 5 },
+                    skillsManagement: { planning: 5, production: score },
+                    skillsSoft: {
+                        leadership: 5,
+                        listening: 5,
+                        proactivity: 5,
+                        teamwork: 5,
+                        motivation: 5,
+                        conflict: 5,
+                    },
+                    comfort: [],
+                    preferWith: [],
+                    preferAvoid: [],
+                })
+                .returning();
+            await saveKnowledge(tx, {
+                studentId: person.id,
+                assessment: {
+                    skillsNarrative: response.skillsNarrative,
+                    skillsTechnical: response.skillsTechnical,
+                    skillsManagement: response.skillsManagement,
+                    skillsSoft: response.skillsSoft,
+                },
+                preferences: { comfort: [], preferWith: [], preferAvoid: [] },
+                scope: 'project',
+                academicPeriod: academicPeriod(),
                 projectId: project.id,
-                studentId: student.id,
-                skillsNarrative: {
-                    creativity: score,
-                    writing: 5,
-                    references: 5,
-                    communication: 5,
-                },
-                skillsTechnical: { camera: score, sound: 5, editing: 5 },
-                skillsManagement: { planning: 5, production: score },
-                skillsSoft: {
-                    leadership: 5,
-                    listening: 5,
-                    proactivity: 5,
-                    teamwork: 5,
-                    motivation: 5,
-                    conflict: 5,
-                },
-                comfort: [],
-                preferWith: [],
-                preferAvoid: [],
+                projectName: project.name,
+                source: 'demo',
+                legacyResponseId: response.id,
+                legacyParticipantId: student.id,
             });
         }
         console.log('Demo created. Access code: 1234D');

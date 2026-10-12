@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/libsql';
 import type { Client } from '@libsql/client';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
+import { backfillTracking } from './migrate-tracking';
 import { migrateClasses } from './migrate-classes.mjs';
 
 const migrationsFolder = fileURLToPath(
@@ -124,4 +125,5 @@ export async function migrateDatabase(client: Client) {
         tx.close();
     }
     await migrate(drizzle(client), { migrationsFolder });
+    await backfillTracking(client);
 }

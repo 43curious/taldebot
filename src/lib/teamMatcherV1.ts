@@ -1,10 +1,11 @@
-import type { StudentData, Team } from "./teamMatcher";
+import type { StudentData, Team } from './teamMatcher';
 
 export function createTeamsV1(
     students: StudentData[],
     numTeams: number,
     projectType: string,
-    history: Array<{ student1Id: number; student2Id: number }>
+    history: Array<{ student1Id: number; student2Id: number }>,
+    historyWeight = 1,
 ): Team[] {
     const totalStudents = students.length;
     const baseSize = Math.floor(totalStudents / numTeams);
@@ -18,7 +19,7 @@ export function createTeamsV1(
         teamNumber: i + 1,
         memberIds: [],
         members: [],
-        justification: "",
+        justification: '',
     }));
 
     const sortedStudents = [...students].sort((a, b) => {
@@ -27,20 +28,25 @@ export function createTeamsV1(
 
         const constraintsA =
             a.preferAvoid.length +
-            history.filter((h) => h.student1Id === a.id || h.student2Id === a.id)
-                .length;
+            history.filter(
+                (h) => h.student1Id === a.id || h.student2Id === a.id,
+            ).length;
         const constraintsB =
             b.preferAvoid.length +
-            history.filter((h) => h.student1Id === b.id || h.student2Id === b.id)
-                .length;
+            history.filter(
+                (h) => h.student1Id === b.id || h.student2Id === b.id,
+            ).length;
         return constraintsB - constraintsA;
     });
 
     for (const student of sortedStudents) {
         let bestTeamIdx = -1;
         let maxScore = -Infinity;
-        const teamScores: { index: number; score: number; reasons: string[] }[] =
-            [];
+        const teamScores: {
+            index: number;
+            score: number;
+            reasons: string[];
+        }[] = [];
 
         for (let i = 0; i < teams.length; i++) {
             const team = teams[i];
@@ -49,11 +55,17 @@ export function createTeamsV1(
             // Keep omitted/excluded students separated whenever there is any feasible alternative team.
             if (student.isExcluded) {
                 const teamHasExcluded = team.members.some((m) => m.isExcluded);
-                const hasAlternativeTeam = teams.some((candidateTeam, candidateIdx) => {
-                    if (candidateIdx === i) return false;
-                    if (candidateTeam.memberIds.length >= teamSizes[candidateIdx]) return false;
-                    return !candidateTeam.members.some((m) => m.isExcluded);
-                });
+                const hasAlternativeTeam = teams.some(
+                    (candidateTeam, candidateIdx) => {
+                        if (candidateIdx === i) return false;
+                        if (
+                            candidateTeam.memberIds.length >=
+                            teamSizes[candidateIdx]
+                        )
+                            return false;
+                        return !candidateTeam.members.some((m) => m.isExcluded);
+                    },
+                );
                 if (teamHasExcluded && hasAlternativeTeam) continue;
             }
 
@@ -63,11 +75,11 @@ export function createTeamsV1(
             const hasAvoid = team.members.some(
                 (m) =>
                     student.preferAvoid.includes(m.id) ||
-                    m.preferAvoid.includes(student.id)
+                    m.preferAvoid.includes(student.id),
             );
             if (hasAvoid) {
                 score = -10000;
-                reasons.push("Hard constraint: preferAvoid violation");
+                reasons.push('Student avoidance preference penalty');
             } else {
                 for (const member of team.members) {
                     const workedBefore = history.some(
@@ -75,12 +87,12 @@ export function createTeamsV1(
                             (h.student1Id === student.id &&
                                 h.student2Id === member.id) ||
                             (h.student1Id === member.id &&
-                                h.student2Id === student.id)
+                                h.student2Id === student.id),
                     );
                     if (workedBefore) {
-                        score -= 50;
+                        score -= 50 * historyWeight;
                         reasons.push(
-                            `History penalty: worked with ${member.name} before`
+                            `Earlier assignment: assigned with ${member.name} before`,
                         );
                     }
                 }
@@ -89,114 +101,131 @@ export function createTeamsV1(
                     if (student.preferWith.includes(member.id)) {
                         score += 30;
                         reasons.push(
-                            `Preference bonus: wants to work with ${member.name}`
+                            `Preference bonus: wants to work with ${member.name}`,
                         );
                     }
                     if (member.preferWith.includes(student.id)) {
                         score += 30;
                         reasons.push(
-                            `Preference bonus: ${member.name} wants to work with student`
+                            `Preference bonus: ${member.name} wants to work with student`,
                         );
                     }
                 }
 
-                const categories: (keyof StudentData["skills"])[] = [
-                    "skillsNarrative",
-                    "skillsTechnical",
-                    "skillsManagement",
+                const categories: (keyof StudentData['skills'])[] = [
+                    'skillsNarrative',
+                    'skillsTechnical',
+                    'skillsManagement',
                 ];
                 for (const cat of categories) {
-                    const skillSet: Record<string, number> = student.skills[cat];
-                    const teamSkills: Record<string, number>[] = team.members.map((m) => m.skills[cat]);
+                    const skillSet: Record<string, number> =
+                        student.skills[cat];
+                    const teamSkills: Record<string, number>[] =
+                        team.members.map((m) => m.skills[cat]);
 
                     let weight = 1;
-                    const shortCat = cat.replace("skills", "").toLowerCase();
+                    const shortCat = cat.replace('skills', '').toLowerCase();
                     if (projectType === shortCat) weight = 2;
-                    else if (projectType === "balanced") weight = 1;
+                    else if (projectType === 'balanced') weight = 1;
                     else weight = 0.5;
 
                     for (const skillName in skillSet) {
                         const val = skillSet[skillName];
                         const teamVals = teamSkills.map((ts) => ts[skillName]);
-                        const teamMax = teamVals.length > 0 ? Math.max(...teamVals) : 0;
+                        const teamMax =
+                            teamVals.length > 0 ? Math.max(...teamVals) : 0;
                         const teamAvg =
                             teamVals.length > 0
-                                ? teamVals.reduce((a, b) => a + b, 0) / teamVals.length
+                                ? teamVals.reduce((a, b) => a + b, 0) /
+                                  teamVals.length
                                 : 0;
 
                         if (teamMax < 8 && val > 7) {
                             score += 40 * weight;
                             reasons.push(
-                                `Skill balance (${skillName}): adds high performer`
+                                `Skill balance (${skillName}): adds high performer`,
                             );
                         }
-                        if (teamVals.length > 0 && teamVals.every((v) => v > 7) && val < 5) {
+                        if (
+                            teamVals.length > 0 &&
+                            teamVals.every((v) => v > 7) &&
+                            val < 5
+                        ) {
                             score += 20 * weight;
                             reasons.push(
-                                `Skill balance (${skillName}): adds diversity to high performers`
+                                `Skill balance (${skillName}): adds diversity to high performers`,
                             );
                         }
                         if (teamVals.length > 0 && teamAvg < 5 && val > 6) {
                             score += 25 * weight;
                             reasons.push(
-                                `Skill balance (${skillName}): improves low average`
+                                `Skill balance (${skillName}): improves low average`,
                             );
                         }
                     }
                 }
 
                 const teamLeaders = team.members.filter(
-                    (m) => m.skills.skillsSoft.leadership > 7
+                    (m) => m.skills.skillsSoft.leadership > 7,
                 ).length;
-                if (teamLeaders > 2 && student.skills.skillsSoft.leadership > 7) {
+                if (
+                    teamLeaders > 2 &&
+                    student.skills.skillsSoft.leadership > 7
+                ) {
                     score -= 30;
-                    reasons.push("Soft skills: Too many leaders");
+                    reasons.push('Soft skills: Too many leaders');
                 }
 
                 const hasMotivator = team.members.some(
-                    (m) => m.skills.skillsSoft.motivation > 6
+                    (m) => m.skills.skillsSoft.motivation > 6,
                 );
                 if (!hasMotivator && student.skills.skillsSoft.motivation > 6) {
                     score += 20;
-                    reasons.push("Soft skills: Adds motivator");
+                    reasons.push('Soft skills: Adds motivator');
                 }
 
                 const hasMediator = team.members.some(
-                    (m) => m.skills.skillsSoft.conflict > 6
+                    (m) => m.skills.skillsSoft.conflict > 6,
                 );
                 if (!hasMediator && student.skills.skillsSoft.conflict > 6) {
                     score += 15;
-                    reasons.push("Soft skills: Adds mediator");
+                    reasons.push('Soft skills: Adds mediator');
                 }
 
                 if (student.isExcluded) {
-                    const excludedCount = team.members.filter((m) => m.isExcluded).length;
+                    const excludedCount = team.members.filter(
+                        (m) => m.isExcluded,
+                    ).length;
                     if (excludedCount > 0) {
                         score -= 500 * excludedCount;
                         reasons.push(
-                            `Absent distribution: Already has ${excludedCount} absent student(s)`
+                            `Absent distribution: Already has ${excludedCount} absent student(s)`,
                         );
                     } else {
                         score += 50;
-                        reasons.push("Absent distribution: First absent student in team");
+                        reasons.push(
+                            'Absent distribution: First absent student in team',
+                        );
                     }
                 }
 
                 const comfortMatches = team.members.filter((m) =>
-                    student.comfort.includes(m.id)
+                    student.comfort.includes(m.id),
                 ).length;
                 if (comfortMatches === 0) {
                     score -= 500;
-                    reasons.push("Comfort Zone: Isolation penalty (0 known members)");
+                    reasons.push(
+                        'Comfort Zone: Isolation penalty (0 known members)',
+                    );
                 } else if (comfortMatches === 1) {
                     score += 100;
                     reasons.push(
-                        "Comfort Zone: Anchorage success (1 known member, ideal for expansion)"
+                        'Comfort Zone: Anchorage success (1 known member, ideal for expansion)',
                     );
                 } else if (comfortMatches >= 2) {
-                    score -= 50;
+                    score -= 50 * historyWeight;
                     reasons.push(
-                        `Comfort Zone: Overlap penalty (${comfortMatches} known members)`
+                        `Comfort Zone: Overlap penalty (${comfortMatches} known members)`,
                     );
                 }
             }
@@ -214,7 +243,7 @@ export function createTeamsV1(
             bestTeam.memberIds.push(student.id);
             bestTeam.members.push(student);
             bestTeam.justification += `${student.name} assigned: ${
-                result?.reasons.join(", ") || "No specific reasons"
+                result?.reasons.join(', ') || 'No specific reasons'
             }.\n`;
         }
     }
@@ -224,7 +253,7 @@ export function createTeamsV1(
         team.justification =
             `Team ${team.teamNumber} summary: ${Object.entries(avgSkills)
                 .map(([cat, val]) => `${cat}: ${val.toFixed(1)}`)
-                .join(", ")}.\n\n` + team.justification;
+                .join(', ')}.\n\n` + team.justification;
     }
 
     return teams;
@@ -240,11 +269,16 @@ function calculateAvgSkills(members: StudentData[]) {
     };
     for (const m of members) {
         totals.narrative +=
-            Object.values(m.skills.skillsNarrative).reduce((a, b) => a + b, 0) / 4;
+            Object.values(m.skills.skillsNarrative).reduce((a, b) => a + b, 0) /
+            4;
         totals.technical +=
-            Object.values(m.skills.skillsTechnical).reduce((a, b) => a + b, 0) / 3;
+            Object.values(m.skills.skillsTechnical).reduce((a, b) => a + b, 0) /
+            3;
         totals.management +=
-            Object.values(m.skills.skillsManagement).reduce((a, b) => a + b, 0) / 2;
+            Object.values(m.skills.skillsManagement).reduce(
+                (a, b) => a + b,
+                0,
+            ) / 2;
         totals.soft +=
             Object.values(m.skills.skillsSoft).reduce((a, b) => a + b, 0) / 6;
     }

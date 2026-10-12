@@ -49,6 +49,7 @@ export const submissionSchema = z
     .object({
         projectId: positiveId,
         studentId: positiveId,
+        requestToken: z.string().optional(),
         lang: z.enum(['eu', 'en']).default('eu'),
         comfort: selections.pipe(z.array(participantId).max(1)),
         preferWith: selections.pipe(z.array(participantId).max(3)),
@@ -89,11 +90,17 @@ const optionalCount = z.preprocess(
 const participantSchema = z.object({
     name: z.string().trim().min(1),
     email: z.union([z.string().trim().email(), z.literal('')]).default(''),
+    studentRecordId: participantId.optional(),
 });
 export const projectSchema = z
     .object({
         name: z.string().trim().min(1),
         description: z.string().optional(),
+        academicPeriod: z
+            .string()
+            .regex(/^\d{4}-\d{4}$/)
+            .optional(),
+        historyMode: z.enum(['variety', 'balanced', 'familiar']).optional(),
         numTeams: optionalCount,
         targetTeamSize: optionalCount,
         projectType: z.enum([
@@ -130,3 +137,50 @@ export function routeError(error: unknown) {
     console.error(error);
     return Response.json({ error: 'Unable to save changes' }, { status: 500 });
 }
+
+const skillObject = (keys: readonly string[]) =>
+    z
+        .object(Object.fromEntries(keys.map((key) => [key, score.optional()])))
+        .strict();
+export const independentUpdateSchema = z.object({
+    requestToken: z.string(),
+    lang: z.enum(['eu', 'en']).default('eu'),
+    assessmentJson: json
+        .pipe(
+            z
+                .object({
+                    skillsNarrative: skillObject([
+                        'creativity',
+                        'writing',
+                        'references',
+                        'communication',
+                    ]),
+                    skillsTechnical: skillObject([
+                        'camera',
+                        'sound',
+                        'editing',
+                    ]),
+                    skillsManagement: skillObject(['planning', 'production']),
+                    skillsSoft: skillObject([
+                        'leadership',
+                        'listening',
+                        'proactivity',
+                        'teamwork',
+                        'conflict',
+                    ]),
+                })
+                .strict(),
+        )
+        .optional(),
+    preferencesJson: json
+        .pipe(
+            z
+                .object({
+                    comfort: z.array(participantId).max(1),
+                    preferWith: z.array(participantId).max(3),
+                    preferAvoid: z.array(participantId).max(3),
+                })
+                .strict(),
+        )
+        .optional(),
+});

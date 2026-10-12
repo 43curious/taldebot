@@ -1,5 +1,6 @@
 import type { responses } from '../../db/schema';
 import { localizedSkillGroups, skillScale, type SkillCategory } from './skills';
+import type { ProfileRelationship } from './studentProfiles';
 import type { TrackedStudent } from './tracking';
 
 type SurveyResponse = typeof responses.$inferSelect;
@@ -9,6 +10,17 @@ export type SelfAssessment = {
 export interface GraphStudent extends TrackedStudent {
     tutor?: string | null;
     division?: string | null;
+    profile?: {
+        label: string;
+        assessmentAt: string | null;
+        assessmentSource: string | null;
+        preferenceAt: string | null;
+        needsReview: boolean;
+        href: string;
+        motivationInContext: boolean;
+        relationships: ProfileRelationship[];
+        assignments: { projectName: string; date: string; revision: number }[];
+    };
     hasSurvey?: boolean;
     assessment?: SelfAssessment;
 }

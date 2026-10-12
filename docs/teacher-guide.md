@@ -1,39 +1,39 @@
 # Irakaslearen gida
 
-TaldeBot-ek klaseetako zerrendak eta proiektuko inkesta-erantzunak erabiltzen ditu talde-proposamenak sortzeko. Irakasleak berrikusi behar ditu proposamenak eta lan-hobespen pribatuak.
+TaldeBot-ek ikaslearen etengabeko jarraipena eta proiektuko parte-hartzea bereizten ditu. Autoebaluazioak ez dira nota akademikoak; lan-hobespenak irakaslearen informazio pribatua dira.
 
-## Klasea prestatu
+## Klasea eta jarraipena
 
-Hasi saioa eta ireki **Klaseak**. Aukeratu gradua eta klasea; ikasleen zerrenda kontrolen azpian agertzen da. Bilatu izena, emaila edo tutorea erabiliz. **Klaseak kudeatu** aukerak graduak, klaseak eta ikasleak editatzeko kontrolak erakusten ditu. CSV inportazioak aurrebista eta errepikatutako erregistroen feedbacka ditu; CSV esportazioa ere eskuragarri dago.
+Masterrak **Sarbideak** orrian esleitzen ditu irakasleen gradu edo klaseko baimenak. Aukeratu gradua eta klasea **Klaseak** orrian; zerrenda kontrolen azpian dago. Ikaslearen izenak bere profil iraunkorra irekitzen du: datatutako gaitasunak, hobespenak, matrikulak eta berretsitako esleipenak.
+
+**Klaseak kudeatu** atalean datuak editatu edo CSV inportatu. Klasez aldatzeak ikaslearen identitatea eta historia mantentzen ditu; matrikula amaitzeak egungo zerrendatik kentzen du, jarraipena gordeaz. Sarbidea egungo arduraren arabera aldatzen da. Ohar pribatuak egileak eta masterrak ikusten dituzte.
+
+Profiletik autoebaluazioa, hobespenak edo biak eguneratzeko esteka pertsonala sortu daiteke, proiekturik gabe. Ikasturtea aukeratu eta esteka ikasle horrekin bakarrik partekatu. 30 eguneko balioa du, behin erabil daiteke eta beste bat sortzeak aurrekoa baliogabetzen du. Hautaketa hutsak testuinguru horretako aurreko hobespenak erretiratzen ditu; eskatu gabeko atalak mantentzen dira. Erantzun zaharrak historian geratzen dira.
 
 ## Proiektua eta inkesta
 
-**Arbel nagusia** orrian sortu proiektua: izena, irakaslearen emaila, talde kopurua, proiektu mota eta ikasleen zerrenda. Zerrenda eskuz edo `name,email` zutabeak dituen CSV fitxategi batekin sar daiteke.
+Proiektu berrian aukeratu gradua, klasea eta dagoen zerrendako parte-hartzaileak. Eskuzko eta CSV sarrerak ere badaude; izen anbiguoak ez dira automatikoki lotzen. Masterrak **Identitateak berrikusi** orrian ebazten ditu aurretiko lotura zalantzagarriak.
 
-Proiektuak lau zenbaki eta letra bateko kodea du. Kodea kopiatzeko botoiak kodea bakarrik kopiatzen du. Ikasleek hasierako orrian sartzen dute; euskarazko eta ingelesezko bertsioak daude. Inkestan izena aukeratu, email akademikoa sartu eta datuen erabilera onartzen dute. Ondoren:
+Proiektu-kodea sarrera orokorra da. **Kudeatu** orriko ikaslearen aukeretan sortu eta kopiatu esteka pertsonala; kodeak bakarrik ez du beste ikasle baten izenean erantzuteko baimenik ematen. Euskaraz eta ingelesez bete daiteke. Gaitasunak 1–10 eskalan baloratzen dira; proiektuarekiko motibazioa eta proiektuko aukerak proiektu horretan mantentzen dira. Hobespen orokorrak proiektu edo ikasturte berrian berrikusteko eskatu.
 
-- Pertsona aingura bat, hiru elkarlan berri gehienez eta hiru saiheste-hobespen gehienez aukeratu.
-- Gaitasun profesionalak eta pertsonalak 1–10 eskalan autoebaluatu; hasierako balioa 5 da.
-- Azken atalean inkesta bidali. Enter teklak ez du automatikoki bidaltzen. Bidalketak huts egiten badu, erantzunak orrian mantentzen dira.
-
-Ikasleak behin erantzun dezake proiektuan. Aukerak proiektu bereko kideei dagozkie; ezin da norbera edo kide bera hainbat zerrendatan aukeratu.
-
-## Erantzunak jarraitu
-
-**Kudeatu** estekan ikasleen egoera eta osatze-portzentajea ikusten dira. Absent markatutako ikasleak ez dira osatze-portzentajearen izendatzailean sartzen. Erantzunik gabeko ikasleak talde-sorkuntzan batez besteko profilarekin erabiltzen dira. Erantzuna berrezartzeak inkesta ezabatzen du eta ikaslea erantzuteko prest uzten du; baieztapena behar du.
+Enter teklak ez du automatikoki bidaltzen. Huts egitean sartutako datuak mantentzen dira. Absentzia proiektu horretarako bakarrik da: ikaslea talde-sorkuntzatik eta inkestaren bete-mailatik kanpo uzten du. Erantzuna berrabiarazteak uneko erantzuna erretiratzen du eta inkesta berriz irekitzen du, baieztapenaren ondoren; datatutako historia gordetzen da.
 
 ## Harremanen mapa
 
-Alboko **Harremanen mapa** sarreran aukeratu gradua eta klasea. Proiektu-iturria isilik erakusten da; proiektu bat baino gehiago badago, beste bat aukeratu daiteke. Mapa horretako txostena proiektu bakarreko autoebaluazioa da.
+Alboko **Harremanen mapa** sarreran aukeratu gradua eta klasea. Lehenetsitako ikuspegia etengabeko jarraipena da. **Testuingurua** aukeran proiektua edo data historikoa hautatu daiteke.
 
-Hasieran nodoak bakarrik agertzen dira. Aukeratu ikaslea bere loturak eta txostena ikusteko; hautapena kentzean loturak ezkutatzen dira. Berdeak lan-hobespenak/aingura-loturak adierazten ditu; gorriak saiheste-hobespenak. Nodoak arrastatu, mapa mugitu eta zooma egin daiteke. Txostena eskuinean agertzen da, edo behean pantaila txikietan.
+Hasieran nodoak bakarrik agertzen dira; hautatutako ikaslearen loturak bakarrik erakusten dira. Berdeak elkarlana/konfort-zona adierazten du; gorriak ikaslearen saiheste-hobespena edo irakaslearen bereizketa. Txostenean iturria, data eta norabidea bereizten dira. Sarrerako loturak bigarren mailako xehetasuna dira. Nodoak arrastatu, mapa mugitu eta zooma egin daiteke; txostena eskuinean edo mugikorrean behean agertzen da.
 
-Mapa irakaslearen informazio pribatua da. Izena anbiguoa denean edo identitatea ezin denean ziur lotu, TaldeBot-ek lotura saltatzen du.
+## Taldeak prestatu eta berretsi
 
-## Talde-proposamenak
+Sortu zirriborroa, aukeratu talde kopurua eta jarraitutasuna, oreka edo aniztasuna. v1/v2 zirriborroak konparatu daitezke; birsortzeak eredu horren uneko zirriborroa ordezten du baieztapenaren ondoren.
 
-**Ikusi taldeak** orrian taldeak sortu. **Taldeen aukerak** menuak v1/v2 ereduen arteko konparazioa, berriro sortzea eta esportazioak ditu. Eredu baten taldeak berriro sortzeak eredu horretako esleipena ordezten du, baieztapenaren ondoren; beste ereduko taldeak mantentzen dira.
+Ikaslearen saiheste-hobespena biguna da. Profiletik sortutako irakaslearen bereizketa derrigorrezkoa da; arrazoia pribatua eta berrikuspen-data esplizitua dira. Data gainditzeak ez du araua kentzen. Talde kopuruarekin murrizketak bete ezin badira, aplikazioak aurreko zirriborroa mantentzen du eta irakaslearen erabakia eskatzen du.
 
-Egungo v2 ereduak tamaina, gaitasunak, lan-hobespenak, aingurak, proiektuaren historia eta absentziak haztatzen ditu. Saiheste-hobespenak penalizazioak dira: ez du bereizketa absolutua bermatzen. Aingurak ere hobespenak dira, ez bermeak. v1-ek saiheste-hobespenen penalizazio handiagoa eta erosotasun-irizpide zaharra erabiltzen ditu. Bietan irakaslearen berrikuspena behar da.
+Berrikusi sarreren datak eta iturriak. Balorazio ezezagunak ez dira 5 gisa gordetzen: algoritmoak bakarrik erabiltzen du 5eko ordezko balioa. Eskuz mugitu edo trukatu kideak eta gorde egokitutako zirriborroa; baliozkotzeak bikoizketak eta derrigorrezko murrizketak egiaztatzen ditu.
 
-Talde-txartelek kideak erakusten dituzte; **Gaitasunak eta azalpena** atal zabalgarriak gaitasun nagusiak eta algoritmoaren arrazoia ditu. Zerrenda testu gisa deskargatu edo inprimatu daiteke. Excel esportazioak erantzun zehatzak eta talde-osaketa ditu: gorde eta partekatu irakaslearen datu pribatu gisa.
+**Berretsi esleipena** botoiak benetan onartutako taldeak, egilea, data, konfigurazioa eta sarrerak gordetzen ditu. Beste esleipen batekin ordezteak aurreko berrikuspena amaitzen du, ez ezabatzen. Zirriborroek ez dute historia sortzen. Bikote baten aurretiko esleipena proiektu bakoitzeko behin zenbatzen da; horrek ez du benetan elkarrekin lan egin dutela frogatzen.
+
+Jakinarazpenek azken esleipen berretsia erabiltzen dute. Testu eta Excel esportazioek zirriborroa edo berrikuspen berretsia etiketatzen dute. Excel-ak hobespen pribatuak ditu: irakaslearen dokumentu gisa gorde. Proiektua artxibatzeak historia mantentzen du eta aldaketa berriak eragozten ditu.
+
+Migrazioa eta datuen mugak: [jarraipenaren dokumentazioa](student-tracking.md).

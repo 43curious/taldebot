@@ -1,0 +1,484 @@
+import { beforeEach, afterEach, it, expect } from 'vitest';
+import { eq } from 'drizzle-orm';
+import * as schema from '../../../db/schema';
+import { testDatabase } from './testDatabase';
+import { teachingAccess, requireStudent, requireProject } from '../access';
+import {
+    resolveStudent,
+    enrollStudent,
+    moveStudent,
+    updateStudentIdentity,
+} from '../studentIdentity';
+import { createProject } from '../projectOperations';
+import { projectSchema } from '../input';
+import { loadStudentProfiles, emptyAssessment } from '../studentProfiles';
+import {
+    saveKnowledge,
+    issueUpdateRequest,
+    requestContext,
+    completeIndependentUpdate,
+} from '../studentUpdates';
+import {
+    generateDraft,
+    confirmDraft,
+    adjustDraft,
+    confirmedPairHistory,
+} from '../formation';
+import { migrateDatabase } from '../../../scripts/migrations';
+let fixture: Awaited<ReturnType<typeof testDatabase>>;
+beforeEach(async () => {
+    fixture = await testDatabase();
+});
+afterEach(async () => {
+    await fixture.close();
+});
+async function setup() {
+    const { db } = fixture;
+    const [master, teacher, other] = await db
+        .insert(schema.users)
+        .values([
+            { username: 'master', hashedPassword: 'unused', role: 'master' },
+            { username: 'teacher', hashedPassword: 'unused', role: 'admin' },
+            { username: 'other', hashedPassword: 'unused', role: 'admin' },
+        ])
+        .returning();
+    const [degree] = await db
+        .insert(schema.degrees)
+        .values({ name: 'Media' })
+        .returning();
+    const groups = await db
+        .insert(schema.classes)
+        .values([
+            { name: 'First', year: 1, degreeId: degree.id },
+            { name: 'Second', year: 2, degreeId: degree.id },
+        ])
+        .returning();
+    await db.insert(schema.teacherResponsibilities).values([
+        { userId: teacher.id, classId: groups[0].id },
+        { userId: other.id, classId: groups[1].id },
+    ]);
+    const access = await teachingAccess(db, master);
+    const people = [];
+    for (const name of ['Ane', 'Iker', 'Leire', 'Miren']) {
+        const person = await resolveStudent(
+            db,
+            { name, email: `${name.toLowerCase()}@example.com` },
+            access,
+        );
+        await enrollStudent(db, person, groups[0].id, '2026-2027');
+        people.push(person);
+    }
+    const project = await createProject(
+        db,
+        projectSchema.parse({
+            name: 'Film',
+            numTeams: '2',
+            projectType: 'balanced',
+            adminEmail: 'master@example.com',
+            studentsJson: JSON.stringify(
+                people.map((person) => ({
+                    name: person.name,
+                    studentRecordId: person.id,
+                })),
+            ),
+        }),
+        access,
+    );
+    return {
+        db,
+        master,
+        teacher,
+        other,
+        degree,
+        groups,
+        access,
+        people,
+        project,
+    };
+}
+it('keeps identity and email aliases across class moves while current responsibility controls access', async () => {
+    const s = await setup();
+    let access = await teachingAccess(s.db, s.teacher);
+    expect(access.classIds.has(s.groups[1].id)).toBe(false);
+    expect(access.degreeIds.has(s.degree.id)).toBe(true);
+    requireStudent(access, s.people[0].id);
+    await updateStudentIdentity(
+        s.db,
+        s.people[0].id,
+        'Ane Updated',
+        'updated@example.com',
+    );
+    expect(
+        (
+            await resolveStudent(
+                s.db,
+                { name: 'Ane', email: 'ane@example.com' },
+                s.access,
+            )
+        ).id,
+    ).toBe(s.people[0].id);
+    const member = await s.db.query.classMembers.findFirst({
+        where: eq(schema.classMembers.studentRecordId, s.people[0].id),
+    });
+    await moveStudent(s.db, s.access, member!.id, s.groups[1].id, '2026-2027');
+    access = await teachingAccess(s.db, s.teacher);
+    expect(() => requireStudent(access, s.people[0].id)).toThrow();
+    expect(() => requireProject(access, s.project.id)).toThrow();
+    requireStudent(await teachingAccess(s.db, s.other), s.people[0].id);
+    const profile = (
+        await loadStudentProfiles(s.db, s.access, [s.people[0].id])
+    ).get(s.people[0].id)!;
+    expect(profile.enrollments).toHaveLength(2);
+    expect(
+        profile.enrollments.find((row) => row.classId === s.groups[0].id)!
+            .endedAt,
+    ).not.toBeNull();
+    expect(profile.enrollments[0]).not.toHaveProperty('rosterSnapshot');
+});
+it('separates period preferences from local choices, retains unknown skills, and supports explicit clearing', async () => {
+    const s = await setup(),
+        id = s.people[0].id,
+        peer = s.people[1].id;
+    const assessment = emptyAssessment();
+    assessment.skillsTechnical.camera = 8;
+    assessment.skillsSoft.motivation = 9;
+    await saveKnowledge(s.db, {
+        studentId: id,
+        assessment,
+        preferences: { comfort: [peer], preferWith: [], preferAvoid: [] },
+        source: 'independent-update',
+        scope: 'period',
+        academicPeriod: '2026-2027',
+    });
+    await saveKnowledge(s.db, {
+        studentId: id,
+        preferences: { comfort: [], preferWith: [], preferAvoid: [peer] },
+        source: 'project-survey',
+        scope: 'project',
+        projectId: s.project.id,
+        projectName: 'Film',
+        academicPeriod: '2026-2027',
+    });
+    let profile = (
+        await loadStudentProfiles(s.db, s.access, [id], {
+            academicPeriod: '2026-2027',
+        })
+    ).get(id)!;
+    expect(profile.values.skillsTechnical).toEqual({ camera: 8 });
+    expect(profile.values.skillsSoft.motivation).toBeUndefined();
+    expect(profile.relationships[0].kind).toBe('comfort');
+    profile = (
+        await loadStudentProfiles(s.db, s.access, [id], {
+            projectId: s.project.id,
+            academicPeriod: '2026-2027',
+        })
+    ).get(id)!;
+    expect(profile.relationships[0].kind).toBe('preferAvoid');
+    await saveKnowledge(s.db, {
+        studentId: id,
+        preferences: { comfort: [], preferWith: [], preferAvoid: [] },
+        source: 'independent-update',
+        scope: 'period',
+        academicPeriod: '2026-2027',
+    });
+    profile = (
+        await loadStudentProfiles(s.db, s.access, [id], {
+            academicPeriod: '2026-2027',
+        })
+    ).get(id)!;
+    expect(profile.relationships).toHaveLength(0);
+    expect(profile.preferenceHistory).toHaveLength(3);
+    expect(profile.values.skillsTechnical.camera).toBe(8);
+    expect(
+        (
+            await loadStudentProfiles(s.db, s.access, [id], {
+                academicPeriod: '2027-2028',
+            })
+        ).get(id)!.preference,
+    ).toBeUndefined();
+});
+it('uses single-use personal requests, revokes older links, scopes requested sections, and invalidates transferred access', async () => {
+    const s = await setup();
+    const access = await teachingAccess(s.db, s.teacher);
+    const input = {
+        studentId: s.people[0].id,
+        assessmentAsked: false,
+        preferencesAsked: true,
+        academicPeriod: '2026-2027',
+    };
+    const first = await issueUpdateRequest(s.db, access, input),
+        second = await issueUpdateRequest(s.db, access, input);
+    await expect(requestContext(s.db, first.token)).rejects.toThrow();
+    await expect(
+        completeIndependentUpdate(s.db, second.token, {
+            assessment: emptyAssessment(),
+            preferences: { comfort: [], preferWith: [], preferAvoid: [] },
+        }),
+    ).rejects.toThrow();
+    await completeIndependentUpdate(s.db, second.token, {
+        preferences: {
+            comfort: [s.people[1].id],
+            preferWith: [],
+            preferAvoid: [],
+        },
+    });
+    await expect(
+        completeIndependentUpdate(s.db, second.token, {
+            preferences: { comfort: [], preferWith: [], preferAvoid: [] },
+        }),
+    ).rejects.toThrow();
+    expect(await s.db.query.assessments.findMany()).toHaveLength(0);
+    const pending = await issueUpdateRequest(s.db, access, input);
+    const member = await s.db.query.classMembers.findFirst({
+        where: eq(schema.classMembers.studentRecordId, input.studentId),
+    });
+    await moveStudent(s.db, s.access, member!.id, s.groups[1].id, '2026-2027');
+    await expect(requestContext(s.db, pending.token)).rejects.toThrow();
+    const stored = await s.db.query.updateRequests.findFirst();
+    expect(stored!.tokenHash).not.toBe(first.token);
+});
+it('keeps drafts out of history, confirms immutable inputs, and counts pairs once per project across revisions', async () => {
+    const s = await setup();
+    const draft = await generateDraft(s.db, s.access, s.project.id, 'v2', {
+        historyMode: 'familiar',
+    });
+    expect(
+        await confirmedPairHistory(
+            s.db,
+            s.people.map((p) => p.id),
+        ),
+    ).toEqual([]);
+    const adopted = await confirmDraft(s.db, s.access, s.project.id, draft.id);
+    expect(
+        (await confirmDraft(s.db, s.access, s.project.id, draft.id)).id,
+    ).toBe(adopted.id);
+    const values = emptyAssessment();
+    values.skillsTechnical.camera = 10;
+    await saveKnowledge(s.db, {
+        studentId: s.people[0].id,
+        assessment: values,
+        source: 'independent-update',
+        scope: 'period',
+        academicPeriod: '2026-2027',
+    });
+    expect(
+        (await s.db.query.confirmedAssignments.findFirst())!.inputSnapshot!
+            .inputs[0].assessment.skillsTechnical.camera,
+    ).toBeUndefined();
+    const allocation = draft.allocation.map((team) => ({
+        ...team,
+        studentIds: [...team.studentIds],
+    }));
+    const temp = allocation[0].studentIds[0];
+    allocation[0].studentIds[0] = allocation[1].studentIds[0];
+    allocation[1].studentIds[0] = temp;
+    const changed = await adjustDraft(
+        s.db,
+        s.access,
+        s.project.id,
+        draft.id,
+        allocation,
+    );
+    expect(
+        (await confirmDraft(s.db, s.access, s.project.id, changed.id)).revision,
+    ).toBe(2);
+    const restored = await adjustDraft(
+        s.db,
+        s.access,
+        s.project.id,
+        changed.id,
+        draft.allocation,
+    );
+    await confirmDraft(s.db, s.access, s.project.id, restored.id);
+    expect(
+        (
+            await confirmedPairHistory(
+                s.db,
+                s.people.map((p) => p.id),
+            )
+        ).every((pair) => pair.projects === 1),
+    ).toBe(true);
+    expect(
+        await confirmedPairHistory(
+            s.db,
+            s.people.map((p) => p.id),
+            s.project.id,
+        ),
+    ).toEqual([]);
+    expect(adopted.inputSnapshot?.historyMode).toBe('familiar');
+});
+it('enforces overdue mandatory restrictions during generation, edits and confirmation without overwriting a valid draft', async () => {
+    const s = await setup();
+    const draft = await generateDraft(s.db, s.access, s.project.id, 'v2');
+    const pair = draft.allocation[0].studentIds;
+    await s.db.insert(schema.pairingRestrictions).values({
+        student1Id: pair[0],
+        student2Id: pair[1],
+        createdBy: s.master.id,
+        scope: 'period',
+        academicPeriod: '2026-2027',
+        reason: 'private',
+        createdAt: new Date().toISOString(),
+        reviewAt: '2000-01-01',
+    });
+    await expect(
+        confirmDraft(s.db, s.access, s.project.id, draft.id),
+    ).rejects.toThrow('murrizketa');
+    await expect(
+        adjustDraft(s.db, s.access, s.project.id, draft.id, draft.allocation),
+    ).rejects.toThrow('murrizketa');
+    const valid = await generateDraft(s.db, s.access, s.project.id, 'v2');
+    expect(
+        valid.allocation.some((team) =>
+            pair.every((id) => team.studentIds.includes(id)),
+        ),
+    ).toBe(false);
+    await expect(
+        generateDraft(s.db, s.access, s.project.id, 'v2', { numTeams: 1 }),
+    ).rejects.toThrow();
+    expect((await s.db.query.teams.findFirst())!.draftId).toBe(valid.id);
+    const profile = (
+        await loadStudentProfiles(
+            s.db,
+            await teachingAccess(s.db, s.teacher),
+            [pair[0]],
+            { academicPeriod: '2026-2027' },
+        )
+    ).get(pair[0])!;
+    expect(profile.restrictions[0].reason).toBeNull();
+});
+it('preserves legacy source data and ambiguity, remaps only within a project, and creates no confirmed history', async () => {
+    const { db, client } = fixture;
+    await client.execute("INSERT INTO classes(name,year) VALUES ('First',1)");
+    await client.execute(
+        "INSERT INTO class_members(class_id,name,email) VALUES (1,'Alex A','shared@example.com'),(1,'Alex B','shared@example.com')",
+    );
+    await client.execute(
+        "INSERT INTO projects(name,project_type) VALUES ('Legacy','balanced'),('Other','balanced')",
+    );
+    await client.execute(
+        "INSERT INTO students(project_id,name,email) VALUES (1,'Alex A','shared@example.com'),(1,'Peer','peer@example.com'),(2,'Other','other@example.com')",
+    );
+    await client.execute(
+        "INSERT INTO responses(student_id,project_id,skills_narrative,skills_technical,skills_management,skills_soft,comfort,prefer_with,prefer_avoid,completed_at) VALUES (1,1,'{\"creativity\":9}','{\"camera\":null}','{}','{}','[2,3]','[]','[]',NULL)",
+    );
+    await client.execute(
+        "INSERT INTO teams(project_id,team_number,member_ids,justification) VALUES (1,1,'[1,2]','legacy')",
+    );
+    const before = (await client.execute('SELECT * FROM responses')).rows;
+    await migrateDatabase(client);
+    await migrateDatabase(client);
+    expect((await client.execute('SELECT * FROM responses')).rows).toEqual(
+        before,
+    );
+    expect(await db.query.confirmedAssignments.findMany()).toHaveLength(0);
+    expect((await db.query.teamDrafts.findFirst())!.inputSnapshot).toBeNull();
+    expect((await db.query.identityReviews.findMany()).length).toBeGreaterThan(
+        0,
+    );
+    const record = (await db.query.assessments.findFirst())!;
+    expect(record.submittedAt).toBeNull();
+    expect(record.data.skillsTechnical.camera).toBeUndefined();
+    const pref = (await db.query.preferenceSubmissions.findFirst())!;
+    expect(pref.complete).toBe(false);
+    expect(pref.unresolvedTargets).toContain(3);
+    expect(await db.query.preferenceChoices.findMany()).toHaveLength(1);
+    expect(await db.query.assessments.findMany()).toHaveLength(1);
+});
+it('restores dated context before withdrawal and rolls back a failed independent update without consuming the token', async () => {
+    const s = await setup(),
+        id = s.people[0].id;
+    await s.db.insert(schema.assessments).values({
+        studentId: id,
+        data: { ...emptyAssessment(), skillsTechnical: { camera: 7 } },
+        source: 'independent-update',
+        academicPeriod: '2025-2026',
+        submittedAt: '2026-01-01T10:00:00Z',
+        withdrawnAt: '2026-02-01T10:00:00Z',
+    });
+    let profile = (
+        await loadStudentProfiles(s.db, s.access, [id], { asOf: '2026-01-15' })
+    ).get(id)!;
+    expect(profile.values.skillsTechnical.camera).toBe(7);
+    profile = (
+        await loadStudentProfiles(s.db, s.access, [id], { asOf: '2026-02-15' })
+    ).get(id)!;
+    expect(profile.values.skillsTechnical.camera).toBeUndefined();
+    expect(profile.assessmentHistory).toHaveLength(1);
+    const link = await issueUpdateRequest(s.db, s.access, {
+        studentId: id,
+        assessmentAsked: true,
+        preferencesAsked: false,
+    });
+    await fixture.client.execute(
+        "CREATE TRIGGER fail_knowledge BEFORE INSERT ON assessments BEGIN SELECT RAISE(ABORT,'fail'); END",
+    );
+    await expect(
+        completeIndependentUpdate(s.db, link.token, {
+            assessment: emptyAssessment(),
+        }),
+    ).rejects.toThrow();
+    expect(
+        (await requestContext(s.db, link.token)).request.consumedAt,
+    ).toBeNull();
+});
+it('reuses explicit identities in new projects, keeps same-name people separate, and preserves records through archival', async () => {
+    const s = await setup();
+    const twin = await resolveStudent(
+        s.db,
+        { name: 'Ane', email: 'different@example.com' },
+        s.access,
+    );
+    expect(twin.id).not.toBe(s.people[0].id);
+    await expect(
+        resolveStudent(s.db, { name: 'Ane' }, s.access),
+    ).rejects.toThrow('Izen bera');
+    const other = await createProject(
+        s.db,
+        projectSchema.parse({
+            name: 'Sound',
+            numTeams: '2',
+            projectType: 'technical',
+            adminEmail: 'master@example.com',
+            studentsJson: JSON.stringify(
+                s.people.map((person) => ({
+                    name: person.name,
+                    studentRecordId: person.id,
+                })),
+            ),
+        }),
+        s.access,
+    );
+    const first = await generateDraft(s.db, s.access, s.project.id, 'v2');
+    await confirmDraft(s.db, s.access, s.project.id, first.id);
+    await s.db
+        .update(schema.students)
+        .set({ isExcluded: true })
+        .where(
+            eq(schema.students.id, first.inputSnapshot!.inputs[0].participantId),
+        );
+    const second = await generateDraft(s.db, s.access, other.id, 'v2');
+    expect(second.allocation.flatMap((team) => team.studentIds)).toHaveLength(
+        4,
+    );
+    expect(second.inputSnapshot?.history.length).toBeGreaterThan(0);
+    await s.db
+        .update(schema.projects)
+        .set({ archivedAt: new Date().toISOString(), status: 'archived' })
+        .where(eq(schema.projects.id, s.project.id));
+    expect(
+        (await loadStudentProfiles(s.db, s.access, [s.people[0].id])).get(
+            s.people[0].id,
+        )!.assignments,
+    ).toHaveLength(1);
+    await expect(
+        generateDraft(s.db, s.access, s.project.id, 'v2'),
+    ).rejects.toThrow();
+    expect(
+        (
+            await s.db.query.students.findMany({
+                where: eq(schema.students.projectId, other.id),
+            })
+        ).every((row) => !row.isExcluded),
+    ).toBe(true);
+});

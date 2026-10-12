@@ -16,7 +16,6 @@ it('initializes every table, preserves existing rows and v2 labels, and records 
         await client.execute(
             "INSERT INTO teams (project_id, team_number, member_ids, justification, algorithm_version) VALUES (1, 1, '[]', 'keep', 'v2')",
         );
-        await client.execute('DROP TABLE __drizzle_migrations');
         await migrateDatabase(client);
         await migrateDatabase(client);
         expect(
@@ -28,7 +27,7 @@ it('initializes every table, preserves existing rows and v2 labels, and records 
         ).toMatchObject([{ algorithm_version: 'v2', justification: 'keep' }]);
         expect(
             (await client.execute('SELECT * FROM __drizzle_migrations')).rows,
-        ).toHaveLength(1);
+        ).toHaveLength(2);
         expect(
             (await client.execute('PRAGMA foreign_key_check')).rows,
         ).toHaveLength(0);

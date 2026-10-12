@@ -1,0 +1,204 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { SkillSlider } from './SkillSlider';
+import { GroupDynamics } from './GroupDynamics';
+import { localizedSkillGroups } from '../lib/skills';
+import { t, type Language } from '../lib/i18n';
+import type { requestContext } from '../lib/studentUpdates';
+interface Props {
+    lang: Language;
+    token: string;
+    context: Awaited<ReturnType<typeof requestContext>>;
+}
+const { lang, token, context } = Astro.props;
+const tr = t(lang);
+const groups = localizedSkillGroups(lang);
+const copy =
+    lang === 'en'
+        ? {
+              title: 'Update your record',
+              period: 'Academic period',
+              note: 'This is your self-assessment, not an academic grade. The requested sections update your ongoing record for this academic period. Previous submissions remain dated history. An empty preference selection withdraws the previous choices in this period; sections not requested remain unchanged.',
+              save: 'Confirm update',
+              privacy:
+                  'Only your currently responsible teachers and master administrators can see these responses.',
+              consent:
+                  'I agree to use these answers for student follow-up and team formation.',
+              preferences: 'Review your working preferences',
+              error: 'Unable to save. Check your answers and try again.',
+              motivation:
+                  'Project motivation is collected only within a specific project.',
+          }
+        : {
+              title: 'Zure jarraipena eguneratu',
+              period: 'Ikasturtea',
+              note: 'Hau zure autoebaluazioa da, ez nota akademikoa. Eskatutako atalek ikasturte honetako etengabeko jarraipena eguneratzen dute. Aurreko bidalketak datatutako historian gordetzen dira. Hobespen hutsak ikasturte honetako aurreko aukerak erretiratzen ditu; eskatu gabeko atalak ez dira aldatzen.',
+              save: 'Eguneratzea berretsi',
+              privacy:
+                  'Zure egungo irakasle arduradunek eta master administratzaileek soilik ikus ditzakete erantzun hauek.',
+              consent:
+                  'Erantzunak jarraipenerako eta taldeak osatzeko erabiltzea onartzen dut.',
+              preferences: 'Berrikusi lan-hobespenak',
+              error: 'Ezin izan da gorde. Egiaztatu erantzunak eta saiatu berriro.',
+              motivation:
+                  'Proiektuarekiko motibazioa proiektu jakin batean bakarrik galdetzen da.',
+          };
+---
+
+<Layout title={copy.title} lang={lang}>
+    <main class="mx-auto max-w-3xl p-4 py-10">
+        <header class="mb-6">
+            <h1 class="text-2xl font-semibold text-slate-900">{copy.title}</h1>
+            <p class="mt-2 text-lg text-slate-700">{context.person.name}</p>
+            <p class="mt-1 text-xs text-slate-500">
+                {copy.period}: {context.request.academicPeriod}
+            </p>
+        </header>
+        <p class="mb-6 text-sm leading-relaxed text-slate-600">{copy.note}</p>
+        <form
+            id="independent-update"
+            action="/api/student/submit-update"
+            method="POST"
+            data-error={copy.error}
+            class="space-y-6 rounded-xl border border-slate-200 bg-white p-5 sm:p-8"
+        >
+            <input type="hidden" name="requestToken" value={token} />
+            <input type="hidden" name="lang" value={lang} />
+            {context.request.preferencesAsked && (
+                <section data-preferences>
+                    <h2 class="mb-4 text-lg font-semibold text-slate-900">
+                        {copy.preferences}
+                    </h2>
+                    <GroupDynamics
+                        client:load
+                        options={context.peers}
+                        studentId={context.person.id}
+                        initialPreferences={context.initialPreferences}
+                        lang={lang}
+                    />
+                </section>
+            )}
+            {context.request.assessmentAsked && (
+                <section data-assessment>
+                    <h2 class="mb-4 text-lg font-semibold text-slate-900">
+                        {tr.form.section3Title} · {tr.form.section4Title}
+                    </h2>
+                    <p class="mb-5 text-xs text-slate-500">{copy.motivation}</p>
+                    {groups.map((group) => (
+                        <div class="mb-6">
+                            <h3 class="mb-4 border-b border-slate-100 pb-2 text-sm font-semibold text-slate-600">
+                                {group.label}
+                            </h3>
+                            {group.skills
+                                .filter(
+                                    (skill) => skill.name !== 'soft_motivation',
+                                )
+                                .map((skill) => (
+                                    <SkillSlider
+                                        unknownLabel={
+                                            lang === 'en'
+                                                ? 'I cannot assess this yet'
+                                                : 'Oraindik ezin dut baloratu'
+                                        }
+                                        client:load
+                                        name={skill.name}
+                                        label={skill.label}
+                                        description={skill.description}
+                                    />
+                                ))}
+                        </div>
+                    ))}
+                </section>
+            )}
+            <p class="text-xs leading-relaxed text-slate-500">{copy.privacy}</p>
+            <label class="flex gap-3 text-sm text-slate-700">
+                <input
+                    type="checkbox"
+                    name="consent"
+                    required
+                    class="mt-1 h-4 w-4 accent-teal-600"
+                />
+                {copy.consent}
+            </label>
+            <p
+                role="alert"
+                data-feedback
+                hidden
+                class="text-sm text-red-700"
+            ></p>
+            <button
+                type="submit"
+                class="min-h-11 rounded-lg bg-teal-600 px-5 py-2 text-sm font-semibold text-white hover:bg-teal-700"
+            >
+                {copy.save}
+            </button>
+        </form>
+    </main>
+</Layout>
+<script>
+    import { skillGroups } from '../lib/skills';
+    const form = document.querySelector<HTMLFormElement>(
+        '#independent-update',
+    )!;
+    form.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') event.preventDefault();
+    });
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = form.querySelector<HTMLButtonElement>(
+            'button[type="submit"]',
+        )!;
+        if (button.disabled) return;
+        const payload = new FormData(form);
+        if (form.querySelector('[data-assessment]')) {
+            const assessment = Object.fromEntries(
+                skillGroups.map((group) => [
+                    group.key,
+                    Object.fromEntries(
+                        group.keys
+                            .filter(
+                                (key) =>
+                                    !(
+                                        group.prefix === 'soft' &&
+                                        key === 'motivation'
+                                    ) && payload.has(`${group.prefix}_${key}`),
+                            )
+                            .map((key) => [
+                                key,
+                                Number(payload.get(`${group.prefix}_${key}`)),
+                            ]),
+                    ),
+                ]),
+            );
+            payload.set('assessmentJson', JSON.stringify(assessment));
+        }
+        if (form.querySelector('[data-preferences]'))
+            payload.set(
+                'preferencesJson',
+                JSON.stringify(
+                    Object.fromEntries(
+                        ['comfort', 'preferWith', 'preferAvoid'].map((key) => [
+                            key,
+                            JSON.parse(String(payload.get(key) || '[]')),
+                        ]),
+                    ),
+                ),
+            );
+        button.disabled = true;
+        const feedback = form.querySelector<HTMLElement>('[data-feedback]')!;
+        feedback.hidden = true;
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: payload,
+            });
+            if (!response.ok || !response.redirected)
+                throw new Error('Save failed');
+            window.location.assign(response.url);
+        } catch {
+            feedback.textContent = form.dataset.error || '';
+            feedback.hidden = false;
+            button.disabled = false;
+        }
+    });
+</script>

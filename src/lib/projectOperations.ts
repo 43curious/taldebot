@@ -1,13 +1,27 @@
 import { and, eq } from 'drizzle-orm';
-import { projects, students, responses, teams } from '../../db/schema';
+import {
+    projects,
+    students,
+    responses,
+    teams,
+    assessments,
+    preferenceSubmissions,
+} from '../../db/schema';
 import type { AppDatabase } from './db';
+import { resolveStudent, academicPeriod } from './studentIdentity';
+import { saveKnowledge, consumeRequest } from './studentUpdates';
+import type { TeacherAccess } from './access';
 import { InputError, type ProjectInput, type Submission } from './input';
 
 function accessCode() {
     return `${Math.floor(1000 + Math.random() * 9000)}${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]}`;
 }
 
-export async function createProject(db: AppDatabase, data: ProjectInput) {
+export async function createProject(
+    db: AppDatabase,
+    data: ProjectInput,
+    access?: TeacherAccess,
+) {
     const participants =
         data.studentsJson ??
         (data.studentList || '')
@@ -31,6 +45,9 @@ export async function createProject(db: AppDatabase, data: ProjectInput) {
         const [project] = await tx
             .insert(projects)
             .values({
+                ownerId: access?.actor.id ?? null,
+                academicPeriod: data.academicPeriod || academicPeriod(),
+                historyMode: data.historyMode || 'balanced',
                 name: data.name,
                 description: data.description,
                 numTeams: data.numTeams ?? null,
@@ -41,23 +58,32 @@ export async function createProject(db: AppDatabase, data: ProjectInput) {
                 status: 'active',
             })
             .returning();
-        for (let offset = 0; offset < participants.length; offset += 100) {
+        const identities = new Set<number>();
+        for (const participant of participants) {
+            const person = await resolveStudent(tx, participant, access);
+            if (identities.has(person.id))
+                throw new InputError(
+                    'Ikasle bera ezin da proiektuan bitan gehitu.',
+                );
+            identities.add(person.id);
             await tx
                 .insert(students)
-                .values(
-                    participants
-                        .slice(offset, offset + 100)
-                        .map((student) => ({
-                            ...student,
-                            projectId: project.id,
-                        })),
-                );
+                .values({
+                    projectId: project.id,
+                    studentRecordId: person.id,
+                    name: person.name,
+                    email: person.email,
+                });
         }
         return project;
     });
 }
 
-export async function submitSurvey(db: AppDatabase, data: Submission) {
+export async function submitSurvey(
+    db: AppDatabase,
+    data: Submission,
+    requestId?: number,
+) {
     await db.transaction(async (tx) => {
         const participants = await tx.query.students.findMany({
             where: eq(students.projectId, data.projectId),
@@ -72,35 +98,85 @@ export async function submitSurvey(db: AppDatabase, data: Submission) {
             )
         )
             throw new InputError('Selection outside this project');
-        await tx.insert(responses).values({
-            projectId: data.projectId,
-            studentId: data.studentId,
-            skillsNarrative: {
-                creativity: data.narrative_creativity,
-                writing: data.narrative_writing,
-                references: data.narrative_references,
-                communication: data.narrative_communication,
+        if (requestId) await consumeRequest(tx, requestId);
+        const [saved] = await tx
+            .insert(responses)
+            .values({
+                projectId: data.projectId,
+                studentId: data.studentId,
+                skillsNarrative: {
+                    creativity: data.narrative_creativity,
+                    writing: data.narrative_writing,
+                    references: data.narrative_references,
+                    communication: data.narrative_communication,
+                },
+                skillsTechnical: {
+                    camera: data.technical_camera,
+                    sound: data.technical_sound,
+                    editing: data.technical_editing,
+                },
+                skillsManagement: {
+                    planning: data.management_planning,
+                    production: data.management_production,
+                },
+                skillsSoft: {
+                    leadership: data.soft_leadership,
+                    listening: data.soft_listening,
+                    proactivity: data.soft_proactivity,
+                    teamwork: data.soft_teamwork,
+                    motivation: data.soft_motivation,
+                    conflict: data.soft_conflict,
+                },
+                comfort: data.comfort,
+                preferWith: data.preferWith,
+                preferAvoid: data.preferAvoid,
+            })
+            .returning();
+        const project = await tx.query.projects.findFirst({
+            where: eq(projects.id, data.projectId),
+        });
+        if (!project || project.archivedAt || !student.studentRecordId)
+            throw new InputError(
+                'Proiektua edo ikaslearen identitatea ez dago erabilgarri.',
+            );
+        const peers = new Map(
+            participants
+                .filter((row) => !row.isExcluded)
+                .map((row) => [row.id, row.studentRecordId]),
+        );
+        if (
+            [...data.comfort, ...data.preferWith, ...data.preferAvoid].some(
+                (id) => !peers.get(id),
+            )
+        )
+            throw new InputError(
+                'Hautatutako kideen identitateak berrikusi behar dira.',
+            );
+        const remap = (ids: number[]) =>
+            ids
+                .map((id) => peers.get(id))
+                .filter((id): id is number => id !== null && id !== undefined);
+        await saveKnowledge(tx, {
+            studentId: student.studentRecordId,
+            assessment: {
+                skillsNarrative: saved.skillsNarrative,
+                skillsTechnical: saved.skillsTechnical,
+                skillsManagement: saved.skillsManagement,
+                skillsSoft: saved.skillsSoft,
             },
-            skillsTechnical: {
-                camera: data.technical_camera,
-                sound: data.technical_sound,
-                editing: data.technical_editing,
+            preferences: {
+                comfort: remap(data.comfort),
+                preferWith: remap(data.preferWith),
+                preferAvoid: remap(data.preferAvoid),
             },
-            skillsManagement: {
-                planning: data.management_planning,
-                production: data.management_production,
-            },
-            skillsSoft: {
-                leadership: data.soft_leadership,
-                listening: data.soft_listening,
-                proactivity: data.soft_proactivity,
-                teamwork: data.soft_teamwork,
-                motivation: data.soft_motivation,
-                conflict: data.soft_conflict,
-            },
-            comfort: data.comfort,
-            preferWith: data.preferWith,
-            preferAvoid: data.preferAvoid,
+            source: requestId ? 'project-survey' : 'legacy-survey',
+            scope: 'project',
+            academicPeriod: project.academicPeriod || academicPeriod(),
+            projectId: project.id,
+            projectName: project.name,
+            requestId,
+            legacyResponseId: saved.id,
+            legacyParticipantId: student.id,
         });
         await tx
             .update(students)
@@ -120,12 +196,34 @@ export async function resetSurvey(
     studentId: number,
 ) {
     await db.transaction(async (tx) => {
+        const project = await tx.query.projects.findFirst({
+            where: eq(projects.id, projectId),
+        });
+        if (!project || project.archivedAt)
+            throw new InputError('Proiektua ez dago erabilgarri.', 404);
         const scope = and(
             eq(students.id, studentId),
             eq(students.projectId, projectId),
         );
         if (!(await tx.query.students.findFirst({ where: scope })))
             throw new InputError('Student not found', 404);
+        const existing = await tx.query.responses.findMany({
+            where: and(
+                eq(responses.studentId, studentId),
+                eq(responses.projectId, projectId),
+            ),
+        });
+        const date = new Date().toISOString();
+        for (const response of existing) {
+            await tx
+                .update(assessments)
+                .set({ withdrawnAt: date })
+                .where(eq(assessments.legacyResponseId, response.id));
+            await tx
+                .update(preferenceSubmissions)
+                .set({ withdrawnAt: date })
+                .where(eq(preferenceSubmissions.legacyResponseId, response.id));
+        }
         await tx
             .delete(responses)
             .where(
@@ -157,14 +255,12 @@ export async function replaceTeams(
                 ),
             );
         if (allocation.length)
-            await tx
-                .insert(teams)
-                .values(
-                    allocation.map((team) => ({
-                        ...team,
-                        projectId,
-                        algorithmVersion,
-                    })),
-                );
+            await tx.insert(teams).values(
+                allocation.map((team) => ({
+                    ...team,
+                    projectId,
+                    algorithmVersion,
+                })),
+            );
     });
 }

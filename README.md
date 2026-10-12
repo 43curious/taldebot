@@ -37,20 +37,20 @@ Demo proiektuaren kodea `1234D` da. Komandoak ez du urruneko datu-baserik aldatz
 
 CLI komandoek `.env` irakurtzen dute. Astro-k garapenean `.env` kargatzen du; argitaratutako aplikazioak zerbitzariaren ingurune-aldagaiak erabiltzen ditu. Ikusi [.env.example](.env.example).
 
-| Komandoa | Helburua eta baldintzak |
-| --- | --- |
-| `npm run dev` | Astro garapen-zerbitzaria; tokiko DB erabiltzen du Turso konfiguraziorik gabe. |
-| `npm run db:migrate -- --local` | Eskema osoa sortu edo eguneratu; `LOCAL_DATABASE_URL` (`file:sqlite.db` lehenetsita). Migrazio aplikatuak erregistratzen ditu. |
-| `npm run db:migrate -- --remote` | Turso eguneratu; `TURSO_CONNECTION_URL` eta `TURSO_AUTH_TOKEN` derrigorrezkoak. Egin babeskopia lehenago. |
-| `npm run db:admin -- --local` | Lehen master kontua sortu; `INITIAL_ADMIN_PASSWORD` behar du. `--remote` ere onartzen du. |
-| `npm run db:admin -- --local --reset-password` | Dagoen kontuaren pasahitza berrezarri; ez du rola aldatzen. |
-| `npm run db:seed -- --local` | Aukerako demoa; migrazioak lehenago aplikatu. |
-| `npm run db:generate` | `db/schema.ts`-ren aldaketetatik SQL migrazioa sortu; ez da DB batera konektatzen. Berrikusi SQL-a aplikatu aurretik. |
-| `npm run check` | TypeScript eta Astro txantiloien egiaztapena. |
-| `npm test` | Vitest; datu-base eta zerbitzari probek aldi baterako datu sintetikoak erabiltzen dituzte. |
-| `npm run build` | Netlify-rako SSR aplikazioa eraiki. |
-| `npm run benchmark:data` | Aldi baterako DB batean jatorrizko eta egungo datu-karga alderatu. |
-| `npm run format -- path/to/file` | Prettier-en konbentzioa aplikatu. Formatu-aldaketa masiboak aparte egin. |
+| Komandoa                                       | Helburua eta baldintzak                                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run dev`                                  | Astro garapen-zerbitzaria; tokiko DB erabiltzen du Turso konfiguraziorik gabe.                                                 |
+| `npm run db:migrate -- --local`                | Eskema osoa sortu edo eguneratu; `LOCAL_DATABASE_URL` (`file:sqlite.db` lehenetsita). Migrazio aplikatuak erregistratzen ditu. |
+| `npm run db:migrate -- --remote`               | Turso eguneratu; `TURSO_CONNECTION_URL` eta `TURSO_AUTH_TOKEN` derrigorrezkoak. Egin babeskopia lehenago.                      |
+| `npm run db:admin -- --local`                  | Lehen master kontua sortu; `INITIAL_ADMIN_PASSWORD` behar du. `--remote` ere onartzen du.                                      |
+| `npm run db:admin -- --local --reset-password` | Dagoen kontuaren pasahitza berrezarri; ez du rola aldatzen.                                                                    |
+| `npm run db:seed -- --local`                   | Aukerako demoa; migrazioak lehenago aplikatu.                                                                                  |
+| `npm run db:generate`                          | `db/schema.ts`-ren aldaketetatik SQL migrazioa sortu; ez da DB batera konektatzen. Berrikusi SQL-a aplikatu aurretik.          |
+| `npm run check`                                | TypeScript eta Astro txantiloien egiaztapena.                                                                                  |
+| `npm test`                                     | Vitest; datu-base eta zerbitzari probek aldi baterako datu sintetikoak erabiltzen dituzte.                                     |
+| `npm run build`                                | Netlify-rako SSR aplikazioa eraiki.                                                                                            |
+| `npm run benchmark:data`                       | Aldi baterako DB batean jatorrizko eta egungo datu-karga alderatu.                                                             |
+| `npm run format -- path/to/file`               | Prettier-en konbentzioa aplikatu. Formatu-aldaketa masiboak aparte egin.                                                       |
 
 `--local` komandoek beti tokiko fitxategia erabiltzen dute, Turso kredentzialak egonda ere. `--remote` ez da inoiz automatikoki aukeratzen. Komando okerrek edo huts egindako idazketek irteera-kode ez-zeroa ematen dute. Pasahitzak ez dira inprimatzen.
 
@@ -81,4 +81,4 @@ npm run build
 - [Garapen-irizpideak](AGENTS.md): diseinua eta inplementazioa.
 - [Cleanup neurketak](docs/cleanup-measurements.md).
 
-Etengabeko ikasle-jarraipenaren domeinu-aldaketak [#3](https://github.com/43curious/taldebot/issues/3) issuean daude; cleanup honek egungo proiektu-mugak mantentzen ditu.
+Etengabeko jarraipenak ikaslearen identitatea, matrikulak, datatutako autoebaluazioak eta hobespenak proiektuetatik bereizten ditu. Taldeen historia berretsitako esleipenetatik bakarrik eraikitzen da. Ikusi [jarraipena, baimenak eta migrazioa](docs/student-tracking.md); eguneratu DB eta esleitu irakasleen egungo gradu/klaseko baimenak master kontuarekin.

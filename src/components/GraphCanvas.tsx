@@ -205,8 +205,8 @@ const GraphCanvas = forwardRef<GraphHandle, Props>(function GraphCanvas({ studen
                 const a = initialPoints.get(edge.source), b = initialPoints.get(edge.target);
                 if (!a || !b) return null;
                 return <path key={edgeKey(edge)} ref={element => { if (element) edgeRefs.current.set(edgeKey(edge), element); else edgeRefs.current.delete(edgeKey(edge)); }}
-                    d={`M ${a.x} ${a.y} L ${b.x} ${b.y}`} fill="none" stroke={edge.kind === 'preferAvoid' ? graphColors.negative : graphColors.positive}
-                    strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeDasharray={edge.kind === 'preferAvoid' ? '4 5' : undefined}
+                    d={`M ${a.x} ${a.y} L ${b.x} ${b.y}`} fill="none" stroke={(edge.kind === 'preferAvoid' || edge.kind === 'restriction') ? graphColors.negative : graphColors.positive}
+                    strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeDasharray={(edge.kind === 'preferAvoid' || edge.kind === 'restriction') ? '4 5' : undefined}
                     opacity=".9" pointerEvents="none" />;
             })}
             {students.map(student => {

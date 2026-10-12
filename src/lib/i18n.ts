@@ -1,6 +1,8 @@
 export type Language = 'eu' | 'en';
 
-export function language(value: string | undefined): Language { return value === 'en' ? 'en' : 'eu'; }
+export function language(value: string | undefined): Language {
+    return value === 'en' ? 'en' : 'eu';
+}
 export function studentPath(lang: Language, path = '/'): string {
     return lang === 'en' ? `/en${path}` : path;
 }
@@ -18,7 +20,10 @@ export const translations = {
         // Form - Section titles
         form: {
             title: 'Inkesta',
-            submissionError: 'Ezin izan da inkesta bidali. Egiaztatu datuak eta saiatu berriro.',
+            personalLinkError:
+                'Esteka iraungi, erabili edo baliogabetu da, edo beste inkesta bati dagokio. Eskatu irakasleari esteka berri bat.',
+            submissionError:
+                'Ezin izan da inkesta bidali. Egiaztatu datuak eta saiatu berriro.',
             submitting: 'Bidaltzen…',
             section1Title: 'Nor zara?',
             section2Title: 'Talde-dinamikak',
@@ -33,14 +38,18 @@ export const translations = {
             emailPlaceholder: 'izena.abizena',
             termsLink: 'Zehaztapenak eta baldintzak',
             termsAccept: 'onartzen ditut',
-            termsDescription: 'Jarraian beteko ditudan datuak taldeak osatzeko erabiltzea onartzen dut.',
+            termsDescription:
+                'Nire erantzunak jarraipenerako eta taldeak osatzeko erabiltzea onartzen dut. Egungo irakasle arduradunek eta master administratzaileek ikus ditzakete.',
 
             // Disclaimer modal
             disclaimerTitle: 'Datuen Erabilera',
-            disclaimerP1: 'Inkesta honetan jasotako datuak taldeak osatzeko erabiliko dira.',
+            disclaimerP1:
+                'Erantzunak ikaslearen etengabeko jarraipenerako eta taldeak osatzeko erabiltzen dira. Bidalketak datatutako historian gordetzen dira.',
             disclaimerP2: 'Zer gorde da?',
-            disclaimerP2Content: 'Zure gaitasun autoebaluatuak, zure kideen hobespenak eta zure posta elektroniko akademikoa.',
-            disclaimerP3: 'Proiektuaren irakasleak edo administratzaileak soilik ikus ditzake datu horiek. Ez dira erakundetik kanpoko hirugarrenekin partekatuko.',
+            disclaimerP2Content:
+                'Zure gaitasun autoebaluatuak, zure kideen hobespenak eta zure posta elektroniko akademikoa.',
+            disclaimerP3:
+                'Egungo gradu edo klaseko irakasle arduradunek eta master administratzaileek soilik ikus ditzakete. Proiektuko hobespenak eta motibazioa proiektu horretan mantentzen dira.',
             disclaimerClose: 'Ados',
 
             // Navigation
@@ -49,8 +58,10 @@ export const translations = {
             submit: 'Inkesta Bidali',
 
             // Validation messages
-            confirmEmptyDynamics: 'Seguru zaude ezer aukeratu gabe jarraitu nahi duzula? Horrek zure talde-erabakiak baldintza ditzake.',
-            confirmDefaultSkills: 'Seguru zaude gaitasunik aldatu gabe jarraitu nahi duzula? Batez besteko maila (5) onartuko da atal guztietan.',
+            confirmEmptyDynamics:
+                'Seguru zaude ezer aukeratu gabe jarraitu nahi duzula? Horrek zure talde-erabakiak baldintza ditzake.',
+            confirmDefaultSkills:
+                'Seguru zaude gaitasunik aldatu gabe jarraitu nahi duzula? Batez besteko maila (5) onartuko da atal guztietan.',
         },
 
         // Section descriptions
@@ -77,34 +88,105 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
 
         // Skills - Narrative
         skills: {
-            narrative_creativity: { label: 'Sormena', description: 'Ideia originalak eta narratiba aberatsak sortzeko gaitasuna.' },
-            narrative_writing: { label: 'Idazketa', description: 'Gidoiak, deskribapenak eta dokumentu ezberdinak idazteko gaitasuna.' },
-            narrative_references: { label: 'Erreferentziak', description: 'Proiektuaren generoko edukien ezagutza eta erreferente ezberdinak identifikatzeko gaitasuna.' },
-            narrative_communication: { label: 'Ahozko komunikazioa', description: 'Gende eta kamera aurrean hitz egiteko gaitasuna.' },
-            technical_camera: { label: 'Irudiaren errealizazioa eta grabaketa', description: 'Narratiba bisual aberats bat eraikitzeko baliabiden ezagutza eta erabilera gaitasuna' },
-            technical_sound: { label: 'Soinua', description: 'Kalitatezko audioa grabatzeko baliabideen ezagutza eta erabilera gaitasuna.' },
-            technical_editing: { label: 'Edizioa', description: 'Edizio software ezberdinak erabilita, grabatutako materiala manipulatzeko, erritmoa emateko eta efektu bisualen bidez azken emaitza fintzeko gaitasuna.' },
-            management_planning: { label: 'Plangintza eta antolaketa', description: 'Lan-egutegiak diseinatzeko, epeak kudeatzeko eta taldearen zereginak modu egokian egituratzeko gaitasuna.' },
-            management_production: { label: 'Ekoizpena', description: 'Proiektua aurrera eramateko beharrezkoak diren baliabideak (materialak, pertsonalak, baimenak, logistika…) kudeatzeko eta lortzeko gaitasuna.' },
-            soft_leadership: { label: 'Lidergoa', description: 'Taldea gidatzeko, erabakiak hartzeko eta kideak helburu komun baterantz bideratzeko gaitasuna.' },
-            soft_listening: { label: 'Entzume-aktiboa', description: 'Besteen ideiak arretaz jasotzeko, ulertzeko eta onartzeko gaitasuna, komunikazio on bat bermatzeko.' },
-            soft_proactivity: { label: 'Proaktibitatea', description: 'Ekimena hartzeko eta gauzak gertatu arte itxaron gabe lanean hasteko gaitasuna.' },
-            soft_teamwork: { label: 'Talde-lana', description: 'Besteekin lankidetzan aritzeko, baliabideak partekatzeko eta helburuak lortzeko guztion arteko sinergia bilatzeko gaitasuna.' },
-            soft_conflict: { label: 'Gatazken konponbidea', description: 'Desberdintasunen eta arazoen aurrean lasaitasuna mantentzeko eta talde-giro ona babestuko duten akordioak lortzeko gaitasuna.' },
-            soft_motivation: { label: 'Proiektuarekiko motibazioa', description: 'Proiektu hau burutzeko ditudan gogoak eta ilusioari eusteko gaitasuna' },
+            narrative_creativity: {
+                label: 'Sormena',
+                description:
+                    'Ideia originalak eta narratiba aberatsak sortzeko gaitasuna.',
+            },
+            narrative_writing: {
+                label: 'Idazketa',
+                description:
+                    'Gidoiak, deskribapenak eta dokumentu ezberdinak idazteko gaitasuna.',
+            },
+            narrative_references: {
+                label: 'Erreferentziak',
+                description:
+                    'Proiektuaren generoko edukien ezagutza eta erreferente ezberdinak identifikatzeko gaitasuna.',
+            },
+            narrative_communication: {
+                label: 'Ahozko komunikazioa',
+                description: 'Gende eta kamera aurrean hitz egiteko gaitasuna.',
+            },
+            technical_camera: {
+                label: 'Irudiaren errealizazioa eta grabaketa',
+                description:
+                    'Narratiba bisual aberats bat eraikitzeko baliabiden ezagutza eta erabilera gaitasuna',
+            },
+            technical_sound: {
+                label: 'Soinua',
+                description:
+                    'Kalitatezko audioa grabatzeko baliabideen ezagutza eta erabilera gaitasuna.',
+            },
+            technical_editing: {
+                label: 'Edizioa',
+                description:
+                    'Edizio software ezberdinak erabilita, grabatutako materiala manipulatzeko, erritmoa emateko eta efektu bisualen bidez azken emaitza fintzeko gaitasuna.',
+            },
+            management_planning: {
+                label: 'Plangintza eta antolaketa',
+                description:
+                    'Lan-egutegiak diseinatzeko, epeak kudeatzeko eta taldearen zereginak modu egokian egituratzeko gaitasuna.',
+            },
+            management_production: {
+                label: 'Ekoizpena',
+                description:
+                    'Proiektua aurrera eramateko beharrezkoak diren baliabideak (materialak, pertsonalak, baimenak, logistika…) kudeatzeko eta lortzeko gaitasuna.',
+            },
+            soft_leadership: {
+                label: 'Lidergoa',
+                description:
+                    'Taldea gidatzeko, erabakiak hartzeko eta kideak helburu komun baterantz bideratzeko gaitasuna.',
+            },
+            soft_listening: {
+                label: 'Entzume-aktiboa',
+                description:
+                    'Besteen ideiak arretaz jasotzeko, ulertzeko eta onartzeko gaitasuna, komunikazio on bat bermatzeko.',
+            },
+            soft_proactivity: {
+                label: 'Proaktibitatea',
+                description:
+                    'Ekimena hartzeko eta gauzak gertatu arte itxaron gabe lanean hasteko gaitasuna.',
+            },
+            soft_teamwork: {
+                label: 'Talde-lana',
+                description:
+                    'Besteekin lankidetzan aritzeko, baliabideak partekatzeko eta helburuak lortzeko guztion arteko sinergia bilatzeko gaitasuna.',
+            },
+            soft_conflict: {
+                label: 'Gatazken konponbidea',
+                description:
+                    'Desberdintasunen eta arazoen aurrean lasaitasuna mantentzeko eta talde-giro ona babestuko duten akordioak lortzeko gaitasuna.',
+            },
+            soft_motivation: {
+                label: 'Proiektuarekiko motibazioa',
+                description:
+                    'Proiektu hau burutzeko ditudan gogoak eta ilusioari eusteko gaitasuna',
+            },
         },
 
         // Group dynamics
         groupDynamics: {
-            comfort: { label: 'Pertsona Aingura', placeholder: 'Norekin lan egiten duzu ondoen?' },
-            preferWith: { label: 'Elkarlan Berriak', placeholder: 'Norekin ez duzu oraindik lanik egin eta gustatuko litzaizuke proiektu honetan lan egitea??' },
-            preferAvoid: { label: 'Mugak', placeholder: 'Zein kide nahiago zenuke proiektu honetan saihestea?' },
+            comfort: {
+                label: 'Pertsona Aingura',
+                placeholder: 'Norekin lan egiten duzu ondoen?',
+            },
+            preferWith: {
+                label: 'Elkarlan Berriak',
+                placeholder:
+                    'Norekin ez duzu oraindik lanik egin eta gustatuko litzaizuke proiektu honetan lan egitea??',
+            },
+            preferAvoid: {
+                label: 'Mugak',
+                placeholder:
+                    'Zein kide nahiago zenuke proiektu honetan saihestea?',
+            },
         },
 
         // Confirmation page
         confirmation: {
             title: 'Datuak bidali dira!',
-            message: 'Eskerrik asko zure erantzunagatik. Zure informazioa taldeak osatzeko erabiliko dugu. Posta elektroniko bat jasoko duzu taldeak behin betiko eratzen direnean.',
+            message:
+                'Eskerrik asko zure erantzunagatik. Zure informazioa taldeak osatzeko erabiliko dugu. Posta elektroniko bat jasoko duzu taldeak behin betiko eratzen direnean.',
             canClose: 'Leiho hau itxi dezakezu.',
             backHome: 'Hasierara bueltatu',
         },
@@ -122,7 +204,10 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
         // Form - Section titles
         form: {
             title: 'Form',
-            submissionError: 'Unable to submit. Check your answers and try again.',
+            personalLinkError:
+                'This link has expired, been used, been revoked, or belongs to another survey. Ask your teacher for a new link.',
+            submissionError:
+                'Unable to submit. Check your answers and try again.',
             submitting: 'Sending…',
             section1Title: 'Who are you?',
             section2Title: 'Group Dynamics',
@@ -137,14 +222,18 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
             emailPlaceholder: 'firstname.lastname',
             termsLink: 'Terms and conditions',
             termsAccept: 'I accept',
-            termsDescription: 'I agree that the data I provide will be used to form teams.',
+            termsDescription:
+                'I agree to use my responses for student follow-up and team formation. My currently responsible teachers and master administrators can see them.',
 
             // Disclaimer modal
             disclaimerTitle: 'Data Usage',
-            disclaimerP1: 'The data collected in this survey will be used to form teams.',
+            disclaimerP1:
+                'Responses support ongoing student follow-up and team formation. Submissions remain in dated history.',
             disclaimerP2: 'What is stored?',
-            disclaimerP2Content: 'Your self-evaluated skills, your teammate preferences, and your academic email.',
-            disclaimerP3: 'Only project instructors or administrators can view this data. It will not be shared with third parties outside the institution.',
+            disclaimerP2Content:
+                'Your self-evaluated skills, your teammate preferences, and your academic email.',
+            disclaimerP3:
+                'Currently responsible degree or class teachers and master administrators can view the record. Project preferences and motivation stay in their source project.',
             disclaimerClose: 'OK',
 
             // Navigation
@@ -153,8 +242,10 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
             submit: 'Submit Survey',
 
             // Validation messages
-            confirmEmptyDynamics: 'Are you sure you want to continue without selecting anyone? This may affect your team assignment.',
-            confirmDefaultSkills: 'Are you sure you want to continue without changing any skills? The average level (5) will be accepted for all sections.',
+            confirmEmptyDynamics:
+                'Are you sure you want to continue without selecting anyone? This may affect your team assignment.',
+            confirmDefaultSkills:
+                'Are you sure you want to continue without changing any skills? The average level (5) will be accepted for all sections.',
         },
 
         // Section descriptions
@@ -181,34 +272,105 @@ If you're someone who prefers listening over commanding, or you're always the on
 
         // Skills
         skills: {
-            narrative_creativity: { label: 'Creativity', description: 'Ability to generate original ideas and rich narratives.' },
-            narrative_writing: { label: 'Writing', description: 'Ability to write scripts, descriptions, and various documents.' },
-            narrative_references: { label: 'References', description: 'Knowledge of project genre content and ability to identify different references.' },
-            narrative_communication: { label: 'Oral communication', description: 'Ability to speak in front of people and cameras.' },
-            technical_camera: { label: 'Image production and recording', description: 'Knowledge and ability to use resources to build a rich visual narrative.' },
-            technical_sound: { label: 'Sound', description: 'Knowledge and ability to use resources for quality audio recording.' },
-            technical_editing: { label: 'Editing', description: 'Ability to manipulate recorded material using various editing software, create rhythm, and refine the final result with visual effects.' },
-            management_planning: { label: 'Planning and organization', description: 'Ability to design work schedules, manage deadlines, and properly structure team tasks.' },
-            management_production: { label: 'Production', description: 'Ability to manage and obtain resources needed for the project (materials, personnel, permits, logistics...).' },
-            soft_leadership: { label: 'Leadership', description: 'Ability to guide the team, make decisions, and direct members toward a common goal.' },
-            soft_listening: { label: 'Active listening', description: 'Ability to carefully receive, understand, and accept others\' ideas to ensure good communication.' },
-            soft_proactivity: { label: 'Proactivity', description: 'Ability to take initiative and start working without waiting for things to happen.' },
-            soft_teamwork: { label: 'Teamwork', description: 'Ability to collaborate with others, share resources, and seek synergy among everyone to achieve goals.' },
-            soft_conflict: { label: 'Conflict resolution', description: 'Ability to stay calm in the face of differences and problems and reach agreements that protect the team atmosphere.' },
-            soft_motivation: { label: 'Project motivation', description: 'My enthusiasm and ability to maintain excitement for completing this project.' },
+            narrative_creativity: {
+                label: 'Creativity',
+                description:
+                    'Ability to generate original ideas and rich narratives.',
+            },
+            narrative_writing: {
+                label: 'Writing',
+                description:
+                    'Ability to write scripts, descriptions, and various documents.',
+            },
+            narrative_references: {
+                label: 'References',
+                description:
+                    'Knowledge of project genre content and ability to identify different references.',
+            },
+            narrative_communication: {
+                label: 'Oral communication',
+                description: 'Ability to speak in front of people and cameras.',
+            },
+            technical_camera: {
+                label: 'Image production and recording',
+                description:
+                    'Knowledge and ability to use resources to build a rich visual narrative.',
+            },
+            technical_sound: {
+                label: 'Sound',
+                description:
+                    'Knowledge and ability to use resources for quality audio recording.',
+            },
+            technical_editing: {
+                label: 'Editing',
+                description:
+                    'Ability to manipulate recorded material using various editing software, create rhythm, and refine the final result with visual effects.',
+            },
+            management_planning: {
+                label: 'Planning and organization',
+                description:
+                    'Ability to design work schedules, manage deadlines, and properly structure team tasks.',
+            },
+            management_production: {
+                label: 'Production',
+                description:
+                    'Ability to manage and obtain resources needed for the project (materials, personnel, permits, logistics...).',
+            },
+            soft_leadership: {
+                label: 'Leadership',
+                description:
+                    'Ability to guide the team, make decisions, and direct members toward a common goal.',
+            },
+            soft_listening: {
+                label: 'Active listening',
+                description:
+                    "Ability to carefully receive, understand, and accept others' ideas to ensure good communication.",
+            },
+            soft_proactivity: {
+                label: 'Proactivity',
+                description:
+                    'Ability to take initiative and start working without waiting for things to happen.',
+            },
+            soft_teamwork: {
+                label: 'Teamwork',
+                description:
+                    'Ability to collaborate with others, share resources, and seek synergy among everyone to achieve goals.',
+            },
+            soft_conflict: {
+                label: 'Conflict resolution',
+                description:
+                    'Ability to stay calm in the face of differences and problems and reach agreements that protect the team atmosphere.',
+            },
+            soft_motivation: {
+                label: 'Project motivation',
+                description:
+                    'My enthusiasm and ability to maintain excitement for completing this project.',
+            },
         },
 
         // Group dynamics
         groupDynamics: {
-            comfort: { label: 'Anchor Person', placeholder: 'Who do you work best with?' },
-            preferWith: { label: 'New Collaborations', placeholder: 'Who haven\'t you worked with yet and would like to work with on this project?' },
-            preferAvoid: { label: 'Boundaries', placeholder: 'Which teammate would you prefer to avoid in this project?' },
+            comfort: {
+                label: 'Anchor Person',
+                placeholder: 'Who do you work best with?',
+            },
+            preferWith: {
+                label: 'New Collaborations',
+                placeholder:
+                    "Who haven't you worked with yet and would like to work with on this project?",
+            },
+            preferAvoid: {
+                label: 'Boundaries',
+                placeholder:
+                    'Which teammate would you prefer to avoid in this project?',
+            },
         },
 
         // Confirmation page
         confirmation: {
             title: 'Data submitted!',
-            message: 'Thank you for your response. Your information will be used to form teams. You will receive an email when the teams are finalized.',
+            message:
+                'Thank you for your response. Your information will be used to form teams. You will receive an email when the teams are finalized.',
             canClose: 'You can close this window.',
             backHome: 'Back to home',
         },

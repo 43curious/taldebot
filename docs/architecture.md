@@ -20,13 +20,11 @@ The public routes `/`, `/en/`, `/student/form/:accessCode`, `/en/student/form/:a
 
 ## Data boundaries
 
-Degrees/classes hold roster members. Projects have their own participant snapshots, responses, team allocations and team history. Cleanup does not add a persistent student identity or cross-project history model; that belongs to [issue #3](https://github.com/43curious/taldebot/issues/3).
-
-Roster matching requires exact normalized email or an unambiguous name. Name ambiguity is checked across the entire roster even when displaying one class. Multiple participant snapshots resolving to the same member are skipped. Graph loading groups participants once per project and keeps the global ambiguity lookup.
+Durable student records own dated assessments, scoped preference submissions, enrollment history and confirmed assignment memberships. Projects retain explicitly linked participant snapshots, survey completion and attendance. `studentIdentity.ts` manages identity/enrollment operations; `studentProfiles.ts` loads cohorts in bulk; `access.ts` applies current responsibility; `studentUpdates.ts` authorizes personal updates; `formation.ts` captures draft inputs and confirms assignments. See [student tracking](student-tracking.md) for boundaries and migration behavior.
 
 Request schemas validate positive integer IDs, roster JSON, the 1–10 integer scale and relationship selection rules. Survey peer IDs are checked against the project inside the transaction. Project creation, survey submission, reset and replacement of one algorithm's team allocation use Drizzle/LibSQL transactions. Replacement preserves the other algorithm's allocation. Errors return JSON with validation errors as 400, missing records as 404 and unexpected persistence errors as 500. Authentication and session checks remain in middleware.
 
-Dashboard statistics use two queries including grouped counts; nullable absence flags count as present, and projects with no students remain visible. The teams page loads project, allocation, participants and responses once, then prepares card props. Team cards render without querying. Generation and summaries index responses by participant ID. No allocation policy was changed by cleanup.
+Dashboard statistics use two queries including grouped counts; nullable absence flags count as present, and projects with no students remain visible. The teams page loads project, allocation, participants and responses once, then prepares card props. Team cards render without querying. Generation and summaries index responses by participant ID. Team inputs now use applicable ongoing records and confirmed pair history, with hard teacher restrictions and teacher-selected continuity versus variety. Drafts preserve input snapshots; cards render those captured values.
 
 ## Database workflow
 

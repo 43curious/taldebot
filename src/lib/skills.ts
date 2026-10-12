@@ -52,7 +52,10 @@ export function localizedSkillGroups(lang: Language) {
     }));
 }
 
-export function scoredSkills(skills: Partial<Skills>, lang: Language = 'eu') {
+export function scoredSkills(
+    skills: Partial<{ [Key in keyof Skills]: Partial<Skills[Key]> }>,
+    lang: Language = 'eu',
+) {
     return localizedSkillGroups(lang).flatMap((group) => {
         const scores: Partial<Record<string, number>> | undefined =
             skills[group.key];

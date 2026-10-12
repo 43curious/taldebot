@@ -1,0 +1,649 @@
+---
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { db } from '../../../lib/db';
+import { z } from 'zod';
+import { loadStudentProfiles } from '../../../lib/studentProfiles';
+import { assessmentGroups } from '../../../lib/studentReport';
+import {
+    academicPeriod,
+    updateStudentIdentity,
+} from '../../../lib/studentIdentity';
+import {
+    requireStudent,
+    studentFilter,
+    isMaster,
+    projectFilter,
+} from '../../../lib/access';
+import { addRestriction, withdrawRestriction } from '../../../lib/pairingRules';
+import { positiveId } from '../../../lib/input';
+const id = Number(Astro.params.studentId);
+const access = Astro.locals.teacherAccess;
+requireStudent(access, id);
+let error = '';
+let feedback = '';
+let submitted: FormData | null = null;
+if (Astro.request.method === 'POST') {
+    try {
+        const form = await Astro.request.formData();
+        submitted = form;
+        const action = String(form.get('action'));
+        if (action === 'identity') {
+            const input = z
+                .object({
+                    name: z.string().trim().min(1),
+                    email: z.union([z.string().trim().email(), z.literal('')]),
+                })
+                .parse(Object.fromEntries(form));
+            await db.transaction((tx) =>
+                updateStudentIdentity(tx, id, input.name, input.email || null),
+            );
+            feedback =
+                'Identitatea eguneratu da. Aurreko emailen loturak eta historia mantendu dira.';
+        } else if (action === 'restriction') {
+            const input = z
+                .object({
+                    peer: positiveId,
+                    reviewAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+                    reason: z.string().optional(),
+                    scope: z.enum(['period', 'project']).default('period'),
+                    projectId: positiveId.optional(),
+                    academicPeriod: z
+                        .string()
+                        .regex(/^\d{4}-\d{4}$/)
+                        .optional(),
+                })
+                .parse({
+                    ...Object.fromEntries(form),
+                    projectId: form.get('projectId') || undefined,
+                });
+            await addRestriction(db, access, {
+                student1Id: id,
+                student2Id: input.peer,
+                scope: input.scope,
+                projectId: input.projectId,
+                academicPeriod: input.academicPeriod || academicPeriod(),
+                reviewAt: input.reviewAt,
+                reason: input.reason,
+            });
+            feedback = 'Derrigorrezko murrizketa gorde da.';
+        } else if (action === 'withdraw-restriction') {
+            await withdrawRestriction(
+                db,
+                access,
+                positiveId.parse(form.get('restrictionId')),
+            );
+            feedback =
+                'Murrizketa erretiratu da. Aurreko erregistroa gordeta dago.';
+        }
+    } catch (caught) {
+        error =
+            caught instanceof Error
+                ? caught.message
+                : 'Ezin izan da aldaketa gorde.';
+    }
+}
+const asOf = Astro.url.searchParams.get('asOf') || undefined;
+if (
+    asOf &&
+    (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || Number.isNaN(Date.parse(asOf)))
+)
+    return new Response('Invalid date', { status: 400 });
+const projectId = Astro.url.searchParams.get('project')
+    ? positiveId.parse(Astro.url.searchParams.get('project'))
+    : undefined;
+const profile = (
+    await loadStudentProfiles(db, access, [id], { asOf, projectId })
+).get(id);
+if (!profile) return Astro.redirect('/admin/classes');
+const peers = await db.query.studentRecords.findMany({
+    where: studentFilter(access),
+    orderBy: (row, { asc }) => [asc(row.name)],
+});
+const contextProjects = await db.query.projects.findMany({
+    where: projectFilter(access),
+});
+const labels = {
+    comfort: 'Konfort-zona',
+    preferWith: 'Elkarlana',
+    preferAvoid: 'Ikaslearen saiheste-hobespena',
+    restriction: 'Derrigorrezko murrizketa',
+};
+const date = (value: string | null) =>
+    value
+        ? new Date(
+              value.includes('T') ? value : value.replace(' ', 'T') + 'Z',
+          ).toLocaleDateString('eu-ES')
+        : 'Data ezezaguna';
+const draft = (key: string, fallback: string) =>
+    error && submitted?.get('action') === 'identity'
+        ? String(submitted.get(key) || '')
+        : fallback;
+---
+
+<AdminLayout title={profile.person.name}>
+    <section class="teacher-page" data-student-id={id}>
+        <a
+            href="/admin/classes"
+            class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500"
+        >
+            ← Klaseak
+        </a>
+        <header class="mb-6">
+            <h1>{profile.person.name}</h1>
+            <p class="mt-2 text-sm text-slate-500">
+                Etengabeko jarraipena · {profile.period}
+                {asOf && ` · ${asOf} arte`}
+                {projectId && ' · Proiektuaren testuingurua'}
+            </p>
+            {profile.person.email && (
+                <p class="mt-1 text-xs text-slate-500">
+                    {profile.person.email}
+                </p>
+            )}
+        </header>
+        {error && (
+            <p role="alert" class="mb-4 text-sm text-red-700">
+                {error}
+            </p>
+        )}
+        {feedback && (
+            <p role="status" class="mb-4 text-sm text-teal-700">
+                {feedback}
+            </p>
+        )}
+        {profile.person.needsReview && (
+            <p class="mb-5 text-sm text-amber-700">
+                Identitatearen jatorria berrikusi behar da.{' '}
+                {isMaster(access) && (
+                    <a href="/admin/identity-review" class="underline">
+                        Berrikusi loturak
+                    </a>
+                )}
+            </p>
+        )}
+        <div class="grid items-start gap-5 lg:grid-cols-2">
+            <section class="teacher-panel p-5">
+                <h2 class="text-base">Autoebaluazioa</h2>
+                <p class="mt-1 text-xs text-slate-500">
+                    Ikasleak bere buruari emandako puntuazioa · 1–10 · Ez da
+                    nota akademikoa.
+                </p>
+                <p class="mt-2 text-xs text-slate-500">
+                    {profile.assessment
+                        ? `${date(profile.assessment.submittedAt)} · ${profile.assessment.projectName || profile.assessment.academicPeriod} · ${profile.assessment.source === 'demo' ? 'Demo datu sintetikoak' : profile.assessment.source === 'legacy-survey' ? 'Aurretiko inkesta; egiletza egiaztatu gabe' : 'Esteka pertsonaleko erantzuna'}`
+                        : 'Ez dago autoebaluaziorik.'}
+                </p>
+                {assessmentGroups(profile.values).map((group) => (
+                    <div class="mt-5">
+                        <h3 class="text-xs font-semibold text-slate-500">
+                            {group.label}
+                        </h3>
+                        <dl class="mt-2 space-y-2">
+                            {group.skills
+                                .filter(
+                                    (skill) =>
+                                        projectId || skill.key !== 'motivation',
+                                )
+                                .map((skill) => (
+                                    <div class="flex justify-between gap-4 text-sm">
+                                        <dt class="text-slate-600">
+                                            {skill.label}
+                                        </dt>
+                                        <dd class="text-slate-900">
+                                            {skill.score ?? '—'}
+                                        </dd>
+                                    </div>
+                                ))}
+                        </dl>
+                    </div>
+                ))}
+                <p class="mt-4 text-xs text-slate-500">
+                    Proiektuarekiko motibazioa bere proiektuaren historian dago.
+                </p>
+            </section>
+            <section class="teacher-panel p-5">
+                <h2 class="text-base">Lan-hobespenak</h2>
+                <p class="mt-2 text-xs text-slate-500">
+                    {profile.preference
+                        ? `${date(profile.preference.submittedAt)} · ${profile.preference.projectName || profile.preference.academicPeriod}`
+                        : 'Ez dago testuinguru honetako hobespen berretsirik.'}
+                </p>
+                {profile.needsReview && (
+                    <p class="mt-2 text-xs text-amber-700">
+                        Eskatu ikasleari hobespenak berrikusteko.
+                    </p>
+                )}
+                <ul class="mt-4 divide-y divide-slate-100">
+                    {profile.relationships
+                        .filter((link) => !link.incoming)
+                        .map((link) => (
+                            <li class="py-3 text-sm">
+                                <p>
+                                    {link.accessible ? (
+                                        <a
+                                            href={`/admin/students/${link.target}`}
+                                            class="text-teal-700"
+                                        >
+                                            {link.peerName}
+                                        </a>
+                                    ) : (
+                                        link.peerName
+                                    )}
+                                    <span
+                                        class:list={[
+                                            'ml-3 text-xs',
+                                            [
+                                                'preferAvoid',
+                                                'restriction',
+                                            ].includes(link.kind)
+                                                ? 'text-red-700'
+                                                : 'text-teal-700',
+                                        ]}
+                                    >
+                                        {link.kind === 'comfort'
+                                            ? 'Konfort-zona'
+                                            : link.kind === 'preferWith'
+                                              ? 'Elkarlana'
+                                              : link.kind === 'preferAvoid'
+                                                ? 'Ikaslearen saiheste-hobespena'
+                                                : 'Irakaslearen derrigorrezko murrizketa'}
+                                    </span>
+                                </p>
+                                <p class="mt-1 text-xs text-slate-500">
+                                    {link.kind === 'restriction'
+                                        ? 'Irakasleak bikotea bereizi du'
+                                        : 'Ikasle honetatik kidera'}{' '}
+                                    · {date(link.submittedAt)} ·{' '}
+                                    {link.sourceLabel}
+                                    {link.reviewAt &&
+                                        ` · berrikuspena: ${link.reviewAt}`}
+                                </p>
+                            </li>
+                        ))}
+                </ul>
+                <details class="mt-4">
+                    <summary class="cursor-pointer text-xs text-slate-500">
+                        Sarrerako hobespenak
+                    </summary>
+                    <ul class="mt-3 space-y-2">
+                        {profile.relationships
+                            .filter((link) => link.incoming)
+                            .map((link) => (
+                                <li class="text-xs text-slate-600">
+                                    {link.peerName} → {profile.person.name} ·{' '}
+                                    {labels[link.kind]} ·{' '}
+                                    {date(link.submittedAt)} ·{' '}
+                                    {link.sourceLabel}
+                                </li>
+                            ))}
+                    </ul>
+                </details>
+            </section>
+        </div>
+        <section class="teacher-panel mt-5 p-5">
+            <h2 class="text-base">Berretsitako esleipenak</h2>
+            <p class="mt-1 text-xs text-slate-500">
+                Elkarrekin esleituta egotea ez da benetako lankidetzaren froga.
+                Zirriborroek ez dute historia osatzen.
+            </p>
+            <ul class="mt-4 divide-y divide-slate-100">
+                {profile.assignments.map((assignment) => (
+                    <li class="py-3 text-sm">
+                        <p>
+                            {assignment.projectName} · {assignment.teamNumber}.
+                            taldea · {assignment.revision}. berrikuspena
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            {date(assignment.confirmedAt)} —{' '}
+                            {assignment.endedAt
+                                ? date(assignment.endedAt)
+                                : 'Egungo esleipena'}{' '}
+                            ·{' '}
+                            {assignment.peers
+                                .map((peer) => peer.name)
+                                .join(', ')}
+                        </p>
+                    </li>
+                ))}
+                {!profile.assignments.length && (
+                    <li class="text-sm text-slate-500">
+                        Ez dago berretsitako esleipenik.
+                    </li>
+                )}
+            </ul>
+        </section>
+        <details class="teacher-panel mt-5">
+            <summary class="cursor-pointer p-5 text-sm text-slate-600">
+                Aurreko autoebaluazioak, hobespenak eta matrikulak
+            </summary>
+            <div class="space-y-5 border-t border-slate-100 p-5">
+                <section>
+                    <h2 class="text-sm">Autoebaluazioen historia</h2>
+                    {profile.assessmentHistory.map((record) => (
+                        <details class="mt-3">
+                            <summary class="cursor-pointer text-xs text-slate-500">
+                                {date(record.submittedAt)} ·{' '}
+                                {record.projectName || record.academicPeriod} ·{' '}
+                                {record.questionnaireVersion}
+                                {record.withdrawnAt && ' · erretiratua'}
+                            </summary>
+                            <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                                {assessmentGroups(record.data).map((group) => (
+                                    <div>
+                                        <h3 class="text-xs text-slate-500">
+                                            {group.label}
+                                        </h3>
+                                        {group.skills.map((skill) => (
+                                            <p class="mt-1 text-xs">
+                                                {skill.label}:{' '}
+                                                {skill.score ?? '—'}
+                                            </p>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        </details>
+                    ))}
+                </section>
+                <section>
+                    <h2 class="text-sm">Hobespen-bidalketak</h2>
+                    <ul class="mt-3 space-y-2">
+                        {profile.preferenceHistory.map((record) => (
+                            <li class="text-xs text-slate-500">
+                                {date(record.submittedAt)} ·{' '}
+                                {record.projectName || record.academicPeriod} ·{' '}
+                                {record.scope === 'project'
+                                    ? 'Proiektu jakina'
+                                    : 'Ikasturtekoa'}
+                                {record.withdrawnAt && ' · erretiratua'}
+                                {record.unresolvedTargets.length > 0 &&
+                                    ' · aurretiko lotura batzuk argitu gabe'}
+                                <ul class="mt-1 pl-3">
+                                    {record.choices.map((choice) => (
+                                        <li>
+                                            {choice.name} ·{' '}
+                                            {labels[choice.kind]}
+                                        </li>
+                                    ))}
+                                    {!record.choices.length && (
+                                        <li>
+                                            Aukera hutsak edo jatorrizko datu
+                                            argitu gabeak
+                                        </li>
+                                    )}
+                                </ul>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+                <section>
+                    <h2 class="text-sm">Matrikulak</h2>
+                    <ul class="mt-3 space-y-2">
+                        {profile.enrollments.map((enrollment) => (
+                            <li class="text-xs text-slate-500">
+                                {enrollment.degreeName} · {enrollment.className}{' '}
+                                · {enrollment.academicPeriod} ·{' '}
+                                {date(enrollment.startedAt)} —{' '}
+                                {enrollment.endedAt
+                                    ? date(enrollment.endedAt)
+                                    : 'Aktiboa'}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            </div>
+        </details>
+        <details class="teacher-panel mt-5" open={!profile.assessment}>
+            <summary class="cursor-pointer p-5 text-sm text-slate-600">
+                Eguneratzea eskatu
+            </summary>
+            <div class="border-t border-slate-100 p-5">
+                <p class="text-xs text-slate-500">
+                    Esteka pertsonala ikasle honi bakarrik eman. 30 eguneko epea
+                    du; esteka berriak aurreko eskaera baliogabetzen du.
+                </p>
+                <form id="request-update" class="teacher-toolbar mt-4">
+                    <label class="teacher-label">
+                        Ikasturtea
+                        <input
+                            name="academicPeriod"
+                            value={academicPeriod()}
+                            pattern="[0-9]{4}-[0-9]{4}"
+                            required
+                        />
+                    </label>
+                    <label class="flex min-h-11 items-center gap-2 text-sm">
+                        <input name="assessmentAsked" type="checkbox" checked />
+                        Autoebaluazioa
+                    </label>
+                    <label class="flex min-h-11 items-center gap-2 text-sm">
+                        <input
+                            name="preferencesAsked"
+                            type="checkbox"
+                            checked
+                        />
+                        Lan-hobespenak
+                    </label>
+                    <button
+                        class="teacher-button teacher-button-primary"
+                        disabled={profile.person.needsReview}
+                    >
+                        Esteka pertsonala sortu
+                    </button>
+                </form>
+                <p
+                    id="request-feedback"
+                    role="status"
+                    class="mt-3 text-sm text-slate-600"
+                ></p>
+                <div id="request-result" hidden class="mt-4">
+                    <label class="teacher-label">
+                        Ikaslearen esteka pertsonala
+                        <input
+                            id="request-url"
+                            readonly
+                            class="mt-1 w-full font-mono text-xs"
+                        />
+                    </label>
+                    <button
+                        id="copy-request"
+                        type="button"
+                        class="teacher-button mt-3"
+                    >
+                        Esteka kopiatu
+                    </button>
+                </div>
+            </div>
+        </details>
+        <details class="teacher-panel mt-5">
+            <summary class="cursor-pointer p-5 text-sm text-slate-600">
+                Identitatea, historia-data eta murrizketak
+            </summary>
+            <div class="space-y-6 border-t border-slate-100 p-5">
+                <form method="POST" class="teacher-toolbar">
+                    <input type="hidden" name="action" value="identity" />
+                    <label class="teacher-label">
+                        Izena
+                        <input
+                            name="name"
+                            required
+                            value={draft('name', profile.person.name)}
+                        />
+                    </label>
+                    <label class="teacher-label">
+                        Emaila
+                        <input
+                            name="email"
+                            type="email"
+                            value={draft('email', profile.person.email || '')}
+                        />
+                    </label>
+                    <button class="teacher-button">Identitatea gorde</button>
+                </form>
+                <form method="GET" class="teacher-toolbar">
+                    <label class="teacher-label">
+                        Historia-data
+                        <input name="asOf" type="date" value={asOf} />
+                    </label>
+                    <label class="teacher-label">
+                        Proiektuaren testuingurua
+                        <select name="project">
+                            <option value="">Etengabeko jarraipena</option>
+                            {contextProjects.map((project) => (
+                                <option
+                                    value={project.id}
+                                    selected={project.id === projectId}
+                                >
+                                    {project.name}
+                                    {project.archivedAt && ' · artxibatuta'}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <button class="teacher-button">Testuingurua ikusi</button>
+                    <a class="teacher-button" href={`/admin/students/${id}`}>
+                        Egungo jarraipena
+                    </a>
+                </form>
+                <form method="POST" class="teacher-toolbar">
+                    <input type="hidden" name="action" value="restriction" />
+                    <label class="teacher-label">
+                        Testuingurua
+                        <select name="scope">
+                            <option value="period">Ikasturtea</option>
+                            <option value="project">Proiektua</option>
+                        </select>
+                    </label>
+                    <label class="teacher-label">
+                        Ikasturtea
+                        <input
+                            name="academicPeriod"
+                            value={profile.period}
+                            pattern="[0-9]{4}-[0-9]{4}"
+                            required
+                        />
+                    </label>
+                    <label class="teacher-label">
+                        Proiektua (proiektuko murrizketarako)
+                        <select name="projectId">
+                            <option value="">Aukeratu proiektua</option>
+                            {contextProjects.map((project) => (
+                                <option value={project.id}>
+                                    {project.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label class="teacher-label">
+                        Bereizi beharreko kidea
+                        <select name="peer" required>
+                            <option value="">Aukeratu</option>
+                            {peers
+                                .filter((peer) => peer.id !== id)
+                                .map((peer) => (
+                                    <option value={peer.id}>{peer.name}</option>
+                                ))}
+                        </select>
+                    </label>
+                    <label class="teacher-label">
+                        Berrikusteko data
+                        <input name="reviewAt" type="date" required />
+                    </label>
+                    <label class="teacher-label">
+                        Arrazoi pribatua
+                        <input name="reason" />
+                    </label>
+                    <button class="teacher-button">
+                        Derrigorrezko murrizketa gehitu
+                    </button>
+                </form>
+                <p class="text-xs text-slate-500">
+                    Murrizketa hautatutako ikasturte edo proiekturako da.
+                    Berrikuspen-data pasatzeak ez du murrizketa kentzen.
+                    Arrazoia egileak eta masterrak soilik ikus dezakete.
+                </p>
+                {profile.restrictions.map((rule) => (
+                    <div class="text-sm text-slate-600">
+                        <p>
+                            {rule.reason || 'Derrigorrezko bereizketa'} ·
+                            berrikuspena: {rule.reviewAt}
+                        </p>
+                        {(isMaster(access) ||
+                            rule.createdBy === access.actor.id) && (
+                            <form method="POST" class="mt-2">
+                                <input
+                                    type="hidden"
+                                    name="action"
+                                    value="withdraw-restriction"
+                                />
+                                <input
+                                    type="hidden"
+                                    name="restrictionId"
+                                    value={rule.id}
+                                />
+                                <button
+                                    class="teacher-button"
+                                    onclick="return confirm('Derrigorrezko murrizketa erretiratu?')"
+                                >
+                                    Murrizketa erretiratu
+                                </button>
+                            </form>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </details>
+    </section>
+</AdminLayout>
+<script>
+    const page = document.querySelector<HTMLElement>('[data-student-id]')!;
+    const form = document.querySelector<HTMLFormElement>('#request-update')!;
+    const feedback = document.querySelector<HTMLElement>('#request-feedback')!;
+    const url = document.querySelector<HTMLInputElement>('#request-url')!;
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = form.querySelector<HTMLButtonElement>('button')!;
+        button.disabled = true;
+        try {
+            const data = new FormData(form);
+            const response = await fetch('/api/admin/student-update-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentId: Number(page.dataset.studentId),
+                    assessmentAsked: data.has('assessmentAsked'),
+                    preferencesAsked: data.has('preferencesAsked'),
+                    academicPeriod: data.get('academicPeriod'),
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok)
+                throw new Error(result.error || 'Ezin izan da esteka sortu.');
+            url.value = result.url;
+            document.querySelector<HTMLElement>('#request-result')!.hidden =
+                false;
+            feedback.textContent =
+                'Esteka sortu da. Ikasle honi bakarrik partekatu.';
+        } catch (error) {
+            feedback.textContent =
+                error instanceof Error
+                    ? error.message
+                    : 'Ezin izan da esteka sortu.';
+        } finally {
+            button.disabled = false;
+        }
+    });
+    document
+        .querySelector('#copy-request')
+        ?.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(url.value);
+                feedback.textContent = 'Esteka kopiatuta.';
+            } catch {
+                feedback.textContent =
+                    'Ezin izan da kopiatu. Hautatu eta kopiatu esteka.';
+                url.select();
+            }
+        });
+</script>

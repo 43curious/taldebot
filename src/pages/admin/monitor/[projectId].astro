@@ -1,164 +1,563 @@
 ---
 export const prerender = false;
-import AdminLayout from "../../../layouts/AdminLayout.astro";
-import ClassGraph from "../../../components/ClassGraph";
-import { db } from "../../../lib/db";
-import { projects, students, responses } from "../../../../db/schema";
-import { eq } from "drizzle-orm";
-import { projectAssessments } from "../../../lib/studentReport";
-import { classRelationships, studentStatus, trackingSummary } from "../../../lib/tracking";
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import ClassGraph from '../../../components/ClassGraph';
+import { db } from '../../../lib/db';
+import { projects, students, responses } from '../../../../db/schema';
+import { eq } from 'drizzle-orm';
+import { projectAssessments } from '../../../lib/studentReport';
+import {
+    classRelationships,
+    studentStatus,
+    trackingSummary,
+} from '../../../lib/tracking';
 
 const pid = Number(Astro.params.projectId);
-if (!Number.isInteger(pid) || pid < 1) return Astro.redirect("/admin/dashboard");
-const project = await db.query.projects.findFirst({ where: eq(projects.id, pid) });
-if (!project) return Astro.redirect("/admin/dashboard");
+if (!Number.isInteger(pid) || pid < 1)
+    return Astro.redirect('/admin/dashboard');
+const project = await db.query.projects.findFirst({
+    where: eq(projects.id, pid),
+});
+if (!project) return Astro.redirect('/admin/dashboard');
 const allStudents = await db.query.students.findMany({
     where: eq(students.projectId, pid),
     orderBy: (students, { asc }) => [asc(students.name)],
 });
 const summary = trackingSummary(allStudents);
-const search = (Astro.url.searchParams.get("q") || "").trim();
-const requestedStatus = Astro.url.searchParams.get("status") || "all";
-const status = ["pending", "completed", "excluded"].includes(requestedStatus) ? requestedStatus : "all";
-const mapView = Astro.url.searchParams.get("view") === "map";
-const filtered = allStudents.filter(student =>
-    (status === "all" || studentStatus(student) === status) &&
-    `${student.name} ${student.email || ""}`.toLocaleLowerCase("eu").includes(search.toLocaleLowerCase("eu"))
+const search = (Astro.url.searchParams.get('q') || '').trim();
+const requestedStatus = Astro.url.searchParams.get('status') || 'all';
+const status = ['pending', 'completed', 'excluded'].includes(requestedStatus)
+    ? requestedStatus
+    : 'all';
+const mapView = Astro.url.searchParams.get('view') === 'map';
+const filtered = allStudents.filter(
+    (student) =>
+        (status === 'all' || studentStatus(student) === status) &&
+        `${student.name} ${student.email || ''}`
+            .toLocaleLowerCase('eu')
+            .includes(search.toLocaleLowerCase('eu')),
 );
-const surveyUrl = project.accessCode ? new URL(`/student/form/${project.accessCode}`, Astro.url.origin).href : "";
-const pendingEmails = [...new Set(allStudents.filter(student => studentStatus(student) === "pending" && student.email).map(student => student.email))].join(", ");
-const missingEmails = allStudents.filter(student => studentStatus(student) === "pending" && !student.email).length;
-const preferences = mapView ? await db.query.responses.findMany({ where: eq(responses.projectId, pid) }) : [];
+const surveyUrl = project.accessCode
+    ? new URL(`/student/form/${project.accessCode}`, Astro.url.origin).href
+    : '';
+const pendingEmails = [
+    ...new Set(
+        allStudents
+            .filter(
+                (student) =>
+                    studentStatus(student) === 'pending' && student.email,
+            )
+            .map((student) => student.email),
+    ),
+].join(', ');
+const missingEmails = allStudents.filter(
+    (student) => studentStatus(student) === 'pending' && !student.email,
+).length;
+const preferences = mapView
+    ? await db.query.responses.findMany({ where: eq(responses.projectId, pid) })
+    : [];
 const assessments = projectAssessments(preferences, pid);
-const graphStudents = allStudents.filter(student => !student.isExcluded).map(student => ({ ...student, assessment: student.hasCompleted ? assessments.get(student.id) : undefined }));
+const graphStudents = allStudents
+    .filter((student) => !student.isExcluded)
+    .map((student) => ({
+        ...student,
+        assessment: student.hasCompleted
+            ? assessments.get(student.id)
+            : undefined,
+    }));
 const relationships = classRelationships(allStudents, preferences);
-const labels = { pending: "Erantzun gabe", completed: "Osatuta", excluded: "Absent" };
-const filterUrl = (nextStatus: string) => `?${new URLSearchParams({ status: nextStatus, q: search })}`;
-const reminderUrl = (email: string) => `mailto:${encodeURIComponent(email)}?${new URLSearchParams({ subject: `${project.name} · Inkesta`, body: `Kaixo,\n\nBete ${project.name} proiektuaren inkesta, mesedez:\n${surveyUrl}\n\nEskerrik asko!` }).toString().replace(/\+/g, "%20")}`;
+const labels = {
+    pending: 'Erantzun gabe',
+    completed: 'Osatuta',
+    excluded: 'Absent',
+};
+const filterUrl = (nextStatus: string) =>
+    `?${new URLSearchParams({ status: nextStatus, q: search })}`;
 ---
 
 <AdminLayout title={`Jarraipena: ${project.name}`}>
-    <section class="teacher-page" data-project-id={pid} aria-labelledby="tracking-heading">
-        <a href="/admin/dashboard" class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700">← Proiektuak</a>
+    <section
+        class="teacher-page"
+        data-project-id={pid}
+        aria-labelledby="tracking-heading"
+    >
+        <a
+            href="/admin/dashboard"
+            class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700"
+        >
+            ← Proiektuak
+        </a>
         <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div class="min-w-0">
-                <h1 id="tracking-heading" class="break-words">{project.name}</h1>
-                <p class="mt-2 text-sm text-slate-500">Inkestaren jarraipena · {project.numTeams ? `${project.numTeams} talde` : project.targetTeamSize ? `${project.targetTeamSize} ikasle taldeko` : "Taldeak konfiguratu gabe"}</p>
+                <h1 id="tracking-heading" class="break-words">
+                    {project.name}
+                </h1>
+                <p class="mt-2 text-sm text-slate-500">
+                    Inkestaren jarraipena ·{' '}
+                    {project.numTeams
+                        ? `${project.numTeams} talde`
+                        : project.targetTeamSize
+                          ? `${project.targetTeamSize} ikasle taldeko`
+                          : 'Taldeak konfiguratu gabe'}
+                </p>
             </div>
             <div class="teacher-toolbar">
-                <a href={`/api/admin/export-data?projectId=${pid}`} class="teacher-button">Excel deskargatu</a>
-                <a href={`/admin/teams/${pid}`} class="teacher-button teacher-button-primary">Taldeak kudeatu →</a>
+                <a
+                    href={`/api/admin/export-data?projectId=${pid}`}
+                    class="teacher-button"
+                >
+                    Excel deskargatu
+                </a>
+                <a
+                    href={`/admin/teams/${pid}`}
+                    class="teacher-button teacher-button-primary"
+                >
+                    Taldeak kudeatu →
+                </a>
             </div>
         </header>
 
         <div class="teacher-panel mb-6 p-5">
             <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
-                <p><strong class="font-semibold text-slate-900">{summary.completed} / {summary.active}</strong> <span class="text-slate-500">ikaslek erantzun dute</span></p>
+                <p>
+                    <strong class="font-semibold text-slate-900">
+                        {summary.completed} / {summary.active}
+                    </strong>{' '}
+                    <span class="text-slate-500">ikaslek erantzun dute</span>
+                </p>
                 <span class="text-slate-500">{summary.percentage}%</span>
             </div>
-            <div role="progressbar" aria-label="Inkestaren bete-maila" aria-valuenow={summary.percentage} aria-valuemin="0" aria-valuemax="100" class="my-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                <div class="h-full rounded-full bg-teal-600" style={`width: ${summary.percentage}%`}></div>
+            <div
+                role="progressbar"
+                aria-label="Inkestaren bete-maila"
+                aria-valuenow={summary.percentage}
+                aria-valuemin="0"
+                aria-valuemax="100"
+                class="my-3 h-1.5 overflow-hidden rounded-full bg-slate-100"
+            >
+                <div
+                    class="h-full rounded-full bg-teal-600"
+                    style={`width: ${summary.percentage}%`}
+                ></div>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <p class="text-xs text-slate-500">{summary.active === 0 ? "Ez dago ikasle aktiborik." : summary.pending ? `${summary.pending} ikasleren erantzunaren zain.` : "Ikasle aktibo guztiek erantzun dute."} {summary.excluded > 0 && `${summary.excluded} absent.`}</p>
-                {surveyUrl && <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>Kodea: <strong class="font-mono font-medium text-slate-800">{project.accessCode}</strong></span><button type="button" data-copy={surveyUrl} data-success="Inkestaren esteka kopiatuta." class="font-medium text-teal-700 hover:underline">Inkestaren esteka kopiatu</button></div>}
+                <p class="text-xs text-slate-500">
+                    {summary.active === 0
+                        ? 'Ez dago ikasle aktiborik.'
+                        : summary.pending
+                          ? `${summary.pending} ikasleren erantzunaren zain.`
+                          : 'Ikasle aktibo guztiek erantzun dute.'}{' '}
+                    {summary.excluded > 0 && `${summary.excluded} absent.`}
+                </p>
+                {surveyUrl && (
+                    <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <span>
+                            Kodea:{' '}
+                            <strong class="font-mono font-medium text-slate-800">
+                                {project.accessCode}
+                            </strong>
+                        </span>
+                        <button
+                            type="button"
+                            data-copy={surveyUrl}
+                            data-success="Inkestaren esteka kopiatuta."
+                            class="font-medium text-teal-700 hover:underline"
+                        >
+                            Inkestaren esteka kopiatu
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
 
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <nav class="teacher-tabs" aria-label="Jarraipenaren ikuspegia">
-                <a href={`?${new URLSearchParams({ status, q: search })}`} aria-current={!mapView ? "page" : undefined}>Ikasleak</a>
-                <a href="?view=map" aria-current={mapView ? "page" : undefined}>Harremanen mapa</a>
+                <a
+                    href={`?${new URLSearchParams({ status, q: search })}`}
+                    aria-current={!mapView ? 'page' : undefined}
+                >
+                    Ikasleak
+                </a>
+                <a href="?view=map" aria-current={mapView ? 'page' : undefined}>
+                    Harremanen mapa
+                </a>
             </nav>
-            <button type="button" class="teacher-button" onclick="window.location.reload()">Eguneratu</button>
+            <button
+                type="button"
+                class="teacher-button"
+                onclick="window.location.reload()"
+            >
+                Eguneratu
+            </button>
         </div>
-        <p id="tracking-feedback" class="mb-3 text-sm text-teal-700" role="status" aria-live="polite" aria-atomic="true"></p>
+        <p
+            id="tracking-feedback"
+            class="mb-3 text-sm text-teal-700"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+        ></p>
 
-        {mapView ? <>
-            <p class="mb-4 text-sm leading-relaxed text-slate-500">Ikasle bat aukeratu bere lan-hobespenak ikusteko. Irakaslearentzako informazio pribatua.</p>
-            <ClassGraph client:load students={graphStudents} relationships={relationships} />
-        </> : <>
-            <form method="GET" role="search" aria-label="Ikasleak bilatu" class="mb-4 flex flex-wrap items-end gap-3">
-                <input type="hidden" name="status" value={status} />
-                <label class="teacher-label min-w-0 flex-1">Bilatu ikaslea<input type="search" name="q" value={search} placeholder="Izena edo emaila" /></label>
-                <button class="teacher-button">Bilatu</button>
-                {search && <a href={filterUrl(status).replace(/&q=[^&]*/, "")} class="teacher-button">Garbitu</a>}
-            </form>
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <nav class="teacher-tabs" aria-label="Ikasleen egoera">
-                    {[{ id: "all", label: "Guztiak", count: allStudents.length }, { id: "pending", label: "Erantzun gabe", count: summary.pending }, { id: "completed", label: "Osatuta", count: summary.completed }, { id: "excluded", label: "Absent", count: summary.excluded }].map(tab => <a href={filterUrl(tab.id)} aria-current={status === tab.id ? "page" : undefined}>{tab.label} <span class="text-xs">{tab.count}</span></a>)}
-                </nav>
-                {pendingEmails && <button type="button" data-copy={pendingEmails} data-success="Erantzun gabeko ikasleen emailak kopiatuta." class="min-h-11 text-sm font-medium text-teal-700 hover:underline">Erantzun gabekoen emailak kopiatu</button>}
-            </div>
-            {missingEmails > 0 && <p class="mb-4 text-xs text-slate-500">{missingEmails} erantzun gabeko ikaslek ez dute emailik. Partekatu inkestaren esteka haiekin.</p>}
-            <div class="teacher-panel">
-                <ul class="divide-y divide-slate-100">
-                    {filtered.map(student => {
-                        const state = studentStatus(student);
-                        return <li class="flex items-center gap-3 px-4 py-3 sm:px-5">
-                            <div class="min-w-0 flex-1 basis-36"><p class="break-words text-sm font-medium text-slate-900">{student.name}</p><p class="mt-0.5 break-all text-xs text-slate-500">{student.email || "Emailik gabe"}</p></div>
-                            <span class:list={["text-xs", state === "completed" ? "text-teal-700" : state === "pending" ? "text-amber-700" : "text-slate-500"]}>{labels[state]}</span>
-                            <details class="teacher-menu">
-                                <summary aria-label={`${student.name}: aukerak`}><span class="hidden sm:inline">Aukerak</span><span aria-hidden="true" class="text-lg sm:hidden">⋯</span><span aria-hidden="true" class="ml-2 hidden sm:inline">⌄</span></summary>
-                                <div class="teacher-menu-content">
-                                    {state === "pending" && surveyUrl && <a href={`${surveyUrl}?studentId=${student.id}`}>Inkesta ireki</a>}
-                                    {state === "pending" && student.email && surveyUrl && <a href={reminderUrl(student.email)}>Gogorarazpena prestatu ↗</a>}
-                                    {surveyUrl && <button type="button" data-copy={`${surveyUrl}?studentId=${student.id}`} data-success={`${student.name}: esteka kopiatuta.`}>Ikaslearen esteka kopiatu</button>}
-                                    <button type="button" data-student-id={student.id} data-student-name={student.name} data-action={state === "excluded" ? "restore" : "exclude"}>{state === "excluded" ? "Bertaratua markatu" : "Absent markatu"}</button>
-                                    {student.hasCompleted && <button type="button" class="text-amber-700" data-student-id={student.id} data-student-name={student.name} data-action="reset">Inkesta berrabiarazi</button>}
-                                </div>
-                            </details>
-                        </li>;
-                    })}
-                    {filtered.length === 0 && <li class="p-10 text-center"><p class="text-sm text-slate-500">{allStudents.length === 0 ? "Ez dago ikaslerik proiektu honetan." : search ? "Ez da ikaslerik aurkitu." : "Ez dago ikaslerik egoera honetan."}</p>{search && <a href={filterUrl(status).replace(/&q=[^&]*/, "")} class="mt-3 inline-block text-sm text-teal-700">Garbitu bilaketa</a>}</li>}
-                </ul>
-            </div>
-            <p class="mt-3 text-xs text-slate-500">{filtered.length} / {allStudents.length} ikasle · Absent markatutako ikasleak ez dira inkestaren bete-mailan zenbatzen.</p>
-        </>}
+        {mapView ? (
+            <>
+                <p class="mb-4 text-sm leading-relaxed text-slate-500">
+                    Ikasle bat aukeratu bere lan-hobespenak ikusteko.
+                    Irakaslearentzako informazio pribatua.
+                </p>
+                <ClassGraph
+                    client:load
+                    students={graphStudents}
+                    relationships={relationships}
+                />
+            </>
+        ) : (
+            <>
+                <form
+                    method="GET"
+                    role="search"
+                    aria-label="Ikasleak bilatu"
+                    class="mb-4 flex flex-wrap items-end gap-3"
+                >
+                    <input type="hidden" name="status" value={status} />
+                    <label class="teacher-label min-w-0 flex-1">
+                        Bilatu ikaslea
+                        <input
+                            type="search"
+                            name="q"
+                            value={search}
+                            placeholder="Izena edo emaila"
+                        />
+                    </label>
+                    <button class="teacher-button">Bilatu</button>
+                    {search && (
+                        <a
+                            href={filterUrl(status).replace(/&q=[^&]*/, '')}
+                            class="teacher-button"
+                        >
+                            Garbitu
+                        </a>
+                    )}
+                </form>
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <nav class="teacher-tabs" aria-label="Ikasleen egoera">
+                        {[
+                            {
+                                id: 'all',
+                                label: 'Guztiak',
+                                count: allStudents.length,
+                            },
+                            {
+                                id: 'pending',
+                                label: 'Erantzun gabe',
+                                count: summary.pending,
+                            },
+                            {
+                                id: 'completed',
+                                label: 'Osatuta',
+                                count: summary.completed,
+                            },
+                            {
+                                id: 'excluded',
+                                label: 'Absent',
+                                count: summary.excluded,
+                            },
+                        ].map((tab) => (
+                            <a
+                                href={filterUrl(tab.id)}
+                                aria-current={
+                                    status === tab.id ? 'page' : undefined
+                                }
+                            >
+                                {tab.label}{' '}
+                                <span class="text-xs">{tab.count}</span>
+                            </a>
+                        ))}
+                    </nav>
+                    {pendingEmails && (
+                        <button
+                            type="button"
+                            data-copy={pendingEmails}
+                            data-success="Erantzun gabeko ikasleen emailak kopiatuta."
+                            class="min-h-11 text-sm font-medium text-teal-700 hover:underline"
+                        >
+                            Erantzun gabekoen emailak kopiatu
+                        </button>
+                    )}
+                </div>
+                {missingEmails > 0 && (
+                    <p class="mb-4 text-xs text-slate-500">
+                        {missingEmails} erantzun gabeko ikaslek ez dute emailik.
+                        Sortu esteka pertsonala ikasle bakoitzarentzat.
+                    </p>
+                )}
+                <div class="teacher-panel">
+                    <ul class="divide-y divide-slate-100">
+                        {filtered.map((student) => {
+                            const state = studentStatus(student);
+                            return (
+                                <li class="flex items-center gap-3 px-4 py-3 sm:px-5">
+                                    <div class="min-w-0 flex-1 basis-36">
+                                        <p class="break-words text-sm font-medium text-slate-900">
+                                            <a
+                                                href={`/admin/students/${student.studentRecordId}`}
+                                            >
+                                                {student.name}
+                                            </a>
+                                        </p>
+                                        <p class="mt-0.5 break-all text-xs text-slate-500">
+                                            {student.email || 'Emailik gabe'}
+                                        </p>
+                                    </div>
+                                    <span
+                                        class:list={[
+                                            'text-xs',
+                                            state === 'completed'
+                                                ? 'text-teal-700'
+                                                : state === 'pending'
+                                                  ? 'text-amber-700'
+                                                  : 'text-slate-500',
+                                        ]}
+                                    >
+                                        {labels[state]}
+                                    </span>
+                                    <details class="teacher-menu">
+                                        <summary
+                                            aria-label={`${student.name}: aukerak`}
+                                        >
+                                            <span class="hidden sm:inline">
+                                                Aukerak
+                                            </span>
+                                            <span
+                                                aria-hidden="true"
+                                                class="text-lg sm:hidden"
+                                            >
+                                                ⋯
+                                            </span>
+                                            <span
+                                                aria-hidden="true"
+                                                class="ml-2 hidden sm:inline"
+                                            >
+                                                ⌄
+                                            </span>
+                                        </summary>
+                                        <div class="teacher-menu-content">
+                                            {state === 'pending' &&
+                                                !project.archivedAt &&
+                                                student.studentRecordId && (
+                                                    <button
+                                                        type="button"
+                                                        data-personal-link
+                                                        data-record-id={
+                                                            student.studentRecordId
+                                                        }
+                                                        data-participant-id={
+                                                            student.id
+                                                        }
+                                                    >
+                                                        Esteka pertsonala sortu
+                                                        eta kopiatu
+                                                    </button>
+                                                )}
+                                            <button
+                                                type="button"
+                                                data-student-id={student.id}
+                                                data-student-name={student.name}
+                                                data-action={
+                                                    state === 'excluded'
+                                                        ? 'restore'
+                                                        : 'exclude'
+                                                }
+                                            >
+                                                {state === 'excluded'
+                                                    ? 'Bertaratua markatu'
+                                                    : 'Absent markatu'}
+                                            </button>
+                                            {student.hasCompleted && (
+                                                <button
+                                                    type="button"
+                                                    class="text-amber-700"
+                                                    data-student-id={student.id}
+                                                    data-student-name={
+                                                        student.name
+                                                    }
+                                                    data-action="reset"
+                                                >
+                                                    Inkesta berrabiarazi
+                                                </button>
+                                            )}
+                                        </div>
+                                    </details>
+                                </li>
+                            );
+                        })}
+                        {filtered.length === 0 && (
+                            <li class="p-10 text-center">
+                                <p class="text-sm text-slate-500">
+                                    {allStudents.length === 0
+                                        ? 'Ez dago ikaslerik proiektu honetan.'
+                                        : search
+                                          ? 'Ez da ikaslerik aurkitu.'
+                                          : 'Ez dago ikaslerik egoera honetan.'}
+                                </p>
+                                {search && (
+                                    <a
+                                        href={filterUrl(status).replace(
+                                            /&q=[^&]*/,
+                                            '',
+                                        )}
+                                        class="mt-3 inline-block text-sm text-teal-700"
+                                    >
+                                        Garbitu bilaketa
+                                    </a>
+                                )}
+                            </li>
+                        )}
+                    </ul>
+                </div>
+                <p class="mt-3 text-xs text-slate-500">
+                    {filtered.length} / {allStudents.length} ikasle · Absent
+                    markatutako ikasleak ez dira inkestaren bete-mailan
+                    zenbatzen.
+                </p>
+            </>
+        )}
     </section>
 </AdminLayout>
 
 <script>
-    const page = document.querySelector<HTMLElement>(".teacher-page[data-project-id]");
-    const feedback = document.getElementById("tracking-feedback");
-    page?.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach(button => {
-        button.addEventListener("click", async () => {
-            button.disabled = true;
-            try {
-                await navigator.clipboard.writeText(button.dataset.copy || "");
-                if (feedback) { feedback.classList.remove("text-red-700"); feedback.textContent = button.dataset.success || "Kopiatuta."; }
-            } catch {
-                if (feedback) { feedback.classList.add("text-red-700"); feedback.textContent = "Ezin izan da kopiatu. Saiatu berriro."; }
-            } finally { button.disabled = false; }
-        });
-    });
-    page?.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(button => {
-        button.addEventListener("click", async () => {
-            const action = button.dataset.action;
-            if (action === "reset" && !confirm(`${button.dataset.studentName}: inkesta berrabiarazi? Erantzun guztiak ezabatuko dira.`)) return;
-            const endpoint = action === "reset" ? "reset-student" : "exclude-student";
-            const query = new URLSearchParams({ projectId: page.dataset.projectId || "", studentId: button.dataset.studentId || "", exclude: String(action === "exclude") });
-            button.disabled = true;
-            try {
-                const response = await fetch(`/api/admin/${endpoint}?${query}`, { method: "POST" });
-                if (!response.ok) throw new Error("Update failed");
-                window.location.reload();
-            } catch {
-                if (feedback) { feedback.classList.add("text-red-700"); feedback.textContent = "Ezin izan da aldaketa gorde. Saiatu berriro."; }
-                button.disabled = false;
-            }
-        });
-    });
-    document.addEventListener("click", event => {
+    const page = document.querySelector<HTMLElement>(
+        '.teacher-page[data-project-id]',
+    );
+    const feedback = document.getElementById('tracking-feedback');
+    page?.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach(
+        (button) => {
+            button.addEventListener('click', async () => {
+                button.disabled = true;
+                try {
+                    await navigator.clipboard.writeText(
+                        button.dataset.copy || '',
+                    );
+                    if (feedback) {
+                        feedback.classList.remove('text-red-700');
+                        feedback.textContent =
+                            button.dataset.success || 'Kopiatuta.';
+                    }
+                } catch {
+                    if (feedback) {
+                        feedback.classList.add('text-red-700');
+                        feedback.textContent =
+                            'Ezin izan da kopiatu. Saiatu berriro.';
+                    }
+                } finally {
+                    button.disabled = false;
+                }
+            });
+        },
+    );
+    page?.querySelectorAll<HTMLButtonElement>('[data-personal-link]').forEach(
+        (button) => {
+            button.addEventListener('click', async () => {
+                if (
+                    !confirm(
+                        'Esteka pertsonal berria sortu? Aurreko esteka baliogabetuko da.',
+                    )
+                )
+                    return;
+                button.disabled = true;
+                try {
+                    const response = await fetch(
+                        '/api/admin/student-update-request',
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                studentId: Number(button.dataset.recordId),
+                                participantId: Number(
+                                    button.dataset.participantId,
+                                ),
+                                projectId: Number(page.dataset.projectId),
+                                assessmentAsked: true,
+                                preferencesAsked: true,
+                            }),
+                        },
+                    );
+                    const result = await response.json();
+                    if (!response.ok)
+                        throw new Error(
+                            result.error || 'Ezin izan da esteka sortu.',
+                        );
+                    try {
+                        await navigator.clipboard.writeText(result.url);
+                    } catch {
+                        window.prompt('Kopiatu esteka pertsonala:', result.url);
+                    }
+                    if (feedback)
+                        feedback.textContent =
+                            'Esteka pertsonala prest. Partekatu ikasle honekin bakarrik; 30 eguneko balioa du.';
+                } catch (error) {
+                    if (feedback)
+                        feedback.textContent =
+                            error instanceof Error
+                                ? error.message
+                                : 'Ezin izan da esteka sortu.';
+                } finally {
+                    button.disabled = false;
+                }
+            });
+        },
+    );
+    page?.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(
+        (button) => {
+            button.addEventListener('click', async () => {
+                const action = button.dataset.action;
+                if (
+                    action === 'reset' &&
+                    !confirm(
+                        `${button.dataset.studentName}: inkesta berrabiarazi? Uneko erantzuna erretiratuko da; datatutako historia gordeko da.`,
+                    )
+                )
+                    return;
+                const endpoint =
+                    action === 'reset' ? 'reset-student' : 'exclude-student';
+                const query = new URLSearchParams({
+                    projectId: page.dataset.projectId || '',
+                    studentId: button.dataset.studentId || '',
+                    exclude: String(action === 'exclude'),
+                });
+                button.disabled = true;
+                try {
+                    const response = await fetch(
+                        `/api/admin/${endpoint}?${query}`,
+                        { method: 'POST' },
+                    );
+                    if (!response.ok) throw new Error('Update failed');
+                    window.location.reload();
+                } catch {
+                    if (feedback) {
+                        feedback.classList.add('text-red-700');
+                        feedback.textContent =
+                            'Ezin izan da aldaketa gorde. Saiatu berriro.';
+                    }
+                    button.disabled = false;
+                }
+            });
+        },
+    );
+    document.addEventListener('click', (event) => {
         if (!(event.target instanceof Element)) return;
-        page?.querySelectorAll<HTMLDetailsElement>(".teacher-menu[open]").forEach(menu => {
+        page?.querySelectorAll<HTMLDetailsElement>(
+            '.teacher-menu[open]',
+        ).forEach((menu) => {
             if (!menu.contains(event.target as Node)) menu.open = false;
         });
     });
-    document.addEventListener("keydown", event => {
-        if (event.key === "Escape") page?.querySelectorAll<HTMLDetailsElement>(".teacher-menu[open]").forEach(menu => {
-            menu.open = false;
-            menu.querySelector<HTMLElement>("summary")?.focus();
-        });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape')
+            page?.querySelectorAll<HTMLDetailsElement>(
+                '.teacher-menu[open]',
+            ).forEach((menu) => {
+                menu.open = false;
+                menu.querySelector<HTMLElement>('summary')?.focus();
+            });
     });
 </script>

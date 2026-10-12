@@ -10,16 +10,30 @@ interface Option {
 interface GroupDynamicsProps {
     options: Option[];
     lang?: Language;
+    studentId?: number;
+    initialPreferences?: {
+        comfort: number[];
+        preferWith: number[];
+        preferAvoid: number[];
+    };
 }
 
 export const GroupDynamics: React.FC<GroupDynamicsProps> = ({
     options,
     lang = 'eu',
+    studentId,
+    initialPreferences,
 }) => {
-    const [comfort, setComfort] = useState<number[]>([]);
-    const [preferWith, setPreferWith] = useState<number[]>([]);
-    const [preferAvoid, setPreferAvoid] = useState<number[]>([]);
-    const [selfId, setSelfId] = useState<number | null>(null);
+    const [comfort, setComfort] = useState<number[]>(
+        initialPreferences?.comfort || [],
+    );
+    const [preferWith, setPreferWith] = useState<number[]>(
+        initialPreferences?.preferWith || [],
+    );
+    const [preferAvoid, setPreferAvoid] = useState<number[]>(
+        initialPreferences?.preferAvoid || [],
+    );
+    const [selfId, setSelfId] = useState<number | null>(studentId ?? null);
 
     const tr = t(lang).groupDynamics;
 

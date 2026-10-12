@@ -2,12 +2,18 @@ import type { APIRoute } from 'astro';
 import { eq, asc } from 'drizzle-orm';
 import { db } from '../../../lib/db';
 import { classMembers, classes } from '../../../../db/schema';
-import { parseId } from '../../../lib/input';
+import { requireClass } from '../../../lib/access';
+import { parseId, routeError } from '../../../lib/input';
 import { rosterCsv } from '../../../lib/roster';
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, locals }) => {
     const classId = parseId(url.searchParams.get('classId'));
     if (!classId) return new Response('Invalid class ID', { status: 400 });
+    try {
+        requireClass(locals.teacherAccess, classId);
+    } catch (error) {
+        return routeError(error);
+    }
     const group = await db.query.classes.findFirst({
         where: eq(classes.id, classId),
     });

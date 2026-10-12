@@ -9,8 +9,10 @@ import type { SurveyData } from '../lib/survey';
 interface Props extends SurveyData {
     lang: Language;
     initialStudentId: string | null;
+    requestToken: string;
 }
-const { lang, project, allStudents, initialStudentId } = Astro.props;
+const { lang, project, allStudents, initialStudentId, requestToken } =
+    Astro.props;
 const tr = t(lang);
 const groups = localizedSkillGroups(lang);
 const pid = project.id;
@@ -38,6 +40,12 @@ const activeStudents = allStudents.filter((student) => !student.isExcluded);
                 class="p-8 pt-2 space-y-8"
                 data-lang={lang}
             >
+                <input type="hidden" name="requestToken" value={requestToken} />
+                <input
+                    type="hidden"
+                    name="studentId"
+                    value={initialStudentId}
+                />
                 <input type="hidden" name="projectId" value={pid} />
                 <input type="hidden" name="lang" value={lang} />
                 <p
@@ -79,7 +87,7 @@ const activeStudents = allStudents.filter((student) => !student.isExcluded);
                                 {tr.form.selectName}
                             </label>
                             <select
-                                name="studentId"
+                                disabled
                                 id="studentSelect"
                                 required
                                 class="w-full border border-slate-300 rounded-md bg-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
@@ -87,20 +95,26 @@ const activeStudents = allStudents.filter((student) => !student.isExcluded);
                                 <option value="">
                                     {tr.form.selectPlaceholder}
                                 </option>
-                                {activeStudents.map((s) => (
-                                    <option
-                                        value={s.id}
-                                        disabled={s.hasCompleted}
-                                        selected={
-                                            initialStudentId === String(s.id)
-                                        }
-                                    >
-                                        {s.name}{' '}
-                                        {s.hasCompleted
-                                            ? tr.form.alreadyCompleted
-                                            : ''}
-                                    </option>
-                                ))}
+                                {activeStudents
+                                    .filter(
+                                        (s) =>
+                                            String(s.id) === initialStudentId,
+                                    )
+                                    .map((s) => (
+                                        <option
+                                            value={s.id}
+                                            disabled={s.hasCompleted}
+                                            selected={
+                                                initialStudentId ===
+                                                String(s.id)
+                                            }
+                                        >
+                                            {s.name}{' '}
+                                            {s.hasCompleted
+                                                ? tr.form.alreadyCompleted
+                                                : ''}
+                                        </option>
+                                    ))}
                             </select>
                         </div>
 
@@ -212,7 +226,9 @@ const activeStudents = allStudents.filter((student) => !student.isExcluded);
                     ></p>
                     <GroupDynamics
                         client:load
-                        options={allStudents}
+                        options={allStudents
+                            .filter((s) => s.studentRecordId !== null)
+                            .map((s) => ({ id: s.id, name: s.name }))}
                         lang={lang}
                     />
                     <div class="flex justify-between mt-8">

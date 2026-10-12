@@ -1,0 +1,3 @@
+# Share tracking through current teaching responsibility
+
+Jon confirmed that teachers assigned to a student's current degree/classes may see the ongoing record, and master administrators manage those assignments. Historical enrollment alone grants no continuing access after responsibility changes; a student first entered through a project remains accessible to its collecting teacher until enrolled. Restriction reasons and existing teacher notes remain private to their author or master administrators, while applicable mandatory rules can inform authorized formation without exposing the reasons.

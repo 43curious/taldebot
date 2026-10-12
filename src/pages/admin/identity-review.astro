@@ -1,0 +1,128 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { db } from '../../lib/db';
+import { identityReviews } from '../../../db/schema';
+import { isNull } from 'drizzle-orm';
+import { positiveId } from '../../lib/input';
+import { resolveIdentityReview } from '../../lib/identityReview';
+let feedback = '';
+let error = '';
+if (Astro.request.method === 'POST') {
+    try {
+        const form = await Astro.request.formData();
+        await resolveIdentityReview(
+            db,
+            Astro.locals.teacherAccess,
+            positiveId.parse(form.get('reviewId')),
+            positiveId.parse(form.get('studentId')),
+        );
+        feedback =
+            'Lotura esplizitua gorde da; jatorrizko datuak eta berrikuslearen egiletza mantendu dira.';
+    } catch (caught) {
+        error =
+            caught instanceof Error
+                ? caught.message
+                : 'Ezin izan da lotura gorde.';
+    }
+}
+const [reviews, people] = await Promise.all([
+    db.query.identityReviews.findMany({
+        where: isNull(identityReviews.resolvedAt),
+    }),
+    db.query.studentRecords.findMany({
+        orderBy: (row, { asc }) => [asc(row.name)],
+    }),
+]);
+---
+
+<AdminLayout title="Identitateak berrikusi">
+    <section class="teacher-page">
+        <h1>Identitateak berrikusi</h1>
+        <p class="mt-2 text-sm text-slate-500">
+            Jatorrizko erregistroak gordeta daude. Ez dira izen bereko pertsonak
+            automatikoki batzen. Aukeratu identitate ziurra, edo berretsi
+            pertsona bereizia dela.
+        </p>
+        {feedback && (
+            <p role="status" class="mt-4 text-sm text-teal-700">
+                {feedback}
+            </p>
+        )}
+        {error && (
+            <p role="alert" class="mt-4 text-sm text-red-700">
+                {error}
+            </p>
+        )}
+        <div class="mt-6 space-y-4">
+            {reviews.map((review) => (
+                <article class="teacher-panel p-5">
+                    <h2 class="text-base">
+                        {people.find(
+                            (person) =>
+                                person.id === review.provisionalStudentId,
+                        )?.name || 'Egiletza zehaztu gabeko erantzuna'}
+                    </h2>
+                    <p class="mt-2 text-xs text-slate-500">
+                        {review.reason} ·{' '}
+                        {review.sourceType === 'participant'
+                            ? 'Proiektuko parte-hartzailea'
+                            : review.sourceType === 'roster'
+                              ? 'Klaseko zerrenda'
+                              : 'Aurretiko erantzuna'}
+                    </p>
+                    {review.sourceType === 'response' ? (
+                        <p class="mt-4 text-sm text-slate-500">
+                            Jatorrizko erantzuna gordeta dago, identitate
+                            ziurrik lotu gabe. Ez da ikasle baten jarraipen
+                            aktiboan erabiltzen.
+                        </p>
+                    ) : (
+                        <form
+                            method="POST"
+                            class="teacher-toolbar mt-4"
+                            onsubmit="return confirm('Identitate lotura hau berretsi? Beste pertsonak ez dira ezabatuko.')"
+                        >
+                            <input
+                                type="hidden"
+                                name="reviewId"
+                                value={review.id}
+                            />
+                            <label class="teacher-label">
+                                Identitate ziurra
+                                <select name="studentId" required>
+                                    <option value="">Aukeratu</option>
+                                    {people
+                                        .filter(
+                                            (person) =>
+                                                !person.needsReview ||
+                                                person.id ===
+                                                    review.provisionalStudentId,
+                                        )
+                                        .map((person) => (
+                                            <option value={person.id}>
+                                                {person.name} ·{' '}
+                                                {person.email || 'Emailik gabe'}
+                                                {person.id ===
+                                                review.provisionalStudentId
+                                                    ? ' · Pertsona bereizia mantendu'
+                                                    : ''}
+                                            </option>
+                                        ))}
+                                </select>
+                            </label>
+                            <button class="teacher-button">
+                                Lotura berretsi
+                            </button>
+                        </form>
+                    )}
+                </article>
+            ))}
+            {!reviews.length && (
+                <p class="teacher-panel p-8 text-sm text-slate-500">
+                    Ez dago identitate-berrikuspenik zain.
+                </p>
+            )}
+        </div>
+    </section>
+</AdminLayout>

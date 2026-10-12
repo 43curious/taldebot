@@ -1,7 +1,12 @@
 import type { APIRoute } from 'astro';
 import { parseId, routeError } from '../../../lib/input';
 import { db } from '../../../lib/db';
-import { projects, students, teams } from '../../../../db/schema';
+import {
+    projects,
+    students,
+    teams,
+    confirmedAssignments,
+} from '../../../../db/schema';
 import { eq, and } from 'drizzle-orm';
 
 export const GET: APIRoute = async ({ request }) => {
@@ -27,6 +32,16 @@ export const GET: APIRoute = async ({ request }) => {
             orderBy: (teams, { asc }) => [asc(teams.teamNumber)],
         });
 
+        const adopted = await db.query.confirmedAssignments.findFirst({
+            where: eq(confirmedAssignments.projectId, projectId),
+            orderBy: (row, { desc }) => [desc(row.revision)],
+        });
+        const assignmentStatus =
+            adopted &&
+            projectTeams.length &&
+            projectTeams.every((team) => team.draftId === adopted.draftId)
+                ? `Berretsia · ${adopted.revision}. berrikuspena`
+                : 'Zirriborroa';
         const participants = await db.query.students.findMany({
             where: eq(students.projectId, projectId),
         });
@@ -36,6 +51,7 @@ export const GET: APIRoute = async ({ request }) => {
         let textContent = `${project.name.toUpperCase()} - TALDEEN ZERRENDA\n`;
         textContent += '='.repeat(textContent.length - 1) + '\n\n';
 
+        textContent += assignmentStatus + '\n\n';
         for (const team of projectTeams) {
             const memberData = team.memberIds
                 .map((id) => membersById.get(id))

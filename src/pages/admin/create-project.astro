@@ -1,18 +1,50 @@
 ---
 export const prerender = false;
-import AdminLayout from "../../layouts/AdminLayout.astro";
+import { db } from '../../lib/db';
+import { classes, degrees } from '../../../db/schema';
+import { classFilter } from '../../lib/access';
+import { eq } from 'drizzle-orm';
+const access = Astro.locals.teacherAccess;
+const groups = await db
+    .select({
+        id: classes.id,
+        name: classes.name,
+        degreeId: classes.degreeId,
+        degreeName: degrees.name,
+    })
+    .from(classes)
+    .leftJoin(degrees, eq(classes.degreeId, degrees.id))
+    .where(classFilter(access));
+const members = await db.query.classMembers.findMany();
+const roster = members.filter(
+    (row) =>
+        row.studentRecordId !== null &&
+        groups.some((group) => group.id === row.classId),
+);
+const degreeOptions = [
+    ...new Map(
+        groups.map((group) => [
+            group.degreeId ?? 0,
+            {
+                id: group.degreeId ?? 0,
+                name: group.degreeName || 'Gradurik gabe',
+            },
+        ]),
+    ).values(),
+];
+import AdminLayout from '../../layouts/AdminLayout.astro';
 ---
 
 <AdminLayout title="Proiektua Sortu">
     <div class="max-w-4xl mx-auto">
         <div class="md:flex md:items-center md:justify-between mb-10">
             <div class="flex-1 min-w-0">
-                <h2
-                    class="text-3xl font-black text-slate-900 tracking-tight"
-                >
+                <h2 class="text-3xl font-black text-slate-900 tracking-tight">
                     Proiektu Berria Konfiguratu
                 </h2>
-                <p class="mt-2 text-slate-500 font-medium">Zehaztu taldeak osatzeko oinarrizko parametroak.</p>
+                <p class="mt-2 text-slate-500 font-medium">
+                    Zehaztu taldeak osatzeko oinarrizko parametroak.
+                </p>
             </div>
         </div>
 
@@ -29,8 +61,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                         <label
                             for="name"
                             class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                            >Proiektuaren Izena</label
                         >
+                            Proiektuaren Izena
+                        </label>
                         <input
                             type="text"
                             name="name"
@@ -45,8 +78,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                         <label
                             for="adminEmail"
                             class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                            >Administratzailearen Emaila</label
                         >
+                            Administratzailearen Emaila
+                        </label>
                         <input
                             type="email"
                             name="adminEmail"
@@ -60,9 +94,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
                 <!-- Student Roster -->
                 <div class="border-t border-slate-100 pt-8">
-                    <h3
-                        class="text-lg font-bold text-slate-900 mb-6"
-                    >
+                    <h3 class="text-lg font-bold text-slate-900 mb-6">
                         Ikasleen Zerrenda
                     </h3>
 
@@ -70,24 +102,99 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                         <div class="flex gap-6 mb-6 border-b border-slate-100">
                             <button
                                 type="button"
+                                id="tab-roster"
+                                class="pb-3 px-2 text-sm font-bold text-teal-700"
+                            >
+                                Klaseko ikasleak
+                            </button>
+                            <button
+                                type="button"
                                 id="tab-manual"
                                 class="pb-3 px-2 text-sm font-bold border-b-2 border-teal-600 text-teal-600 transition-all"
-                                >Eskuz sartu</button
                             >
+                                Eskuz sartu
+                            </button>
                             <button
                                 type="button"
                                 id="tab-csv"
                                 class="pb-3 px-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all"
-                                >CSV igo</button
                             >
+                                CSV igo
+                            </button>
                         </div>
 
-                        <div id="manual-entry-container">
+                        <div id="roster-entry-container">
+                            <div class="flex flex-wrap gap-3 mb-4">
+                                <label class="teacher-label">
+                                    Gradua
+                                    <select id="roster-degree">
+                                        <option value="">
+                                            Aukeratu gradua
+                                        </option>
+                                        {degreeOptions.map((degree) => (
+                                            <option value={degree.id}>
+                                                {degree.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label class="teacher-label">
+                                    Klasea
+                                    <select id="roster-class">
+                                        <option value="">
+                                            Aukeratu klasea
+                                        </option>
+                                        {groups.map((group) => (
+                                            <option
+                                                value={group.id}
+                                                data-degree={
+                                                    group.degreeId ?? 0
+                                                }
+                                            >
+                                                {group.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            </div>
+                            <div
+                                class="divide-y divide-slate-100 max-h-80 overflow-auto"
+                                id="roster-rows"
+                            >
+                                {roster.map((member) => (
+                                    <label
+                                        class="hidden items-center gap-3 py-3"
+                                        data-roster-class={member.classId}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            data-roster-id={
+                                                member.studentRecordId
+                                            }
+                                            data-name={member.name}
+                                            data-email={member.email || ''}
+                                        />
+                                        <span>
+                                            {member.name}
+                                            <small class="block text-slate-500">
+                                                {member.email}
+                                            </small>
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+                            <p class="text-xs text-slate-500 mt-3">
+                                Aukeratu klasea eta parte-hartzaileak. Jarraipen
+                                bera mantenduko dute proiektu berrian.
+                            </p>
+                        </div>
+                        <div id="manual-entry-container" class="hidden">
                             <label
                                 for="studentList"
                                 class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3"
-                                >Ikasleen izenak (bat lerro bakoitzeko)</label
                             >
+                                Ikasleen izenak (bat lerro bakoitzeko)
+                            </label>
                             <textarea
                                 id="studentList"
                                 name="studentList"
@@ -95,16 +202,16 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                                 class="block w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm font-mono leading-relaxed"
                                 placeholder="Juan Pérez
 María García
-..."></textarea>
+..."
+                            ></textarea>
                             <p class="mt-3 text-xs text-slate-400 font-medium">
-                                Posta elektronikoak geroago editatu daitezke monitorizazio panelean.
+                                Posta elektronikoak geroago editatu daitezke
+                                monitorizazio panelean.
                             </p>
                         </div>
 
                         <div id="csv-upload-container" class="hidden">
-                            <div
-                                class="flex items-center justify-center p-10 border-2 border-slate-200 border-dashed rounded-2xl bg-slate-50/50 hover:bg-slate-50 hover:border-teal-300 transition-all group cursor-pointer"
-                            >
+                            <div class="flex items-center justify-center p-10 border-2 border-slate-200 border-dashed rounded-2xl bg-slate-50/50 hover:bg-slate-50 hover:border-teal-300 transition-all group cursor-pointer">
                                 <div class="space-y-2 text-center">
                                     <svg
                                         class="mx-auto h-12 w-12 text-slate-300 group-hover:text-teal-400 transition-colors"
@@ -117,7 +224,8 @@ María García
                                             d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
                                             stroke-width="2"
                                             stroke-linecap="round"
-                                            stroke-linejoin="round"></path>
+                                            stroke-linejoin="round"
+                                        ></path>
                                     </svg>
                                     <div class="flex text-sm text-slate-600">
                                         <label
@@ -139,19 +247,13 @@ María García
                                 </div>
                             </div>
                             <div id="csv-preview" class="mt-4 hidden">
-                                <h4
-                                    class="text-sm font-medium text-gray-700 mb-2"
-                                >
-                                    CSV Data Preview (<span id="csv-count"
-                                        >0</span
-                                    > students found)
+                                <h4 class="text-sm font-medium text-gray-700 mb-2">
+                                    CSV Data Preview (
+                                    <span id="csv-count">0</span> students
+                                    found)
                                 </h4>
-                                <div
-                                    class="max-h-40 overflow-y-auto border border-gray-200 rounded text-xs"
-                                >
-                                    <table
-                                        class="min-w-full divide-y divide-gray-200"
-                                    >
+                                <div class="max-h-40 overflow-y-auto border border-gray-200 rounded text-xs">
+                                    <table class="min-w-full divide-y divide-gray-200">
                                         <tbody
                                             id="csv-preview-body"
                                             class="bg-white divide-y divide-gray-200"
@@ -171,9 +273,7 @@ María García
 
                 <!-- Team Configuration -->
                 <div class="border-t border-slate-100 pt-8 mt-4">
-                    <h3
-                        class="text-lg font-bold text-slate-900 mb-6"
-                    >
+                    <h3 class="text-lg font-bold text-slate-900 mb-6">
                         Taldeen Konfigurazioa
                     </h3>
                     <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
@@ -181,8 +281,9 @@ María García
                             <label
                                 for="numTeams"
                                 class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                                >Talde Kopurua</label
                             >
+                                Talde Kopurua
+                            </label>
                             <input
                                 type="number"
                                 name="numTeams"
@@ -198,9 +299,7 @@ María García
                             class="sm:col-span-6 bg-teal-50 border border-teal-100 rounded-2xl p-6"
                             id="distributionPreview"
                         >
-                            <div
-                                class="flex items-center gap-3 text-teal-700 font-bold text-sm mb-2"
-                            >
+                            <div class="flex items-center gap-3 text-teal-700 font-bold text-sm mb-2">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     class="h-5 w-5"
@@ -210,17 +309,20 @@ María García
                                     stroke-width="2.5"
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
-                                    ><path
-                                        d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                                    ></path><circle cx="9" cy="7" r="4"
-                                    ></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"
-                                    ></path><path d="M16 3.13a4 4 0 0 1 0 7.75"
-                                    ></path></svg
                                 >
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
                                 Banaketaren aurrebista
                             </div>
-                            <p class="text-sm text-teal-600/80 font-medium leading-relaxed" id="previewText">
-                                Sartu ikasleen zerrenda eta talde kopurua nola banatuko diren ikusteko.
+                            <p
+                                class="text-sm text-teal-600/80 font-medium leading-relaxed"
+                                id="previewText"
+                            >
+                                Sartu ikasleen zerrenda eta talde kopurua nola
+                                banatuko diren ikusteko.
                             </p>
                         </div>
                     </div>
@@ -228,9 +330,7 @@ María García
 
                 <!-- Final Details -->
                 <div class="border-t border-slate-100 pt-8">
-                    <h3
-                        class="text-lg font-bold text-slate-900 mb-6"
-                    >
+                    <h3 class="text-lg font-bold text-slate-900 mb-6">
                         Xehetasun gehiago
                     </h3>
                     <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
@@ -238,8 +338,9 @@ María García
                             <label
                                 for="description"
                                 class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                                >Deskribapena</label
                             >
+                                Deskribapena
+                            </label>
                             <textarea
                                 id="description"
                                 name="description"
@@ -250,32 +351,35 @@ María García
                         </div>
 
                         <div class="sm:col-span-6">
-                            <span
-                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3"
-                                >Algoritmoaren Irizpidea</span
-                            >
+                            <span class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                                Algoritmoaren Irizpidea
+                            </span>
                             <div class="flex flex-wrap gap-4">
-                                {
-                                    [
-                                        "balanced",
-                                        "technical",
-                                        "narrative",
-                                        "management",
-                                    ].map((type) => (
-                                        <label class="relative flex items-center cursor-pointer group">
-                                            <input
-                                                type="radio"
-                                                name="projectType"
-                                                value={type}
-                                                checked={type === "balanced"}
-                                                class="sr-only peer"
-                                            />
-                                            <div class="px-5 py-2.5 border rounded-full text-xs font-bold uppercase tracking-wider border-slate-200 text-slate-400 peer-checked:bg-teal-600 peer-checked:text-white peer-checked:border-teal-600 peer-checked:shadow-lg peer-checked:shadow-teal-600/30 transition-all active:scale-95 group-hover:border-teal-200">
-                                                {type === 'balanced' ? 'Equilibrado' : type === 'technical' ? 'Técnico' : type === 'narrative' ? 'Narrativo' : 'Gestión'}
-                                            </div>
-                                        </label>
-                                    ))
-                                }
+                                {[
+                                    'balanced',
+                                    'technical',
+                                    'narrative',
+                                    'management',
+                                ].map((type) => (
+                                    <label class="relative flex items-center cursor-pointer group">
+                                        <input
+                                            type="radio"
+                                            name="projectType"
+                                            value={type}
+                                            checked={type === 'balanced'}
+                                            class="sr-only peer"
+                                        />
+                                        <div class="px-5 py-2.5 border rounded-full text-xs font-bold uppercase tracking-wider border-slate-200 text-slate-400 peer-checked:bg-teal-600 peer-checked:text-white peer-checked:border-teal-600 peer-checked:shadow-lg peer-checked:shadow-teal-600/30 transition-all active:scale-95 group-hover:border-teal-200">
+                                            {type === 'balanced'
+                                                ? 'Equilibrado'
+                                                : type === 'technical'
+                                                  ? 'Técnico'
+                                                  : type === 'narrative'
+                                                    ? 'Narrativo'
+                                                    : 'Gestión'}
+                                        </div>
+                                    </label>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -294,151 +398,161 @@ María García
     </div>
 
     <script>
-        import Papa from "papaparse";
-        const tabManual = document.getElementById("tab-manual")!;
-        const tabCsv = document.getElementById("tab-csv")!;
-        const manualContainer = document.getElementById(
-            "manual-entry-container",
+        import Papa from 'papaparse';
+        const form = document.querySelector<HTMLFormElement>(
+            '#create-project-form',
         )!;
-        const csvContainer = document.getElementById("csv-upload-container")!;
-        const csvFileInput = document.getElementById("csv-file") as HTMLInputElement;
-        const studentsJsonInput = document.getElementById("studentsJson") as HTMLInputElement;
-        const csvPreview = document.getElementById("csv-preview")!;
-        const csvPreviewBody = document.getElementById("csv-preview-body")!;
-        const csvCount = document.getElementById("csv-count")!;
-        const numTeamsInput = document.getElementById("numTeams") as HTMLInputElement;
-
-        const studentListInput = document.getElementById("studentList") as HTMLTextAreaElement;
-        const previewText = document.getElementById("previewText")!;
-
-        function updatePreview() {
-            let studentCount = 0;
-            if (!csvContainer.classList.contains("hidden")) {
-                const parsed: { name: string; email: string }[] = studentsJsonInput.value
-                    ? JSON.parse(studentsJsonInput.value)
-                    : [];
-                studentCount = parsed.length;
-            } else {
-                studentCount = studentListInput.value
-                    .split("\n")
-                    .map((n) => n.trim())
-                    .filter((n) => n.length > 0).length;
+        const text = form.querySelector<HTMLTextAreaElement>('#studentList')!;
+        const json = form.querySelector<HTMLInputElement>('#studentsJson')!;
+        const degree = form.querySelector<HTMLSelectElement>('#roster-degree')!;
+        const group = form.querySelector<HTMLSelectElement>('#roster-class')!;
+        const count = form.querySelector<HTMLInputElement>('#numTeams')!;
+        const preview = document.getElementById('previewText')!;
+        const sourceNames = ['roster', 'manual', 'csv'] as const;
+        let source: (typeof sourceNames)[number] = 'roster';
+        let csv: { name: string; email: string }[] = [];
+        const rosterInputs = Array.from(
+            form.querySelectorAll<HTMLInputElement>('[data-roster-id]'),
+        );
+        function update() {
+            const selected = rosterInputs
+                .filter((row) => row.checked)
+                .map((row) => ({
+                    studentRecordId: Number(row.dataset.rosterId),
+                    name: row.dataset.name,
+                    email: row.dataset.email || undefined,
+                }));
+            text.disabled = source !== 'manual';
+            json.disabled = source === 'manual';
+            json.value = JSON.stringify(source === 'roster' ? selected : csv);
+            const total =
+                source === 'roster'
+                    ? selected.length
+                    : source === 'csv'
+                      ? csv.length
+                      : text.value.split('\n').filter((row) => row.trim())
+                            .length;
+            const teams = Number(count.value);
+            preview.textContent = !total
+                ? 'Ikasleen zerrendaren zain…'
+                : !teams || teams > total
+                  ? `${total} ikasle. Aukeratu baliozko talde kopurua.`
+                  : `${total} ikasle · ${teams} talde · ${Math.floor(total / teams)}–${Math.ceil(total / teams)} kide taldeko.`;
+            for (const name of sourceNames) {
+                const container = document.getElementById(
+                    name === 'roster'
+                        ? 'roster-entry-container'
+                        : name === 'manual'
+                          ? 'manual-entry-container'
+                          : 'csv-upload-container',
+                )!;
+                container.classList.toggle('hidden', name !== source);
+                const tab = document.getElementById(`tab-${name}`)!;
+                tab.setAttribute('aria-pressed', String(name === source));
+                tab.className = `pb-3 px-2 text-sm font-semibold border-b-2 ${name === source ? 'border-teal-600 text-teal-700' : 'border-transparent text-slate-500'}`;
             }
-
-            if (studentCount === 0) {
-                previewText.innerHTML = "Ikasleen zerrendaren zain...";
-                return;
-            }
-
-            const numTeams = parseInt(numTeamsInput.value);
-
-            if (!numTeams || numTeams < 2) {
-                previewText.innerHTML = `<b>${studentCount}</b> ikasle aurkitu dira. Sartu baliozko konfigurazioa.`;
-                return;
-            }
-
-            const baseSize = Math.floor(studentCount / numTeams);
-            const extra = studentCount % numTeams;
-
-            if (baseSize < 1) {
-                previewText.innerHTML = `<b>Abisua:</b> Talde gehiegi <b>${studentCount}</b> ikaslerentzat.`;
-                return;
-            }
-
-            let message = `<b>${studentCount}</b> ikasleren banaketa <b>${numTeams}</b> taldetan:<br/>`;
-            if (extra === 0) {
-                message += `• Talde guztiek (<b>${numTeams}</b>) <b>${baseSize}</b> kide izango dituzte.`;
-            } else {
-                message += `• <b>${extra}</b> talde <b>${baseSize + 1}</b> kidekoak.<br/>`;
-                message += `• <b>${numTeams - extra}</b> talde <b>${baseSize}</b> kidekoak.`;
-            }
-
-            previewText.innerHTML = message;
         }
-
-        numTeamsInput.addEventListener("input", updatePreview);
-        studentListInput.addEventListener("input", updatePreview);
-
-        tabManual.addEventListener("click", () => {
-            tabManual.className =
-                "pb-3 px-2 text-sm font-bold border-b-2 border-teal-600 text-teal-600 transition-all";
-            tabCsv.className =
-                "pb-3 px-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all";
-            manualContainer.classList.remove("hidden");
-            csvContainer.classList.add("hidden");
-            studentsJsonInput.disabled = true;
-            studentListInput.disabled = false;
-            updatePreview();
-        });
-
-        tabCsv.addEventListener("click", () => {
-            tabCsv.className =
-                "pb-3 px-2 text-sm font-bold border-b-2 border-teal-600 text-teal-600 transition-all";
-            tabManual.className =
-                "pb-3 px-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all";
-            csvContainer.classList.remove("hidden");
-            manualContainer.classList.add("hidden");
-            studentsJsonInput.disabled = false;
-            studentListInput.disabled = true;
-            updatePreview();
-        });
-
-        csvFileInput.addEventListener("change", () => {
-            const file = csvFileInput.files?.[0];
-            if (!file) return;
-
-            Papa.parse<{ name?: string; email?: string }>(file, {
-                header: true,
-                complete: (results) => {
-                    const students = results.data
-                        .filter((row) => row.name)
-                        .map((row) => ({
-                            name: row.name!.trim(),
-                            email: row.email || "",
-                        }));
-
-                    studentsJsonInput.value = JSON.stringify(students);
-                    csvCount.textContent = String(students.length);
-
-                    csvPreviewBody.innerHTML = "";
-                    students.slice(0, 10).forEach((s) => {
-                        const tr = document.createElement("tr");
-                        const name = document.createElement("td");
-                        name.className = "px-3 py-1 font-medium";
-                        name.textContent = s.name;
-                        const email = document.createElement("td");
-                        email.className = "px-3 py-1 text-gray-500";
-                        email.textContent = s.email;
-                        tr.append(name, email);
-                        csvPreviewBody.appendChild(tr);
-                    });
-
-                    if (students.length > 10) {
-                        const tr = document.createElement("tr");
-                        tr.innerHTML = `<td colspan="2" class="px-3 py-1 text-gray-400 text-center italic">... and ${students.length - 10} more</td>`;
-                        csvPreviewBody.appendChild(tr);
-                    }
-
-                    csvPreview.classList.remove("hidden");
-                    updatePreview();
-                },
+        sourceNames.forEach((name) =>
+            document
+                .getElementById(`tab-${name}`)!
+                .addEventListener('click', () => {
+                    source = name;
+                    update();
+                }),
+        );
+        rosterInputs.forEach((row) => row.addEventListener('change', update));
+        text.addEventListener('input', update);
+        count.addEventListener('input', update);
+        degree.addEventListener('change', () => {
+            group.value = '';
+            Array.from(group.options).forEach((option) => {
+                if (option.value) {
+                    option.hidden = option.dataset.degree !== degree.value;
+                    option.disabled = option.hidden;
+                }
             });
+            group.dispatchEvent(new Event('change'));
         });
-        studentsJsonInput.disabled = true;
-        document.querySelector<HTMLFormElement>("#create-project-form")?.addEventListener("submit", async event => {
+        group.addEventListener('change', () => {
+            form.querySelectorAll<HTMLElement>('[data-roster-class]').forEach(
+                (row) => {
+                    const visible = row.dataset.rosterClass === group.value;
+                    row.classList.toggle('hidden', !visible);
+                    row.classList.toggle('flex', visible);
+                    row.querySelector<HTMLInputElement>('input')!.checked =
+                        false;
+                },
+            );
+            update();
+        });
+        form.querySelector<HTMLInputElement>('#csv-file')!.addEventListener(
+            'change',
+            (event) => {
+                const file = (event.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+                Papa.parse<Record<string, string>>(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (result) => {
+                        csv = result.data
+                            .map((row) => ({
+                                name: (row.name || row.izena || '').trim(),
+                                email: (row.email || row.emaila || '').trim(),
+                            }))
+                            .filter((row) => row.name);
+                        const body =
+                            document.getElementById('csv-preview-body')!;
+                        body.replaceChildren();
+                        csv.slice(0, 10).forEach((row) => {
+                            const tr = document.createElement('tr');
+                            for (const value of [row.name, row.email]) {
+                                const td = document.createElement('td');
+                                td.className = 'px-3 py-2';
+                                td.textContent = value;
+                                tr.append(td);
+                            }
+                            body.append(tr);
+                        });
+                        document.getElementById('csv-count')!.textContent =
+                            String(csv.length);
+                        document
+                            .getElementById('csv-preview')!
+                            .classList.remove('hidden');
+                        update();
+                    },
+                });
+            },
+        );
+        degree.dispatchEvent(new Event('change'));
+        update();
+        form.addEventListener('submit', async (event) => {
             event.preventDefault();
-            const form = event.currentTarget as HTMLFormElement;
-            const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+            update();
+            const button = form.querySelector<HTMLButtonElement>(
+                'button[type="submit"]',
+            )!;
             if (button.disabled) return;
             const label = button.textContent;
             button.disabled = true;
-            button.textContent = "Sortzen…";
+            button.textContent = 'Sortzen…';
             try {
-                const response = await fetch(form.action, { method: "POST", body: new FormData(form) });
-                if (!response.ok || !response.redirected) throw new Error("Creation failed");
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                });
+                if (!response.ok || !response.redirected) {
+                    const data = await response.json();
+                    throw new Error(
+                        data.error || 'Ezin izan da proiektua sortu.',
+                    );
+                }
                 window.location.assign(response.url);
-            } catch {
-                alert("Ezin izan da proiektua sortu. Egiaztatu datuak eta saiatu berriro.");
+            } catch (error) {
+                alert(
+                    error instanceof Error
+                        ? error.message
+                        : 'Ezin izan da proiektua sortu.',
+                );
                 button.disabled = false;
                 button.textContent = label;
             }
