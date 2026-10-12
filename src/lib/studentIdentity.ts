@@ -8,6 +8,7 @@ import {
     enrollments,
 } from '../../db/schema';
 import type { AppDatabase } from './db';
+import { studentNameKey } from './identityMatching';
 import { InputError } from './input';
 import { canReadStudent, requireClass, type TeacherAccess } from './access';
 
@@ -19,7 +20,6 @@ export function academicPeriod(date = new Date()) {
     const year = date.getUTCFullYear() - (date.getUTCMonth() < 8 ? 1 : 0);
     return `${year}-${year + 1}`;
 }
-const normalize = (value: string) => value.trim().toLocaleLowerCase('eu');
 
 export async function resolveStudent(
     store: DataSession,
@@ -51,7 +51,7 @@ export async function resolveStudent(
             });
     } else {
         const matches = (await store.query.studentRecords.findMany()).filter(
-            (row) => normalize(row.name) === normalize(name),
+            (row) => studentNameKey(row.name) === studentNameKey(name),
         );
         if (matches.length > 1)
             throw new InputError(
@@ -111,18 +111,16 @@ export async function enrollStudent(
             email: person.email,
         })
         .returning();
-    await store
-        .insert(enrollments)
-        .values({
-            studentId: person.id,
-            classId,
-            className: group.name,
-            degreeName: degree?.name,
-            year: group.year,
-            academicPeriod: period,
-            startedAt: new Date().toISOString(),
-            source: 'teacher-enrollment',
-        });
+    await store.insert(enrollments).values({
+        studentId: person.id,
+        classId,
+        className: group.name,
+        degreeName: degree?.name,
+        year: group.year,
+        academicPeriod: period,
+        startedAt: new Date().toISOString(),
+        source: 'teacher-enrollment',
+    });
     return member;
 }
 

@@ -39,3 +39,17 @@ The migration checks foreign keys and that every legacy response has a retained 
 Routine archive, withdrawal and enrollment ending preserve history. No automatic purge is implemented; institutional retention and permanent-deletion procedures must be defined before introducing one. Teacher reflections and longitudinal teacher-authored observations are a later increment. Existing private roster notes remain supported.
 
 Domain terminology is in [CONTEXT.md](../CONTEXT.md); the accepted decisions are in [docs/adr](adr/).
+
+## Collection year and historical imports
+
+Collection context is separate from current enrollment. `collectionYear` records the study year in which a survey was answered; unknown years remain null. Profiles and graph reports show the original project, academic period and collection year. Moving a student to second year does not relabel their first-year survey.
+
+Full-name matching normalizes explicit `SURNAME, GIVEN NAME` order, case, spacing and diacritics, then requires a unique identity across the whole roster. It does not match first names, drop surnames, or resolve collisions automatically. Nonmatching emails still require review when the roster already has a different email.
+
+For a known historical project, back up and migrate the explicitly selected database, then record the teacher-confirmed context:
+
+```sh
+npm run db:context -- --remote --projects 7,8 --period 2025-2026 --year 1
+```
+
+Use `--local` for a local installation. The command changes only project/assessment/preference context; answer values, timestamps, source IDs, current enrollments and confirmed input snapshots remain intact. Historical participants absent from the current roster retain standalone identities until their current enrollment is confirmed. Project preferences remain historical and local, rather than becoming current second-year choices automatically.

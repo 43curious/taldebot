@@ -15,7 +15,8 @@
     "db:seed": "tsx scripts/seed-demo.ts",
     "format": "prettier --write",
     "format:check": "prettier --check .",
-    "benchmark:data": "tsx scripts/benchmark-data.ts"
+    "benchmark:data": "tsx scripts/benchmark-data.ts",
+    "db:context": "tsx scripts/project-context.ts"
   },
   "dependencies": {
     "@astrojs/netlify": "^8.2.6",

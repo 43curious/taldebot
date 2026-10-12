@@ -15,6 +15,13 @@
       "when": 1791806738653,
       "tag": "0001_ongoing_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791814081331,
+      "tag": "0002_collection_year_context",
+      "breakpoints": true
     }
   ]
 }

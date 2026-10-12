@@ -66,14 +66,12 @@ export async function createProject(
                     'Ikasle bera ezin da proiektuan bitan gehitu.',
                 );
             identities.add(person.id);
-            await tx
-                .insert(students)
-                .values({
-                    projectId: project.id,
-                    studentRecordId: person.id,
-                    name: person.name,
-                    email: person.email,
-                });
+            await tx.insert(students).values({
+                projectId: project.id,
+                studentRecordId: person.id,
+                name: person.name,
+                email: person.email,
+            });
         }
         return project;
     });
@@ -174,6 +172,7 @@ export async function submitSurvey(
             academicPeriod: project.academicPeriod || academicPeriod(),
             projectId: project.id,
             projectName: project.name,
+            collectionYear: project.collectionYear,
             requestId,
             legacyResponseId: saved.id,
             legacyParticipantId: student.id,

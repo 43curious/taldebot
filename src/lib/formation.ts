@@ -15,6 +15,7 @@ import {
     teachingAccess,
     type TeacherAccess,
 } from './access';
+import { knowledgeSourceLabel } from './knowledgeContext';
 import { InputError } from './input';
 import { loadStudentProfiles } from './studentProfiles';
 import type { DataSession } from './studentIdentity';
@@ -205,10 +206,9 @@ export async function formationInputs(
                 name: participant.name,
                 assessmentId: profile.assessment?.id ?? null,
                 assessmentDate: profile.assessment?.submittedAt ?? null,
-                assessmentSource:
-                    profile.assessment?.projectName ||
-                    profile.assessment?.academicPeriod ||
-                    null,
+                assessmentSource: profile.assessment
+                    ? knowledgeSourceLabel(profile.assessment)
+                    : null,
                 preferenceDate: profile.preference?.submittedAt ?? null,
                 preferenceSubmissionId: profile.preference?.id ?? null,
                 assessment: profile.values,
@@ -383,20 +383,18 @@ async function persistDraft(
             ]),
         );
         if (allocation.length)
-            await tx
-                .insert(teams)
-                .values(
-                    allocation.map((team) => ({
-                        projectId,
-                        algorithmVersion: version,
-                        draftId: draft.id,
-                        teamNumber: team.teamNumber,
-                        memberIds: team.studentIds.map((id) =>
-                            participantIds.get(id)!,
-                        ),
-                        justification: team.justification,
-                    })),
-                );
+            await tx.insert(teams).values(
+                allocation.map((team) => ({
+                    projectId,
+                    algorithmVersion: version,
+                    draftId: draft.id,
+                    teamNumber: team.teamNumber,
+                    memberIds: team.studentIds.map((id) =>
+                        participantIds.get(id)!,
+                    ),
+                    justification: team.justification,
+                })),
+            );
         await tx
             .update(projects)
             .set({
@@ -629,17 +627,15 @@ export async function confirmDraft(
                 confirmedAt: date,
             })
             .returning();
-        await tx
-            .insert(assignmentMembers)
-            .values(
-                draft.allocation.flatMap((team) =>
-                    team.studentIds.map((studentId) => ({
-                        assignmentId: assignment.id,
-                        studentId,
-                        teamNumber: team.teamNumber,
-                    })),
-                ),
-            );
+        await tx.insert(assignmentMembers).values(
+            draft.allocation.flatMap((team) =>
+                team.studentIds.map((studentId) => ({
+                    assignmentId: assignment.id,
+                    studentId,
+                    teamNumber: team.teamNumber,
+                })),
+            ),
+        );
         return assignment;
     });
 }

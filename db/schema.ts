@@ -111,6 +111,7 @@ export const projects = sqliteTable('projects', {
         onDelete: 'set null',
     }),
     academicPeriod: text('academic_period'),
+    collectionYear: integer('collection_year'),
     historyMode: text('history_mode')
         .$type<HistoryMode>()
         .notNull()
@@ -307,6 +308,7 @@ export const assessments = sqliteTable(
         }),
         projectName: text('project_name'),
         academicPeriod: text('academic_period').notNull(),
+        collectionYear: integer('collection_year'),
         requestId: integer('request_id').references(() => updateRequests.id, {
             onDelete: 'set null',
         }),
@@ -335,6 +337,7 @@ export const preferenceSubmissions = sqliteTable(
             .references(() => studentRecords.id, { onDelete: 'restrict' }),
         scope: text('scope').$type<'project' | 'period'>().notNull(),
         academicPeriod: text('academic_period').notNull(),
+        collectionYear: integer('collection_year'),
         projectId: integer('project_id').references(() => projects.id, {
             onDelete: 'set null',
         }),

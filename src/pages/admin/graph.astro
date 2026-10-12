@@ -14,6 +14,7 @@ import {
 import { asc, eq, inArray } from 'drizzle-orm';
 import { selectClassScope } from '../../lib/classSelection';
 import { classFilter, projectFilter, isMaster } from '../../lib/access';
+import { knowledgeSourceLabel } from '../../lib/knowledgeContext';
 import { loadStudentProfiles } from '../../lib/studentProfiles';
 import type { GraphStudent } from '../../lib/studentReport';
 import type { Relationship } from '../../lib/tracking';
@@ -117,20 +118,17 @@ const nodes: GraphStudent[] = roster.flatMap((member) => {
                     ? `${source.name} · ${profile.period}`
                     : `Etengabeko jarraipena · ${profile.period}`,
                 assessmentAt: profile.assessment?.submittedAt ?? null,
-                assessmentSource:
-                    profile.assessment?.projectName ||
-                    profile.assessment?.academicPeriod ||
-                    null,
+                assessmentSource: profile.assessment
+                    ? knowledgeSourceLabel(profile.assessment)
+                    : null,
                 preferenceAt: profile.preference?.submittedAt ?? null,
                 needsReview: profile.needsReview,
                 relationships: profile.relationships,
-                assignments: profile.assignments
-                    .slice(0, 5)
-                    .map((row) => ({
-                        projectName: row.projectName,
-                        date: row.confirmedAt,
-                        revision: row.revision,
-                    })),
+                assignments: profile.assignments.slice(0, 5).map((row) => ({
+                    projectName: row.projectName,
+                    date: row.confirmedAt,
+                    revision: row.revision,
+                })),
                 href: `/admin/students/${member.id}`,
                 motivationInContext: Boolean(source),
             },

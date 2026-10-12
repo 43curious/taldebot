@@ -3,6 +3,7 @@ import type { Client } from '@libsql/client';
 import { eq, isNull, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import type { AssessmentValues, Allocation } from '../src/lib/trackingTypes';
+import { studentNameKey } from '../src/lib/identityMatching';
 import { skillGroups, skillScale } from '../src/lib/skills';
 
 const normalized = (value: string | null) =>
@@ -42,9 +43,9 @@ export async function backfillTracking(client: Client) {
         const peopleByEmail = new Map<string, Set<number>>();
         const names = new Map<string, Set<number>>();
         for (const person of people) {
-            const ids = names.get(normalized(person.name)) ?? new Set();
+            const ids = names.get(studentNameKey(person.name)) ?? new Set();
             ids.add(person.id);
-            names.set(normalized(person.name), ids);
+            names.set(studentNameKey(person.name), ids);
         }
         for (const alias of aliases) {
             const ids = peopleByEmail.get(normalized(alias.email)) ?? new Set();
@@ -62,9 +63,9 @@ export async function backfillTracking(client: Client) {
                 .values({ name, email, createdBy: owner, needsReview })
                 .returning();
             personById.set(person.id, person);
-            const ids = names.get(normalized(name)) ?? new Set();
+            const ids = names.get(studentNameKey(name)) ?? new Set();
             ids.add(person.id);
-            names.set(normalized(name), ids);
+            names.set(studentNameKey(name), ids);
             if (email) {
                 await tx
                     .insert(schema.studentEmails)
@@ -126,8 +127,8 @@ export async function backfillTracking(client: Client) {
                 : [];
             const ambiguous =
                 sameEmail.length > 1 &&
-                (new Set(sameEmail.map((row) => normalized(row.name))).size !==
-                    1 ||
+                (new Set(sameEmail.map((row) => studentNameKey(row.name)))
+                    .size !== 1 ||
                     new Set(sameEmail.map((row) => row.classId)).size !==
                         sameEmail.length);
             const ids = peopleByEmail.get(normalized(member.email));
@@ -146,21 +147,19 @@ export async function backfillTracking(client: Client) {
                 .set({ studentRecordId: personId })
                 .where(eq(schema.classMembers.id, member.id));
             const group = classRows.find((row) => row.id === member.classId)!;
-            await tx
-                .insert(schema.enrollments)
-                .values({
-                    studentId: personId,
-                    classId: group.id,
-                    className: group.name,
-                    degreeName:
-                        degrees.find((row) => row.id === group.degreeId)
-                            ?.name ?? null,
-                    year: group.year,
-                    academicPeriod: 'legacy',
-                    startedAt: member.createdAt,
-                    source: 'legacy-roster',
-                    rosterSnapshot: { ...member },
-                });
+            await tx.insert(schema.enrollments).values({
+                studentId: personId,
+                classId: group.id,
+                className: group.name,
+                degreeName:
+                    degrees.find((row) => row.id === group.degreeId)?.name ??
+                    null,
+                year: group.year,
+                academicPeriod: 'legacy',
+                startedAt: member.createdAt,
+                source: 'legacy-roster',
+                rosterSnapshot: { ...member },
+            });
             if (ambiguous)
                 await review(
                     'roster',
@@ -174,14 +173,15 @@ export async function backfillTracking(client: Client) {
         // Resolve names against the entire roster, including other classes.
         const rosterNames = new Map<string, Set<number>>();
         for (const member of roster) {
-            const ids = rosterNames.get(normalized(member.name)) ?? new Set();
+            const ids =
+                rosterNames.get(studentNameKey(member.name)) ?? new Set();
             ids.add(member.studentRecordId!);
-            rosterNames.set(normalized(member.name), ids);
+            rosterNames.set(studentNameKey(member.name), ids);
         }
         for (const participant of participants) {
             if (participant.studentRecordId !== null) continue;
             const emails = peopleByEmail.get(normalized(participant.email));
-            const nameIds = rosterNames.get(normalized(participant.name));
+            const nameIds = rosterNames.get(studentNameKey(participant.name));
             let resolved: number | undefined;
             if (participant.email && emails?.size === 1)
                 resolved = [...emails][0];
@@ -300,20 +300,19 @@ export async function backfillTracking(client: Client) {
                 data[group.key] = scores;
             }
             if (!importedAssessments.has(responseId))
-                await tx
-                    .insert(schema.assessments)
-                    .values({
-                        studentId: participant.studentRecordId,
-                        data,
-                        source: 'legacy-survey',
-                        projectId: participant.projectId,
-                        projectName: project?.name ?? 'Aurretiko proiektua',
-                        academicPeriod: project?.academicPeriod ?? 'legacy',
-                        legacyResponseId: responseId,
-                        legacyParticipantId: participant.id,
-                        submittedAt,
-                        rawLegacyData: row,
-                    });
+                await tx.insert(schema.assessments).values({
+                    studentId: participant.studentRecordId,
+                    data,
+                    source: 'legacy-survey',
+                    projectId: participant.projectId,
+                    projectName: project?.name ?? 'Aurretiko proiektua',
+                    academicPeriod: project?.academicPeriod ?? 'legacy',
+                    collectionYear: project?.collectionYear ?? null,
+                    legacyResponseId: responseId,
+                    legacyParticipantId: participant.id,
+                    submittedAt,
+                    rawLegacyData: row,
+                });
             if (!importedPreferences.has(responseId)) {
                 const unresolved: number[] = [];
                 const choices: {
@@ -354,6 +353,7 @@ export async function backfillTracking(client: Client) {
                         studentId: participant.studentRecordId,
                         scope: 'project',
                         academicPeriod: project?.academicPeriod ?? 'legacy',
+                        collectionYear: project?.collectionYear ?? null,
                         projectId: participant.projectId,
                         projectName: project?.name ?? 'Aurretiko proiektua',
                         source: 'legacy-survey',

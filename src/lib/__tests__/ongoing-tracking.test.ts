@@ -25,6 +25,8 @@ import {
     confirmedPairHistory,
 } from '../formation';
 import { migrateDatabase } from '../../../scripts/migrations';
+import { setProjectCollectionContext } from '../../../scripts/project-context';
+import { knowledgeSourceLabel } from '../knowledgeContext';
 let fixture: Awaited<ReturnType<typeof testDatabase>>;
 beforeEach(async () => {
     fixture = await testDatabase();
@@ -455,7 +457,10 @@ it('reuses explicit identities in new projects, keeps same-name people separate,
         .update(schema.students)
         .set({ isExcluded: true })
         .where(
-            eq(schema.students.id, first.inputSnapshot!.inputs[0].participantId),
+            eq(
+                schema.students.id,
+                first.inputSnapshot!.inputs[0].participantId,
+            ),
         );
     const second = await generateDraft(s.db, s.access, other.id, 'v2');
     expect(second.allocation.flatMap((team) => team.studentIds)).toHaveLength(
@@ -481,4 +486,123 @@ it('reuses explicit identities in new projects, keeps same-name people separate,
             })
         ).every((row) => !row.isExcluded),
     ).toBe(true);
+});
+it('ports surname-first surveys to current students without moving their enrollment back to the collection year', async () => {
+    const { db, client } = fixture;
+    await client.execute("INSERT INTO classes(name,year) VALUES ('Second',2)");
+    await client.execute(
+        "INSERT INTO class_members(class_id,name,email) VALUES (1,'Ane García Lasa',NULL),(1,'Iker Lopez Goikoetxea',NULL)",
+    );
+    await client.execute(
+        "INSERT INTO projects(name,project_type,academic_period,collection_year) VALUES ('Film Language A','balanced','2025-2026',1)",
+    );
+    await client.execute(
+        "INSERT INTO students(project_id,name,email) VALUES (1,'GARCIA LASA, ANE','ane@example.com'),(1,'LÓPEZ GOIKOETXEA, IKER','iker@example.com')",
+    );
+    await client.execute(
+        "INSERT INTO responses(student_id,project_id,skills_narrative,skills_technical,skills_management,skills_soft,comfort,prefer_with,prefer_avoid,completed_at) VALUES (1,1,'{}','{\"camera\":8}','{}','{\"motivation\":9}','[2]','[]','[]','2026-02-20 11:30:59')",
+    );
+    await migrateDatabase(client);
+    const participant = await db.query.students.findFirst({
+        where: eq(schema.students.id, 1),
+    });
+    const roster = await db.query.classMembers.findFirst({
+        where: eq(schema.classMembers.id, 1),
+    });
+    expect(participant!.studentRecordId).toBe(roster!.studentRecordId);
+    const assessment = await db.query.assessments.findFirst();
+    expect(assessment!.studentId).toBe(roster!.studentRecordId);
+    expect(assessment!.submittedAt).toBe('2026-02-20 11:30:59');
+    expect(assessment!.academicPeriod).toBe('2025-2026');
+    expect(assessment!.collectionYear).toBe(1);
+    expect(knowledgeSourceLabel(assessment!)).toBe(
+        'Film Language A · 2025-2026 · 1. mailan jasoa',
+    );
+    expect(
+        (await db.query.preferenceSubmissions.findFirst())!.collectionYear,
+    ).toBe(1);
+    expect((await db.query.enrollments.findFirst())!.year).toBe(2);
+    expect(
+        (await db.query.preferenceChoices.findFirst())!.targetStudentId,
+    ).toBe(
+        (await db.query.classMembers.findFirst({
+            where: eq(schema.classMembers.id, 2),
+        }))!.studentRecordId,
+    );
+});
+
+it('corrects collection context atomically without rewriting survey values, dates or current enrollments', async () => {
+    const s = await setup();
+    await saveKnowledge(s.db, {
+        studentId: s.people[0].id,
+        assessment: { ...emptyAssessment(), skillsTechnical: { camera: 8 } },
+        preferences: {
+            comfort: [s.people[1].id],
+            preferWith: [],
+            preferAvoid: [],
+        },
+        source: 'legacy-survey',
+        scope: 'project',
+        academicPeriod: 'legacy',
+        projectId: s.project.id,
+        projectName: s.project.name,
+    });
+    const before = (await s.db.query.assessments.findFirst())!;
+    const enrollmentsBefore = await s.db.query.enrollments.findMany();
+    await expect(
+        setProjectCollectionContext(s.db, {
+            projectIds: [s.project.id, 9999],
+            academicPeriod: '2025-2026',
+            collectionYear: 1,
+        }),
+    ).rejects.toThrow();
+    expect((await s.db.query.assessments.findFirst())!.academicPeriod).toBe(
+        'legacy',
+    );
+    await setProjectCollectionContext(s.db, {
+        projectIds: [s.project.id],
+        academicPeriod: '2025-2026',
+        collectionYear: 1,
+    });
+    const after = (await s.db.query.assessments.findFirst())!;
+    expect(after.data).toEqual(before.data);
+    expect(after.submittedAt).toBe(before.submittedAt);
+    expect(after.academicPeriod).toBe('2025-2026');
+    const profile = (
+        await loadStudentProfiles(s.db, s.access, [s.people[0].id], {
+            projectId: s.project.id,
+        })
+    ).get(s.people[0].id)!;
+    expect(profile.period).toBe('2025-2026');
+    expect(profile.preference?.academicPeriod).toBe('2025-2026');
+    expect(after.collectionYear).toBe(1);
+    expect(
+        (await s.db.query.preferenceSubmissions.findFirst())!.collectionYear,
+    ).toBe(1);
+    expect(await s.db.query.enrollments.findMany()).toEqual(enrollmentsBefore);
+});
+it('keeps canonical full-name collisions across classes ambiguous during migration', async () => {
+    const { db, client } = fixture;
+    await client.execute(
+        "INSERT INTO classes(name,year) VALUES ('First',1),('Second',2)",
+    );
+    await client.execute(
+        "INSERT INTO class_members(class_id,name,email) VALUES (1,'Ane García','first@example.com'),(2,'Ane Garcia','second@example.com')",
+    );
+    await client.execute(
+        "INSERT INTO projects(name,project_type) VALUES ('Film Language','balanced')",
+    );
+    await client.execute(
+        "INSERT INTO students(project_id,name) VALUES (1,'GARCIA, ANE')",
+    );
+    await migrateDatabase(client);
+    const participant = (await db.query.students.findFirst())!;
+    const members = await db.query.classMembers.findMany();
+    expect(
+        members.some(
+            (row) => row.studentRecordId === participant.studentRecordId,
+        ),
+    ).toBe(false);
+    const review = (await db.query.identityReviews.findFirst())!;
+    expect(review.candidates).toHaveLength(2);
 });

@@ -251,6 +251,7 @@ export async function saveKnowledge(
         academicPeriod: string;
         projectId?: number;
         projectName?: string;
+        collectionYear?: number | null;
         requestId?: number;
         legacyResponseId?: number;
         legacyParticipantId?: number;
@@ -263,6 +264,7 @@ export async function saveKnowledge(
         source: input.source,
         projectId: input.projectId ?? null,
         projectName: input.projectName ?? null,
+        collectionYear: input.collectionYear ?? null,
         requestId: input.requestId ?? null,
         submittedAt,
         legacyResponseId: input.legacyResponseId ?? null,

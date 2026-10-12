@@ -1,6 +1,7 @@
-import { inArray, or } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 import {
     assessments,
+    projects,
     preferenceSubmissions,
     preferenceChoices,
     studentRecords,
@@ -11,6 +12,7 @@ import {
 } from '../../db/schema';
 import type { DataSession } from './studentIdentity';
 import type { AssessmentValues, PreferenceKind } from './trackingTypes';
+import { knowledgeSourceLabel } from './knowledgeContext';
 import { academicPeriod } from './studentIdentity';
 import {
     canReadStudent,
@@ -75,8 +77,15 @@ export async function loadStudentProfiles(
 ) {
     for (const id of studentIds) requireStudent(access, id);
     if (context.projectId) requireProject(access, context.projectId);
+    const sourceProject =
+        context.projectId && !context.academicPeriod
+            ? await db.query.projects.findFirst({
+                  where: eq(projects.id, context.projectId),
+              })
+            : undefined;
     const period =
         context.academicPeriod ||
+        sourceProject?.academicPeriod ||
         academicPeriod(context.asOf ? new Date(context.asOf) : new Date());
     const [
         people,
@@ -257,7 +266,7 @@ export async function loadStudentProfiles(
                     submittedAt: source.submittedAt,
                     sourceLabel:
                         source.scope === 'project'
-                            ? source.projectName || 'Proiektua'
+                            ? knowledgeSourceLabel(source)
                             : source.academicPeriod,
                     scope: source.scope,
                 });

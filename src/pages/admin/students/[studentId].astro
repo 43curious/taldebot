@@ -4,6 +4,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { db } from '../../../lib/db';
 import { z } from 'zod';
 import { loadStudentProfiles } from '../../../lib/studentProfiles';
+import { knowledgeSourceLabel } from '../../../lib/knowledgeContext';
 import { assessmentGroups } from '../../../lib/studentReport';
 import {
     academicPeriod,
@@ -171,7 +172,7 @@ const draft = (key: string, fallback: string) =>
                 </p>
                 <p class="mt-2 text-xs text-slate-500">
                     {profile.assessment
-                        ? `${date(profile.assessment.submittedAt)} · ${profile.assessment.projectName || profile.assessment.academicPeriod} · ${profile.assessment.source === 'demo' ? 'Demo datu sintetikoak' : profile.assessment.source === 'legacy-survey' ? 'Aurretiko inkesta; egiletza egiaztatu gabe' : 'Esteka pertsonaleko erantzuna'}`
+                        ? `${date(profile.assessment.submittedAt)} · ${knowledgeSourceLabel(profile.assessment)} · ${profile.assessment.source === 'demo' ? 'Demo datu sintetikoak' : profile.assessment.source === 'legacy-survey' ? 'Aurretiko inkesta; egiletza egiaztatu gabe' : 'Esteka pertsonaleko erantzuna'}`
                         : 'Ez dago autoebaluaziorik.'}
                 </p>
                 {assessmentGroups(profile.values).map((group) => (
@@ -206,7 +207,7 @@ const draft = (key: string, fallback: string) =>
                 <h2 class="text-base">Lan-hobespenak</h2>
                 <p class="mt-2 text-xs text-slate-500">
                     {profile.preference
-                        ? `${date(profile.preference.submittedAt)} · ${profile.preference.projectName || profile.preference.academicPeriod}`
+                        ? `${date(profile.preference.submittedAt)} · ${knowledgeSourceLabel(profile.preference)}`
                         : 'Ez dago testuinguru honetako hobespen berretsirik.'}
                 </p>
                 {profile.needsReview && (
@@ -324,7 +325,7 @@ const draft = (key: string, fallback: string) =>
                         <details class="mt-3">
                             <summary class="cursor-pointer text-xs text-slate-500">
                                 {date(record.submittedAt)} ·{' '}
-                                {record.projectName || record.academicPeriod} ·{' '}
+                                {knowledgeSourceLabel(record)} ·{' '}
                                 {record.questionnaireVersion}
                                 {record.withdrawnAt && ' · erretiratua'}
                             </summary>
@@ -352,7 +353,7 @@ const draft = (key: string, fallback: string) =>
                         {profile.preferenceHistory.map((record) => (
                             <li class="text-xs text-slate-500">
                                 {date(record.submittedAt)} ·{' '}
-                                {record.projectName || record.academicPeriod} ·{' '}
+                                {knowledgeSourceLabel(record)} ·{' '}
                                 {record.scope === 'project'
                                     ? 'Proiektu jakina'
                                     : 'Ikasturtekoa'}
