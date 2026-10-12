@@ -90,7 +90,9 @@ it('keeps class and dashboard actions available after a real login', async () =>
             serverOutput += chunk;
         });
         let ready = false;
-        for (let i = 0; i < 90; i++) {
+        // A cold install needs time to initialize the SSR adapter.
+        const startupDeadline = Date.now() + 30_000;
+        while (Date.now() < startupDeadline && server.exitCode === null) {
             try {
                 ready = (
                     await fetch(`${base}/admin/login`, {
@@ -562,4 +564,4 @@ it('keeps class and dashboard actions available after a real login', async () =>
         db.close();
         await rm(dir, { recursive: true, force: true });
     }
-}, 20_000);
+}, 60_000);
