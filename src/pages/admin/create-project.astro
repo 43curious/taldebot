@@ -139,6 +139,30 @@ const initialSpecialty =
                     </label>
                 </div>
             </section>
+            <div class="flex items-center gap-3 rounded-xl border border-teal-700 bg-teal-700 px-4 py-4 text-white sm:px-5">
+                <svg
+                    class="h-5 w-5 shrink-0"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                <p
+                    id="previewText"
+                    class="text-sm"
+                    role="status"
+                    aria-live="polite"
+                >
+                    0 ikasle. Aukeratu baliozko talde kopurua.
+                </p>
+            </div>
             <section
                 class="teacher-panel p-4 sm:p-5"
                 aria-labelledby="participants-heading"
@@ -146,160 +170,189 @@ const initialSpecialty =
                 <h2 id="participants-heading" class="mb-4 text-base">
                     Parte-hartzaileak
                 </h2>
-                <div id="roster-entry-container">
-                    <div class="grid gap-3 sm:grid-cols-3 mb-4">
-                        <label class="teacher-label" for="roster-degree">
-                            Gradua
-                            <select id="roster-degree">
-                                <option value="">Aukeratu gradua</option>
-                                {degreeOptions.map((degree) => (
-                                    <option
-                                        value={degree.id}
-                                        selected={
-                                            String(degree.id) === initialDegree
-                                        }
-                                    >
-                                        {degree.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label class="teacher-label" for="roster-class">
-                            Klasea
-                            <select id="roster-class">
-                                <option value="">Aukeratu klasea</option>
-                                {groups.map((group) => (
-                                    <option
-                                        value={group.id}
-                                        selected={group.id === initialClass?.id}
-                                        data-degree={group.degreeId ?? 0}
-                                    >
-                                        {classOptionLabel(group)}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label class="teacher-label" for="roster-module-group">
-                            Moduluko taldea
-                            <select id="roster-module-group">
-                                <option value="">Klase osoa</option>
-                                <optgroup label="Espezialitatea">
-                                    <option
-                                        value="sormena"
-                                        selected={
-                                            initialSpecialty === 'sormena'
-                                        }
-                                    >
-                                        Sormena
-                                    </option>
-                                    <option
-                                        value="digitala"
-                                        selected={
-                                            initialSpecialty === 'digitala'
-                                        }
-                                    >
-                                        Digitala
-                                    </option>
-                                </optgroup>
-                                <optgroup label="Moduluko taldeak">
-                                    {moduleGroups.map((group) => (
+                <div
+                    class="teacher-tabs participant-source-tabs mb-4"
+                    role="tablist"
+                    aria-label="Parte-hartzaileen iturria"
+                >
+                    <button
+                        type="button"
+                        role="tab"
+                        id="tab-roster"
+                        aria-controls="roster-entry-container"
+                        aria-selected="true"
+                        tabindex="0"
+                    >
+                        Klaseko zerrenda
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        id="tab-manual"
+                        aria-controls="manual-entry-container"
+                        aria-selected="false"
+                        tabindex="-1"
+                    >
+                        Eskuz sartu
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        id="tab-csv"
+                        aria-controls="csv-upload-container"
+                        aria-selected="false"
+                        tabindex="-1"
+                    >
+                        CSV igo
+                    </button>
+                </div>
+                <div class="participant-source-panels">
+                    <div
+                        id="roster-entry-container"
+                        class="participant-source-panel"
+                        role="tabpanel"
+                        aria-labelledby="tab-roster"
+                        data-active="true"
+                    >
+                        <div class="grid gap-3 sm:grid-cols-3 mb-4">
+                            <label class="teacher-label" for="roster-degree">
+                                Gradua
+                                <select id="roster-degree">
+                                    <option value="">Aukeratu gradua</option>
+                                    {degreeOptions.map((degree) => (
                                         <option
-                                            value={group.id}
-                                            data-class={group.classId}
+                                            value={degree.id}
                                             selected={
-                                                group.id === initialGroup?.id
+                                                String(degree.id) ===
+                                                initialDegree
                                             }
                                         >
-                                            {group.moduleName} · {group.name}
+                                            {degree.name}
                                         </option>
                                     ))}
-                                </optgroup>
-                            </select>
-                        </label>
-                    </div>
-                    <div
-                        class="divide-y divide-slate-100 max-h-80 overflow-y-auto"
-                        id="roster-rows"
-                    >
-                        {roster.map((member) => (
-                            <label
-                                class="hidden items-center gap-3 py-3 text-sm"
-                                data-roster-class={member.classId}
-                                data-roster-division={member.division || ''}
-                                data-roster-groups={JSON.stringify(
-                                    groupMembers
-                                        .filter(
-                                            (row) =>
-                                                row.studentId ===
-                                                member.studentRecordId,
-                                        )
-                                        .map((row) => row.groupId),
-                                )}
-                            >
-                                <input
-                                    type="checkbox"
-                                    data-roster-id={member.studentRecordId!}
-                                    data-name={member.name}
-                                    data-email={member.email || ''}
-                                />
-                                <span class="min-w-0 break-words">
-                                    {member.name}
-                                    <small class="block text-xs text-slate-500 break-all">
-                                        {member.email}
-                                    </small>
-                                </span>
+                                </select>
                             </label>
-                        ))}
+                            <label class="teacher-label" for="roster-class">
+                                Klasea
+                                <select id="roster-class">
+                                    <option value="">Aukeratu klasea</option>
+                                    {groups.map((group) => (
+                                        <option
+                                            value={group.id}
+                                            selected={
+                                                group.id === initialClass?.id
+                                            }
+                                            data-degree={group.degreeId ?? 0}
+                                        >
+                                            {classOptionLabel(group)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label
+                                class="teacher-label"
+                                for="roster-module-group"
+                            >
+                                Moduluko taldea
+                                <select id="roster-module-group">
+                                    <option value="">Klase osoa</option>
+                                    <optgroup label="Espezialitatea">
+                                        <option
+                                            value="sormena"
+                                            selected={
+                                                initialSpecialty === 'sormena'
+                                            }
+                                        >
+                                            Sormena
+                                        </option>
+                                        <option
+                                            value="digitala"
+                                            selected={
+                                                initialSpecialty === 'digitala'
+                                            }
+                                        >
+                                            Digitala
+                                        </option>
+                                    </optgroup>
+                                    <optgroup label="Moduluko taldeak">
+                                        {moduleGroups.map((group) => (
+                                            <option
+                                                value={group.id}
+                                                data-class={group.classId}
+                                                selected={
+                                                    group.id ===
+                                                    initialGroup?.id
+                                                }
+                                            >
+                                                {group.moduleName} ·{' '}
+                                                {group.name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                </select>
+                            </label>
+                        </div>
+                        <div
+                            class="divide-y divide-slate-100 max-h-80 overflow-y-auto"
+                            id="roster-rows"
+                        >
+                            {roster.map((member) => (
+                                <label
+                                    class="hidden items-center gap-3 py-3 text-sm"
+                                    data-roster-class={member.classId}
+                                    data-roster-division={member.division || ''}
+                                    data-roster-groups={JSON.stringify(
+                                        groupMembers
+                                            .filter(
+                                                (row) =>
+                                                    row.studentId ===
+                                                    member.studentRecordId,
+                                            )
+                                            .map((row) => row.groupId),
+                                    )}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        data-roster-id={member.studentRecordId!}
+                                        data-name={member.name}
+                                        data-email={member.email || ''}
+                                    />
+                                    <span class="min-w-0 break-words">
+                                        {member.name}
+                                        <small class="block text-xs text-slate-500 break-all">
+                                            {member.email}
+                                        </small>
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+                        <p
+                            id="roster-empty"
+                            class="py-3 text-sm text-slate-500"
+                        >
+                            Aukeratu gradua eta klasea ikasleak ikusteko.
+                        </p>
+                        <p
+                            id="roster-status"
+                            role="status"
+                            aria-live="polite"
+                            class="mt-3 text-xs text-slate-500"
+                        ></p>
+                        <p class="mt-2 text-xs text-slate-500">
+                            Klasea edo taldea hautatzean, ikasle guztiak
+                            aukeratzen dira. Kendu parte hartuko ez dutenen
+                            marka.
+                        </p>
                     </div>
-                    <p id="roster-empty" class="py-3 text-sm text-slate-500">
-                        Aukeratu gradua eta klasea ikasleak ikusteko.
-                    </p>
-                    <p
-                        id="roster-status"
-                        role="status"
-                        aria-live="polite"
-                        class="mt-3 text-xs text-slate-500"
-                    ></p>
-                    <p class="mt-2 text-xs text-slate-500">
-                        Klasea edo taldea hautatzean, ikasle guztiak aukeratzen
-                        dira. Kendu parte hartuko ez dutenen marka.
-                    </p>
-                </div>
-                <details class="mt-4 border-t border-slate-100 pt-3">
-                    <summary class="cursor-pointer text-sm text-slate-500">
-                        Parte-hartzaileen beste iturri bat erabili
-                    </summary>
                     <div
-                        class="teacher-toolbar mt-3"
-                        role="group"
-                        aria-label="Parte-hartzaileen iturria"
+                        id="manual-entry-container"
+                        class="participant-source-panel"
+                        role="tabpanel"
+                        aria-labelledby="tab-manual"
+                        aria-hidden="true"
+                        data-active="false"
+                        inert
                     >
-                        <button
-                            type="button"
-                            id="tab-roster"
-                            class="teacher-button"
-                            aria-pressed="true"
-                        >
-                            Klaseko zerrenda
-                        </button>
-                        <button
-                            type="button"
-                            id="tab-manual"
-                            class="teacher-button"
-                            aria-pressed="false"
-                        >
-                            Eskuz sartu
-                        </button>
-                        <button
-                            type="button"
-                            id="tab-csv"
-                            class="teacher-button"
-                            aria-pressed="false"
-                        >
-                            CSV igo
-                        </button>
-                    </div>
-                    <div id="manual-entry-container" hidden class="mt-4">
                         <label class="teacher-label" for="studentList">
                             Ikasleen izenak, bat lerro bakoitzeko
                             <textarea
@@ -316,7 +369,15 @@ const initialSpecialty =
                             klaseko zerrenda.
                         </p>
                     </div>
-                    <div id="csv-upload-container" hidden class="mt-4">
+                    <div
+                        id="csv-upload-container"
+                        class="participant-source-panel"
+                        role="tabpanel"
+                        aria-labelledby="tab-csv"
+                        aria-hidden="true"
+                        data-active="false"
+                        inert
+                    >
                         <label class="teacher-label" for="csv-file">
                             CSV fitxategia
                             <input
@@ -355,7 +416,8 @@ const initialSpecialty =
                             </div>
                         </div>
                     </div>
-                </details>
+                </div>
+
                 <input type="hidden" name="studentsJson" id="studentsJson" />
                 <input type="hidden" name="classGroupId" id="classGroupId" />
             </section>
@@ -388,12 +450,7 @@ const initialSpecialty =
                     </p>
                 </div>
             </details>
-            <p
-                id="previewText"
-                class="text-sm text-slate-500"
-                role="status"
-                aria-live="polite"
-            ></p>
+
             <p
                 id="create-project-feedback"
                 class="text-sm text-red-700"
@@ -482,11 +539,10 @@ const initialSpecialty =
                 ? `${selected.length} / ${visibleCount} ikasle aukeratuta`
                 : '';
             const teams = Number(count.value);
-            preview.textContent = !total
-                ? 'Ikasleen zerrendaren zain…'
-                : !teams || teams > total
-                  ? `${total} ikasle. Aukeratu baliozko talde kopurua.`
-                  : `${total} ikasle · ${teams} talde · ${Math.floor(total / teams)}–${Math.ceil(total / teams)} kide taldeko.`;
+            preview.textContent =
+                !total || !Number.isInteger(teams) || teams < 1 || teams > total
+                    ? `${total} ikasle. Aukeratu baliozko talde kopurua.`
+                    : `${total} ikasle · ${teams} talde · ${Math.floor(total / teams)}–${Math.ceil(total / teams)} kide taldeko.`;
             for (const name of sourceNames) {
                 const container = document.getElementById(
                     name === 'roster'
@@ -495,20 +551,43 @@ const initialSpecialty =
                           ? 'manual-entry-container'
                           : 'csv-upload-container',
                 )!;
-                container.hidden = name !== source;
+                const active = name === source;
+                container.dataset.active = String(active);
+                container.inert = !active;
+                container.setAttribute('aria-hidden', String(!active));
                 const tab = document.getElementById(`tab-${name}`)!;
-                tab.setAttribute('aria-pressed', String(name === source));
-                tab.className = `teacher-button ${name === source ? 'teacher-button-primary' : ''}`;
+                tab.setAttribute('aria-selected', String(active));
+                tab.tabIndex = active ? 0 : -1;
             }
         }
-        sourceNames.forEach((name) =>
-            document
-                .getElementById(`tab-${name}`)!
-                .addEventListener('click', () => {
-                    source = name;
-                    update();
-                }),
-        );
+        sourceNames.forEach((name, index) => {
+            const tab = document.getElementById(`tab-${name}`)!;
+            tab.addEventListener('click', () => {
+                source = name;
+                update();
+            });
+            tab.addEventListener('keydown', (event) => {
+                const direction =
+                    event.key === 'ArrowRight'
+                        ? 1
+                        : event.key === 'ArrowLeft'
+                          ? -1
+                          : 0;
+                if (!direction && event.key !== 'Home' && event.key !== 'End')
+                    return;
+                event.preventDefault();
+                const next =
+                    event.key === 'Home'
+                        ? 0
+                        : event.key === 'End'
+                          ? sourceNames.length - 1
+                          : (index + direction + sourceNames.length) %
+                            sourceNames.length;
+                source = sourceNames[next];
+                update();
+                document.getElementById(`tab-${source}`)!.focus();
+            });
+        });
         rosterInputs.forEach((row) => row.addEventListener('change', update));
         text.addEventListener('input', update);
         count.addEventListener('input', update);
@@ -666,6 +745,30 @@ const initialSpecialty =
 </AdminLayout>
 
 <style>
+    @media (max-width: 640px) {
+        .participant-source-tabs {
+            flex-wrap: nowrap;
+        }
+        .participant-source-tabs button {
+            flex: 1;
+            justify-content: center;
+            min-width: 0;
+            padding: 0.5rem;
+            font-size: 0.75rem;
+        }
+    }
+    .participant-source-panels {
+        display: grid;
+    }
+    .participant-source-panel {
+        grid-area: 1 / 1;
+        min-width: 0;
+    }
+    .participant-source-panel[data-active='false'] {
+        visibility: hidden;
+        pointer-events: none;
+    }
+
     #roster-rows input[type='checkbox'] {
         width: 1rem;
         height: 1rem;

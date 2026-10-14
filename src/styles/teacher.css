@@ -13,9 +13,9 @@
 .teacher-label { display: grid; gap: .4rem; font-size: .75rem; font-weight: 500; color: #475569; }
 .teacher-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
 .teacher-tabs { display: flex; flex-wrap: wrap; gap: .25rem; }
-.teacher-tabs a { display: inline-flex; min-height: 2.75rem; align-items: center; gap: .5rem; padding: .5rem .85rem; border-radius: .5rem; color: #64748b; font-size: .875rem; }
-.teacher-tabs a[aria-current=page] { background: #f0fdfa; color: #0f766e; font-weight: 600; }
-.teacher-tabs a:hover { background: #f8fafc; }
+.teacher-tabs :is(a, button[role=tab]) { display: inline-flex; min-height: 2.75rem; align-items: center; gap: .5rem; padding: .5rem .85rem; border-radius: .5rem; color: #64748b; font-size: .875rem; }
+.teacher-tabs :is(a[aria-current=page], button[aria-selected=true]) { background: #f0fdfa; color: #0f766e; font-weight: 600; }
+.teacher-tabs :is(a, button[role=tab]):hover { background: #f8fafc; }
 .teacher-menu { position: relative; }
 .teacher-menu > summary { display: flex; align-items: center; justify-content: center; list-style: none; cursor: pointer; padding: .5rem .75rem; border-radius: .5rem; color: #64748b; }
 .teacher-menu > summary::-webkit-details-marker { display: none; }
