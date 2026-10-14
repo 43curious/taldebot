@@ -199,6 +199,87 @@ it('separates period preferences from local choices, retains unknown skills, and
         ).get(id)!.preference,
     ).toBeUndefined();
 });
+it('shows dated historical relationships from the current roster without making them current formation inputs', async () => {
+    const s = await setup();
+    const [author, peer] = s.people;
+    await saveKnowledge(s.db, {
+        studentId: author.id,
+        assessment: { ...emptyAssessment(), skillsTechnical: { camera: 8 } },
+        preferences: { comfort: [peer.id], preferWith: [], preferAvoid: [] },
+        source: 'legacy-survey',
+        scope: 'project',
+        projectId: s.project.id,
+        projectName: s.project.name,
+        academicPeriod: '2025-2026',
+    });
+    await setProjectCollectionContext(s.db, {
+        projectIds: [s.project.id],
+        academicPeriod: '2025-2026',
+        collectionYear: 1,
+    });
+    await s.db
+        .update(schema.preferenceSubmissions)
+        .set({ submittedAt: '2026-02-20 11:30:59' });
+    const enrollments = await s.db.query.enrollments.findMany();
+    const ids = s.people.map((p) => p.id);
+    const context = {
+        academicPeriod: '2026-2027',
+        relationshipView: 'latest-recorded' as const,
+    };
+    const profiles = await loadStudentProfiles(s.db, s.access, ids, context);
+    const profile = profiles.get(author.id)!;
+    expect(profile.relationships).toMatchObject([
+        {
+            source: author.id,
+            target: peer.id,
+            kind: 'comfort',
+            scope: 'project',
+            sourceLabel: 'Film · 2025-2026 · 1. mailan jasoa',
+            submittedAt: '2026-02-20 11:30:59',
+            incoming: false,
+        },
+    ]);
+    expect(profiles.get(peer.id)!.relationships[0].incoming).toBe(true);
+    expect(profile.preference).toBeUndefined();
+    expect(profile.needsReview).toBe(true);
+    expect(profile.values.skillsTechnical.camera).toBe(8);
+    expect(
+        (
+            await loadStudentProfiles(s.db, s.access, ids, {
+                academicPeriod: '2026-2027',
+            })
+        ).get(author.id)!.relationships,
+    ).toEqual([]);
+    expect(
+        (
+            await loadStudentProfiles(s.db, s.access, ids, {
+                ...context,
+                asOf: '2026-02-19',
+            })
+        ).get(author.id)!.relationships,
+    ).toEqual([]);
+    expect(await s.db.query.enrollments.findMany()).toEqual(enrollments);
+    // A newer explicitly empty answer is evidence, rather than a reason to reuse old choices.
+    await saveKnowledge(s.db, {
+        studentId: author.id,
+        preferences: { comfort: [], preferWith: [], preferAvoid: [] },
+        source: 'independent-update',
+        scope: 'period',
+        academicPeriod: '2026-2027',
+    });
+    expect(
+        (await loadStudentProfiles(s.db, s.access, ids, context)).get(
+            author.id,
+        )!.relationships,
+    ).toEqual([]);
+    expect(
+        (
+            await loadStudentProfiles(s.db, s.access, ids, {
+                projectId: s.project.id,
+            })
+        ).get(author.id)!.relationships[0].kind,
+    ).toBe('comfort');
+});
 it('uses single-use personal requests, revokes older links, scopes requested sections, and invalidates transferred access', async () => {
     const s = await setup();
     const access = await teachingAccess(s.db, s.teacher);

@@ -344,7 +344,7 @@ it('keeps class and dashboard actions available after a real login', async () =>
         ).text();
         expect(otherGraph).toContain('Leire');
         expect(otherGraph).not.toContain('Film lab');
-        expect(otherGraph).toContain('Etengabeko jarraipena');
+        expect(otherGraph).toContain('Azken harreman-erantzunak · Historia');
         const empty = await classPage('q=not-found');
         expect(empty).toContain('Ez da emaitzarik aurkitu');
         expect(empty).toContain('Garbitu iragazkiak');

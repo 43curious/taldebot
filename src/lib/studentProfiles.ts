@@ -26,6 +26,8 @@ export interface ProfileContext {
     projectId?: number;
     academicPeriod?: string;
     asOf?: string;
+    // Teacher history view only; formation keeps the default scoped preferences.
+    relationshipView?: 'latest-recorded';
 }
 export interface ProfileRelationship {
     source: number;
@@ -178,6 +180,16 @@ export async function loadStudentProfiles(
         const selected = project ?? general;
         if (selected) applicable.set(id, selected);
     }
+    const shown = new Map(applicable);
+    if (context.relationshipView === 'latest-recorded' && !context.projectId) {
+        shown.clear();
+        for (const id of new Set(submissions.map((row) => row.studentId))) {
+            const recorded = latest(
+                submissions.filter((row) => row.studentId === id),
+            );
+            if (recorded) shown.set(id, recorded);
+        }
+    }
     const peerIds = new Set(choices.map((row) => row.targetStudentId));
     for (const row of submissions) peerIds.add(row.studentId);
     for (const row of rules) {
@@ -245,8 +257,7 @@ export async function loadStudentProfiles(
             for (const choice of choices) {
                 const source = submissionById.get(choice.submissionId);
                 if (!source) continue;
-                if (applicable.get(source.studentId)?.id !== source.id)
-                    continue;
+                if (shown.get(source.studentId)?.id !== source.id) continue;
                 if (
                     source.studentId !== person.id &&
                     choice.targetStudentId !== person.id
@@ -365,6 +376,7 @@ export async function loadStudentProfiles(
                     values,
                     assessmentHistory: history,
                     preference,
+                    relationshipPreference: shown.get(person.id),
                     preferenceHistory,
                     relationships,
                     restrictions,

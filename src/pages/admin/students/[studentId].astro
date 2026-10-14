@@ -4,7 +4,10 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { db } from '../../../lib/db';
 import { z } from 'zod';
 import { loadStudentProfiles } from '../../../lib/studentProfiles';
-import { knowledgeSourceLabel } from '../../../lib/knowledgeContext';
+import {
+    knowledgeSourceLabel,
+    projectSourceLabel,
+} from '../../../lib/knowledgeContext';
 import { assessmentGroups } from '../../../lib/studentReport';
 import {
     academicPeriod,
@@ -90,11 +93,18 @@ if (
     (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || Number.isNaN(Date.parse(asOf)))
 )
     return new Response('Invalid date', { status: 400 });
-const projectId = Astro.url.searchParams.get('project')
-    ? positiveId.parse(Astro.url.searchParams.get('project'))
-    : undefined;
+const projectParam = Astro.url.searchParams.get('project');
+const projectId =
+    projectParam && projectParam !== 'current'
+        ? positiveId.parse(Astro.url.searchParams.get('project'))
+        : undefined;
+const historical = !projectId && projectParam !== 'current';
 const profile = (
-    await loadStudentProfiles(db, access, [id], { asOf, projectId })
+    await loadStudentProfiles(db, access, [id], {
+        asOf,
+        projectId,
+        relationshipView: historical ? 'latest-recorded' : undefined,
+    })
 ).get(id);
 if (!profile) return Astro.redirect('/admin/classes');
 const peers = await db.query.studentRecords.findMany({
@@ -204,12 +214,23 @@ const draft = (key: string, fallback: string) =>
                 </p>
             </section>
             <section class="teacher-panel p-5">
-                <h2 class="text-base">Lan-hobespenak</h2>
+                <h2 class="text-base">
+                    {historical
+                        ? 'Azken harreman-erantzunak · Historia'
+                        : 'Lan-hobespenak'}
+                </h2>
                 <p class="mt-2 text-xs text-slate-500">
-                    {profile.preference
-                        ? `${date(profile.preference.submittedAt)} · ${knowledgeSourceLabel(profile.preference)}`
-                        : 'Ez dago testuinguru honetako hobespen berretsirik.'}
+                    {profile.relationshipPreference
+                        ? `${date(profile.relationshipPreference.submittedAt)} · ${knowledgeSourceLabel(profile.relationshipPreference)}`
+                        : 'Ez dago testuinguru honetako harreman-erantzun osorik.'}
                 </p>
+                {historical && (
+                    <p class="mt-2 text-xs text-slate-500">
+                        Azken bidalketa osoa erakusten da. Aurreko erantzunak ez
+                        dira egungo hobespen bihurtzen; erantzunik ez izatea ez
+                        da baztertzea.
+                    </p>
+                )}
                 {profile.needsReview && (
                     <p class="mt-2 text-xs text-amber-700">
                         Eskatu ikasleari hobespenak berrikusteko.
@@ -490,20 +511,31 @@ const draft = (key: string, fallback: string) =>
                     <label class="teacher-label">
                         Proiektuaren testuingurua
                         <select name="project">
-                            <option value="">Etengabeko jarraipena</option>
+                            <option value="" selected={historical}>
+                                Azken harreman-erantzunak · Historia
+                            </option>
+                            <option
+                                value="current"
+                                selected={!projectId && !historical}
+                            >
+                                Egungo ikasturteko hobespenak
+                            </option>
                             {contextProjects.map((project) => (
                                 <option
                                     value={project.id}
                                     selected={project.id === projectId}
                                 >
-                                    {project.name}
+                                    {projectSourceLabel(project)}
                                     {project.archivedAt && ' · artxibatuta'}
                                 </option>
                             ))}
                         </select>
                     </label>
                     <button class="teacher-button">Testuingurua ikusi</button>
-                    <a class="teacher-button" href={`/admin/students/${id}`}>
+                    <a
+                        class="teacher-button"
+                        href={`/admin/students/${id}?project=current`}
+                    >
                         Egungo jarraipena
                     </a>
                 </form>

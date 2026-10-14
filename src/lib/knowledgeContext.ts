@@ -15,3 +15,15 @@ export function knowledgeSourceLabel(record: KnowledgeContext) {
         .filter(Boolean)
         .join(' · ');
 }
+
+export function projectSourceLabel(project: {
+    name: string;
+    academicPeriod: string | null;
+    collectionYear: number | null;
+}) {
+    return knowledgeSourceLabel({
+        projectName: project.name,
+        academicPeriod: project.academicPeriod ?? 'legacy',
+        collectionYear: project.collectionYear,
+    });
+}

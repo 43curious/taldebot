@@ -14,7 +14,10 @@ import {
 import { asc, eq, inArray } from 'drizzle-orm';
 import { selectClassScope } from '../../lib/classSelection';
 import { classFilter, projectFilter, isMaster } from '../../lib/access';
-import { knowledgeSourceLabel } from '../../lib/knowledgeContext';
+import {
+    knowledgeSourceLabel,
+    projectSourceLabel,
+} from '../../lib/knowledgeContext';
 import { loadStudentProfiles } from '../../lib/studentProfiles';
 import type { GraphStudent } from '../../lib/studentReport';
 import type { Relationship } from '../../lib/tracking';
@@ -84,6 +87,8 @@ const projectOptions = projects.filter((project) =>
 const source = projectOptions.find(
     (project) => String(project.id) === Astro.url.searchParams.get('project'),
 );
+const historical =
+    !source && Astro.url.searchParams.get('project') !== 'current';
 const asOf = Astro.url.searchParams.get('asOf') || undefined;
 if (
     asOf &&
@@ -94,6 +99,7 @@ const profiles = await loadStudentProfiles(db, access, [...rosterIds], {
     projectId: source?.id,
     academicPeriod: source?.academicPeriod ?? undefined,
     asOf,
+    relationshipView: historical ? 'latest-recorded' : undefined,
 });
 const nodes: GraphStudent[] = roster.flatMap((member) => {
     const profile = profiles.get(member.id);
@@ -116,12 +122,15 @@ const nodes: GraphStudent[] = roster.flatMap((member) => {
             profile: {
                 label: source
                     ? `${source.name} · ${profile.period}`
-                    : `Etengabeko jarraipena · ${profile.period}`,
+                    : historical
+                      ? 'Azken harreman-erantzunak · Historia'
+                      : `Egungo ikasturteko hobespenak · ${profile.period}`,
                 assessmentAt: profile.assessment?.submittedAt ?? null,
                 assessmentSource: profile.assessment
                     ? knowledgeSourceLabel(profile.assessment)
                     : null,
-                preferenceAt: profile.preference?.submittedAt ?? null,
+                preferenceAt:
+                    profile.relationshipPreference?.submittedAt ?? null,
                 needsReview: profile.needsReview,
                 relationships: profile.relationships,
                 assignments: profile.assignments.slice(0, 5).map((row) => ({
@@ -129,7 +138,7 @@ const nodes: GraphStudent[] = roster.flatMap((member) => {
                     date: row.confirmedAt,
                     revision: row.revision,
                 })),
-                href: `/admin/students/${member.id}`,
+                href: `/admin/students/${member.id}?${new URLSearchParams({ project: source ? String(source.id) : historical ? '' : 'current', ...(asOf ? { asOf } : {}) })}`,
                 motivationInContext: Boolean(source),
             },
         },
@@ -157,7 +166,7 @@ const links: Relationship[] = [...profiles.values()].flatMap((profile) =>
             ];
         }),
 );
-const sourceLabel = `${source ? source.name : 'Etengabeko jarraipena'}${asOf ? ` · ${asOf} arte` : ''}`;
+const sourceLabel = `${source ? projectSourceLabel(source) : historical ? 'Azken harreman-erantzunak · Historia' : 'Egungo ikasturteko hobespenak'}${asOf ? ` · ${asOf} arte` : ''}`;
 ---
 
 <AdminLayout title="Harremanen mapa" fullScreen>
@@ -190,16 +199,30 @@ const sourceLabel = `${source ? source.name : 'Etengabeko jarraipena'}${asOf ? `
                         name="project"
                         class="mt-2 w-full"
                     >
-                        <option value="">Etengabeko jarraipena</option>
+                        <option value="" selected={historical}>
+                            Azken harreman-erantzunak · Historia
+                        </option>
+                        <option
+                            value="current"
+                            selected={!source && !historical}
+                        >
+                            Egungo ikasturteko hobespenak
+                        </option>
                         {projectOptions.map((project) => (
                             <option
                                 value={project.id}
                                 selected={project.id === source?.id}
                             >
-                                {project.name}
+                                {projectSourceLabel(project)}
                             </option>
                         ))}
                     </select>
+                    <p class="mt-2 text-xs text-slate-500">
+                        Historian ikasle bakoitzaren azken bidalketa osoa
+                        erakusten da, bere jatorri eta datarekin. Aurreko
+                        erantzunak ez dira egungo hobespen bihurtzen. Erantzunik
+                        ez izatea ez da baztertzea.
+                    </p>
                     <label for="graph-as-of" class="teacher-label mt-3">
                         Historia-data
                     </label>

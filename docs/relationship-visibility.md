@@ -1,0 +1,13 @@
+# Historical relationship visibility (#5)
+
+The configured remote database was inspected read-only on 2026-10-14 and restored to a private temporary SQLite copy for verification. All three migrations were already applied. The missing relationships were preserved but excluded by the default current-period view: every legacy submission has project scope, while the default view selected only period-scoped preferences. Skills use their latest available assessment, which explains why skills remained visible.
+
+The two first-year sources contain 49 responses. Each response has a retained assessment and complete preference submission, with the original timestamp, project, `2025-2026` period and collection year 1. Every original comfort, collaboration and avoidance target was checked against the normalized choice and its source-project participant identity. No affected response requires recovery or remapping. Two unresolved identity reviews elsewhere remain available to the master; no identities or enrollments were changed.
+
+On the restored year-2 roster (49 members), the old default showed 43 students with skills and zero outgoing choices. The historical view shows the same skills and 276 outgoing choices, retaining their own source and date. Repeated reads give the same result. Counts are not a claim that every member answered or that historical preferences still apply today.
+
+The class graph and individual report now default to **Azken harreman-erantzunak · Historia**. This shows each respondent's latest complete, non-withdrawn submission, including an explicit empty answer. The context menu also offers the current academic period and each source project. An as-of date excludes later submissions. Peer names remain subject to current teacher responsibility.
+
+Historical display is an explicit option of the profile loader. It does not populate the current `preference`, change enrollment, rewrite source answers, or feed old project choices into a new allocation. Current restrictions still follow their own period/project scope. Team formation continues to use the default scoped loader. Missing answers remain unknown; they do not mean rejection. Incomplete imports remain in the report's history rather than acting as empty submissions.
+
+Validation: the focused historical-view test first failed with an empty relationship list, then passed after the view was added. It checks provenance, skill preservation, unchanged enrollment, incoming choices, as-of filtering, explicit clearing and separation from formation inputs. The restored-data reconciliation and repeat-read check also pass. No production data repair or new migration is required; the display change takes effect after deployment.
