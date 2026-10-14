@@ -139,7 +139,7 @@ const initialSpecialty =
                     </label>
                 </div>
             </section>
-            <div class="flex items-center gap-3 rounded-xl border border-teal-700 bg-teal-700 px-4 py-4 text-white sm:px-5">
+            <div class="flex items-center gap-3 rounded-xl border border-teal-700/20 bg-teal-700/60 px-4 py-4 text-teal-950 sm:px-5">
                 <svg
                     class="h-5 w-5 shrink-0"
                     viewBox="0 0 24 24"
@@ -542,7 +542,7 @@ const initialSpecialty =
             preview.textContent =
                 !total || !Number.isInteger(teams) || teams < 1 || teams > total
                     ? `${total} ikasle. Aukeratu baliozko talde kopurua.`
-                    : `${total} ikasle · ${teams} talde · ${Math.floor(total / teams)}–${Math.ceil(total / teams)} kide taldeko.`;
+                    : `${total} ikasle · ${teams} talde · ${total % teams === 0 ? `${total / teams} kide` : `${Math.floor(total / teams)}–${Math.ceil(total / teams)} kide taldeko`}.`;
             for (const name of sourceNames) {
                 const container = document.getElementById(
                     name === 'roster'
