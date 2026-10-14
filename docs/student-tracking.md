@@ -4,9 +4,11 @@ A student has one durable identity, with email aliases and dated enrollments. Cl
 
 ## Responsibility and privacy
 
-Master administrators assign degree or individual class responsibility in **Sarbideak**. A class grant does not grant its sibling classes. Access follows current enrollment; former teachers lose access after a transfer. A project is visible only when all its participants are accessible. Teachers can follow students they collected before enrollment; master administrators resolve cross-scope links. Existing installations grant no ordinary teacher access automatically: a master must assign responsibility.
+Master administrators assign degree or individual class responsibility in **Erabiltzaileen kudeaketa**. A class grant does not grant its sibling classes. Access follows current enrollment; former teachers lose access after a transfer. A project is visible only when all its participants are accessible. Teachers can follow students they collected before enrollment; master administrators resolve cross-scope links. Existing installations grant no ordinary teacher access automatically: a master must assign responsibility.
 
 Private roster notes stay with their author and masters. Ending enrollment snapshots the original roster metadata, but shared profiles never expose this snapshot. Restriction reasons are also private to their author and masters; the requirement to separate the pair is visible to currently responsible teachers. Peer names outside a teacher's scope are redacted. Graphs, reports, exports and team inputs use the same access boundary. Authenticated responses and token pages are not cached.
+
+The master-only **Erabiltzaileen kudeaketa** panel creates accounts and edits roles and degree/class responsibilities together. Teachers use the existing `admin` role; Jon confirmed that additional `master` accounts can be created or promoted here. Master access is global; their saved responsibility grants are retained for a later teacher role. Role/account and grant writes are atomic. A master cannot demote or delete themselves, and the last master is protected. Accounts referenced as authors of records remain available; revise their responsibilities instead of erasing authorship. The former `/admin/access` page redirects to this panel.
 
 ## Dated knowledge and personal links
 

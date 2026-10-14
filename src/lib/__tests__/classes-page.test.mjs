@@ -475,13 +475,27 @@ it('keeps class and dashboard actions available after a real login', async () =>
             { method: 'POST', headers: { cookie, origin: base } },
         );
         expect(noConfirmed.status).toBe(409);
-        await db.execute({
-            sql: "INSERT INTO users(username,hashed_password,role) VALUES (?,?,'admin')",
-            args: ['scoped', await hash('scoped-pass', 4)],
+        const oldAccess = await fetch(`${base}/admin/access`, { headers: { cookie }, redirect: 'manual' });
+        expect(oldAccess.status).toBe(303);
+        expect(oldAccess.headers.get('location')).toBe('/admin/users');
+        const createdTeacher = await fetch(`${base}/admin/users`, {
+            method: 'POST', headers: { cookie, origin: base },
+            body: new URLSearchParams({ action: 'create', username: 'scoped', password: 'scoped-pass', fullName: 'Scoped Teacher', email: '', role: 'admin', classId: '1' }),
         });
-        await db.execute(
-            'INSERT INTO teacher_responsibilities(user_id,class_id) VALUES (2,1)',
-        );
+        expect(createdTeacher.status).toBe(200);
+        const accountsHtml = await createdTeacher.text();
+        expect(accountsHtml).toContain('Scoped Teacher');
+        expect(accountsHtml).not.toContain('scoped-pass');
+        expect((await db.execute("SELECT role FROM users WHERE username='scoped'")).rows[0].role).toBe('admin');
+        const invalidAccount = await fetch(`${base}/admin/users`, {
+            method: 'POST', headers: { cookie, origin: base },
+            body: new URLSearchParams({ action: 'create', username: 'retain-this-name', password: 'never-render-this', fullName: 'Retained Name', email: 'invalid-email', role: 'admin', classId: '1' }),
+        });
+        const invalidHtml = await invalidAccount.text();
+        expect(invalidHtml).toContain('value="retain-this-name"');
+        expect(invalidHtml).toContain('value="invalid-email"');
+        expect(invalidHtml).not.toContain('never-render-this');
+        expect((await db.execute("SELECT id FROM users WHERE username='retain-this-name'")).rows).toHaveLength(0);
         const scopedLogin = await fetch(`${base}/admin/login`, {
             method: 'POST',
             redirect: 'manual',
@@ -540,15 +554,16 @@ it('keeps class and dashboard actions available after a real login', async () =>
             (await fetch(`${base}/admin/access`, { headers: scopedHeaders }))
                 .status,
         ).toBe(403);
+        expect((await fetch(`${base}/admin/users`, { headers: scopedHeaders })).status).toBe(403);
+        expect((await fetch(`${base}/admin/users`, { method: 'POST', headers: { ...scopedHeaders, origin: base }, body: new URLSearchParams({ action: 'delete', userId: '1' }) })).status).toBe(403);
         const scopedGraph = await (
             await fetch(`${base}/admin/graph?degree=2&class=2`, {
                 headers: scopedHeaders,
             })
         ).text();
         expect(scopedGraph).not.toContain('Leire');
-        await db.execute(
-            'DELETE FROM teacher_responsibilities WHERE user_id=2',
-        );
+        const revoked = await fetch(`${base}/admin/users`, { method: 'POST', headers: { cookie, origin: base }, body: new URLSearchParams({ action: 'update', userId: '2', username: 'scoped', fullName: 'Scoped Teacher', email: '', role: 'admin' }) });
+        expect(revoked.status).toBe(200);
         expect(
             (
                 await fetch(`${base}/api/admin/export-roster?classId=1`, {

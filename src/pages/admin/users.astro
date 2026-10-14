@@ -1,268 +1,235 @@
 ---
 export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import UserAccountFields from '../../components/UserAccountFields.astro';
 import { db } from '../../lib/db';
-import { users } from '../../../db/schema';
-import { hashPassword } from '../../lib/auth';
-import { eq, sql } from 'drizzle-orm';
-
-let error = '';
-let success = '';
-
-// Handle POST actions (Create/Delete)
+import { classes, degrees, users } from '../../../db/schema';
+import { asc } from 'drizzle-orm';
+import { requireMaster } from '../../lib/access';
+import {
+    accountSchema,
+    createUser,
+    updateUser,
+    deleteUser,
+} from '../../lib/userManagement';
+import { InputError, positiveId } from '../../lib/input';
+const access = Astro.locals.teacherAccess;
+requireMaster(access);
+let error = '',
+    feedback = '';
+let submitted: FormData | undefined;
 if (Astro.request.method === 'POST') {
+    submitted = await Astro.request.formData();
     try {
-        const formData = await Astro.request.formData();
-        const action = formData.get('action');
-
-        if (action === 'create') {
-            const username = formData.get('username')?.toString() || '';
-            const password = formData.get('password')?.toString() || '';
-            const fullName = formData.get('fullName')?.toString() || '';
-            const email = formData.get('email')?.toString() || '';
-
-            if (!username || !password) {
-                error = 'Erabiltzailea eta pasahitza beharrezkoak dira';
-            } else {
-                const existing = await db.query.users.findFirst({
-                    where: eq(users.username, username),
+        const action = submitted.get('action');
+        if (action === 'create' || action === 'update') {
+            const input = accountSchema.parse({
+                username: submitted.get('username'),
+                fullName: submitted.get('fullName'),
+                email: submitted.get('email'),
+                role: submitted.get('role'),
+                degreeIds: submitted.getAll('degreeId'),
+                classIds: submitted.getAll('classId'),
+            });
+            if (action === 'create') {
+                await createUser(db, access, {
+                    ...input,
+                    password: String(submitted.get('password') || ''),
                 });
-
-                if (existing) {
-                    error = 'Erabiltzaile izena existitzen da dagoeneko';
-                } else {
-                    const hashedPassword = await hashPassword(password);
-                    await db.insert(users).values({
-                        username,
-                        hashedPassword,
-                        fullName,
-                        email,
-                    });
-                    success = 'Erabiltzailea ongi sortu da';
-                }
+                feedback = 'Erabiltzailea eta bere ardurak sortu dira.';
+            } else {
+                await updateUser(
+                    db,
+                    access,
+                    positiveId.parse(submitted.get('userId')),
+                    input,
+                );
+                feedback = 'Kontua, rola eta ardurak eguneratu dira.';
             }
         } else if (action === 'delete') {
-            const userId = parseInt(formData.get('userId')?.toString() || '0');
-
-            const account = await db.query.users.findFirst({
-                where: eq(users.id, userId),
-            });
-            const masters = await db.query.users.findMany({
-                where: eq(users.role, 'master'),
-            });
-            const authored = await db.all(
-                sql`SELECT id FROM confirmed_assignments WHERE confirmed_by=${userId} UNION ALL SELECT id FROM pairing_restrictions WHERE created_by=${userId} UNION ALL SELECT id FROM update_requests WHERE issued_by=${userId} UNION ALL SELECT id FROM student_records WHERE created_by=${userId} UNION ALL SELECT id FROM class_members WHERE notes_author_id=${userId}`,
+            await deleteUser(
+                db,
+                access,
+                positiveId.parse(submitted.get('userId')),
             );
-            if (
-                userId === Astro.locals.teacher.id ||
-                (account?.role === 'master' && masters.length <= 1)
-            )
-                error =
-                    'Ezin da norberaren edo azken masterraren kontua ezabatu.';
-            else if (authored.length)
-                error =
-                    'Kontu honek datatutako erregistroen egiletza du. Mantendu kontua; kudeatu irakaskuntza-baimenak Sarbideak orrian.';
-            else if (account) {
-                await db.delete(users).where(eq(users.id, userId));
-                success = 'Erabiltzailea ongi ezabatu da';
-            }
-        }
-    } catch (e) {
-        error = 'Errorea gertatu da. Saiatu berriro.';
-        console.error('User management error:', e);
+            feedback = 'Erabiltzailea ezabatu da.';
+        } else throw new InputError('Ekintza ezezaguna.');
+    } catch (caught) {
+        error =
+            caught instanceof InputError
+                ? caught.message
+                : 'Ezin izan dira aldaketak gorde. Egiaztatu kontuaren datuak eta hautatutako ardurak.';
     }
 }
-
-// Fetch all users
-const allUsers = await db.query.users.findMany({
-    orderBy: (users, { desc }) => [desc(users.createdAt)],
-});
+const [accounts, allDegrees, allClasses, grants] = await Promise.all([
+    db.query.users.findMany({
+        columns: { hashedPassword: false },
+        orderBy: asc(users.username),
+    }),
+    db.select().from(degrees).orderBy(asc(degrees.name)),
+    db.select().from(classes).orderBy(asc(classes.year), asc(classes.name)),
+    db.query.teacherResponsibilities.findMany(),
+]);
+const draft = (account?: (typeof accounts)[number]) => {
+    const keep =
+        error &&
+        (account
+            ? submitted?.get('action') === 'update' &&
+              submitted?.get('userId') === String(account.id)
+            : submitted?.get('action') === 'create');
+    return {
+        username: keep
+            ? String(submitted?.get('username') || '')
+            : account?.username || '',
+        fullName: keep
+            ? String(submitted?.get('fullName') || '')
+            : account?.fullName || '',
+        email: keep
+            ? String(submitted?.get('email') || '')
+            : account?.email || '',
+        role: keep
+            ? String(submitted?.get('role') || '')
+            : account?.role || 'admin',
+        degreeIds: keep
+            ? submitted!.getAll('degreeId').map(String)
+            : grants
+                  .filter(
+                      (grant) =>
+                          grant.userId === account?.id &&
+                          grant.degreeId !== null,
+                  )
+                  .map((grant) => String(grant.degreeId)),
+        classIds: keep
+            ? submitted!.getAll('classId').map(String)
+            : grants
+                  .filter(
+                      (grant) =>
+                          grant.userId === account?.id &&
+                          grant.classId !== null,
+                  )
+                  .map((grant) => String(grant.classId)),
+    };
+};
+const responsibilityNames = (id: number) =>
+    grants
+        .filter((grant) => grant.userId === id)
+        .map((grant) =>
+            grant.degreeId !== null
+                ? allDegrees.find((degree) => degree.id === grant.degreeId)
+                      ?.name
+                : allClasses.find((group) => group.id === grant.classId)?.name,
+        )
+        .filter(Boolean)
+        .join(' · ');
 ---
 
-<AdminLayout title="Erabiltzaileen Kudeaketa">
-    <main class="py-10">
-        <div class="mb-10">
-            <h1 class="text-3xl font-black text-slate-900 tracking-tight">
-                Erabiltzaileen Kudeaketa
-            </h1>
-            <p class="mt-2 text-sm text-slate-500 font-medium">
-                Administratzaile kontuak eta sarbide-baimenak kudeatu.
+<AdminLayout title="Erabiltzaileen kudeaketa">
+    <section class="teacher-page" aria-labelledby="users-heading">
+        <h1 id="users-heading">Erabiltzaileen kudeaketa</h1>
+        <p class="mt-2 text-sm text-slate-500">
+            Kontuak eta egungo gradu/klase ardurak leku berean kudeatu.
+        </p>
+        {error && (
+            <p role="alert" class="mt-4 text-sm text-red-700">
+                {error}
             </p>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            <!-- Create User Form -->
-            <div class="lg:col-span-1">
-                <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 p-8">
-                    <h2 class="text-lg font-bold text-slate-900 mb-6">
-                        Administratzaile Berria
-                    </h2>
-                    <form method="POST" class="space-y-5">
-                        <input type="hidden" name="action" value="create" />
-                        <div>
-                            <label
-                                for="username"
-                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                            >
-                                Erabiltzailea
-                            </label>
-                            <input
-                                type="text"
-                                name="username"
-                                id="username"
-                                required
-                                class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                for="password"
-                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                            >
-                                Pasahitza
-                            </label>
-                            <input
-                                type="password"
-                                name="password"
-                                id="password"
-                                required
-                                class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                for="fullName"
-                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                            >
-                                Izen-abizenak
-                            </label>
-                            <input
-                                type="text"
-                                name="fullName"
-                                id="fullName"
-                                class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                for="email"
-                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                            >
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                name="email"
-                                id="email"
-                                class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
-                            />
-                        </div>
-
-                        {error && (
-                            <p class="text-red-600 text-xs font-bold bg-red-50 p-3 rounded-lg border border-red-100">
-                                {error}
-                            </p>
+        )}
+        {feedback && (
+            <p role="status" class="mt-4 text-sm text-teal-700">
+                {feedback}
+            </p>
+        )}
+        <div class="teacher-panel mt-6 divide-y divide-slate-100">
+            {accounts.map((account) => (
+                <details
+                    open={Boolean(
+                        error &&
+                        submitted?.get('userId') === String(account.id),
+                    )}
+                >
+                    <summary class="cursor-pointer p-4">
+                        <span class="text-sm font-medium text-slate-800">
+                            {account.fullName || account.username}
+                        </span>
+                        <span class="ml-3 text-xs text-slate-500">
+                            {account.role === 'master'
+                                ? 'Master · Sarbide osoa'
+                                : 'Irakaslea'}
+                            {account.id === access.actor.id && ' · Zu'}
+                        </span>
+                        <span class="mt-1 block break-words text-xs text-slate-500">
+                            {account.username}
+                            {account.email && ` · ${account.email}`}
+                        </span>
+                        {account.role === 'admin' && (
+                            <span class="mt-1 block break-words text-xs text-slate-500">
+                                {responsibilityNames(account.id) ||
+                                    'Gradu/klase ardurarik gabe'}
+                            </span>
                         )}
-                        {success && (
-                            <p class="text-teal-600 text-xs font-bold bg-teal-50 p-3 rounded-lg border border-teal-100">
-                                {success}
-                            </p>
+                    </summary>
+                    <div class="border-t border-slate-100 p-4">
+                        <form method="POST">
+                            <input type="hidden" name="action" value="update" />
+                            <input
+                                type="hidden"
+                                name="userId"
+                                value={account.id}
+                            />
+                            <UserAccountFields
+                                account={draft(account)}
+                                allDegrees={allDegrees}
+                                allClasses={allClasses}
+                                self={account.id === access.actor.id}
+                            />
+                            <button class="teacher-button teacher-button-primary mt-4">
+                                Aldaketak gorde
+                            </button>
+                        </form>
+                        {account.id !== access.actor.id && (
+                            <form
+                                method="POST"
+                                class="mt-4"
+                                onsubmit="return confirm('Erabiltzaile hau ezabatu? Egiletza duen kontua mantendu egingo da.')"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="action"
+                                    value="delete"
+                                />
+                                <input
+                                    type="hidden"
+                                    name="userId"
+                                    value={account.id}
+                                />
+                                <button class="teacher-button text-red-700">
+                                    Kontua ezabatu
+                                </button>
+                            </form>
                         )}
-
-                        <button
-                            type="submit"
-                            class="w-full inline-flex justify-center py-3 px-4 border border-transparent shadow-lg shadow-teal-600/20 text-sm font-bold rounded-xl text-white bg-teal-600 hover:bg-teal-700 transition-all active:scale-95"
-                        >
-                            Admin-a Sortu
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Users List -->
-            <div class="lg:col-span-2">
-                <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
-                    <table class="min-w-full divide-y divide-slate-100">
-                        <thead class="bg-slate-50">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                                    Erabiltzailea
-                                </th>
-                                <th class="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                                    Rola
-                                </th>
-                                <th class="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                                    Sortua
-                                </th>
-                                <th class="px-6 py-4 text-right text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                                    Ekintzak
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-slate-100">
-                            {allUsers.map((user) => (
-                                <tr class="hover:bg-slate-50/50 transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 font-black border border-teal-100">
-                                                {user.username
-                                                    .charAt(0)
-                                                    .toUpperCase()}
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-bold text-slate-900">
-                                                    {user.username}
-                                                </div>
-                                                <div class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                                                    {user.email || 'Email gabe'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            class={`px-2.5 py-1 inline-flex text-[10px] leading-5 font-bold rounded-full uppercase tracking-tighter ${user.role === 'master' ? 'bg-indigo-100 text-indigo-700' : 'bg-teal-100 text-teal-700'}`}
-                                        >
-                                            {user.role}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-medium">
-                                        {user.createdAt
-                                            ? new Date(
-                                                  user.createdAt,
-                                              ).toLocaleDateString()
-                                            : 'N/A'}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <form
-                                            method="POST"
-                                            class="inline"
-                                            onsubmit="return confirm('Seguru zaude administratzaile hau ezabatu nahi duzula?')"
-                                        >
-                                            <input
-                                                type="hidden"
-                                                name="action"
-                                                value="delete"
-                                            />
-                                            <input
-                                                type="hidden"
-                                                name="userId"
-                                                value={user.id}
-                                            />
-                                            <button
-                                                type="submit"
-                                                class="text-red-500 hover:text-red-700 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
-                                            >
-                                                Ezabatu
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                    </div>
+                </details>
+            ))}
         </div>
-    </main>
+        <details
+            class="teacher-panel mt-5"
+            open={Boolean(error && submitted?.get('action') === 'create')}
+        >
+            <summary class="cursor-pointer p-4 text-sm font-medium text-slate-700">
+                Erabiltzaile berria
+            </summary>
+            <form method="POST" class="border-t border-slate-100 p-4">
+                <input type="hidden" name="action" value="create" />
+                <UserAccountFields
+                    account={draft()}
+                    allDegrees={allDegrees}
+                    allClasses={allClasses}
+                    creating
+                />
+                <button class="teacher-button teacher-button-primary mt-4">
+                    Erabiltzailea sortu
+                </button>
+            </form>
+        </details>
+    </section>
 </AdminLayout>

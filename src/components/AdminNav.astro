@@ -9,12 +9,7 @@ const links = [
     { href: '/admin/create-project', label: 'Proiektu Berria', icon: 'plus' },
     ...(Astro.locals.teacher?.role === 'master'
         ? [
-              { href: '/admin/users', label: 'Erabiltzaileak', icon: 'users' },
-              {
-                  href: '/admin/access',
-                  label: 'Irakasleen baimenak',
-                  icon: 'users',
-              },
+              { href: '/admin/users', label: 'Erabiltzaileen kudeaketa', icon: 'users' },
               {
                   href: '/admin/identity-review',
                   label: 'Identitateak berrikusi',
