@@ -50,6 +50,8 @@ CLI komandoek `.env` irakurtzen dute. Astro-k garapenean `.env` kargatzen du; ar
 | `npm test`                                     | Vitest; datu-base eta zerbitzari probek aldi baterako datu sintetikoak erabiltzen dituzte.                                     |
 | `npm run build`                                | Netlify-rako SSR aplikazioa eraiki.                                                                                            |
 | `npm run benchmark:data`                       | Aldi baterako DB batean jatorrizko eta egungo datu-karga alderatu.                                                             |
+| `npm run benchmark:remote -- --remote --class 2 --samples 20` | Urruneko irakurketa-latentzia neurtu, datuak aldatu gabe; Turso konfigurazioa behar du. |
+| `npm run benchmark:startup` | `npm run build` ondoren, Netlify build-aren abiaraztea prozesu berrietan neurtu. |
 | `npm run format -- path/to/file`               | Prettier-en konbentzioa aplikatu. Formatu-aldaketa masiboak aparte egin.                                                       |
 
 `--local` komandoek beti tokiko fitxategia erabiltzen dute, Turso kredentzialak egonda ere. `--remote` ez da inoiz automatikoki aukeratzen. Komando okerrek edo huts egindako idazketek irteera-kode ez-zeroa ematen dute. Pasahitzak ez dira inprimatzen.
@@ -80,5 +82,6 @@ npm run build
 - [Arkitektura](docs/architecture.md): moduluak, datuak, saioak eta migrazioak.
 - [Garapen-irizpideak](AGENTS.md): diseinua eta inplementazioa.
 - [Cleanup neurketak](docs/cleanup-measurements.md).
+- [Karga eta abiarazte neurketak](docs/loading-measurements.md).
 
 Etengabeko jarraipenak ikaslearen identitatea, matrikulak, datatutako autoebaluazioak eta hobespenak proiektuetatik bereizten ditu. Taldeen historia berretsitako esleipenetatik bakarrik eraikitzen da. Ikusi [jarraipena, baimenak eta migrazioa](docs/student-tracking.md); eguneratu DB eta esleitu irakasleen egungo gradu/klaseko baimenak master kontuarekin.

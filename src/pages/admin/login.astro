@@ -1,15 +1,15 @@
 ---
 export const prerender = false;
 import Layout from "../../layouts/Layout.astro";
-import { db } from "../../lib/db";
-import { users } from "../../../db/schema";
-import { verifyPassword } from "../../lib/auth";
-import { eq } from "drizzle-orm";
 
 let error = "";
 
 if (Astro.request.method === "POST") {
     try {
+        const [{ db }, { users }, { verifyPassword }, { eq }] = await Promise.all([
+            import('../../lib/db'), import('../../../db/schema'),
+            import('../../lib/auth'), import('drizzle-orm'),
+        ]);
         const formData = await Astro.request.formData();
         const username = formData.get("username")?.toString() || "";
         const password = formData.get("password")?.toString() || "";

@@ -79,6 +79,7 @@ export async function loadStudentProfiles(
 ) {
     for (const id of studentIds) requireStudent(access, id);
     if (context.projectId) requireProject(access, context.projectId);
+    if (!studentIds.length) return new Map<number, never>();
     const sourceProject =
         context.projectId && !context.academicPeriod
             ? await db.query.projects.findFirst({
@@ -101,9 +102,11 @@ export async function loadStudentProfiles(
             where: inArray(studentRecords.id, studentIds),
         }),
         db.query.assessments.findMany({
+            columns: { rawLegacyData: false },
             where: inArray(assessments.studentId, studentIds),
         }),
         db.query.preferenceSubmissions.findMany({
+            columns: { rawLegacyData: false },
             where: or(
                 inArray(preferenceSubmissions.studentId, studentIds),
                 inArray(
@@ -121,6 +124,7 @@ export async function loadStudentProfiles(
             ),
         }),
         db.query.enrollments.findMany({
+            columns: { rosterSnapshot: false },
             where: inArray(enrollments.studentId, studentIds),
         }),
         db.query.pairingRestrictions.findMany({
@@ -143,21 +147,20 @@ export async function loadStudentProfiles(
             activeAt(row.withdrawnAt, context.asOf) &&
             before(row.submittedAt, context.asOf),
     );
-    const choices = await db.query.preferenceChoices.findMany({
-        where: inArray(
-            preferenceChoices.submissionId,
-            visibleSubmissions.map((row) => row.id),
-        ),
-    });
-    const assignmentRows = await db.query.confirmedAssignments.findMany({
-        where: inArray(confirmedAssignments.id, [
-            ...new Set(memberRows.map((row) => row.assignmentId)),
-        ]),
-    });
-    const applicable = new Map<
-        number,
-        typeof preferenceSubmissions.$inferSelect
-    >();
+    const [choices, assignmentRows] = await Promise.all([
+        db.query.preferenceChoices.findMany({
+            where: inArray(
+                preferenceChoices.submissionId,
+                visibleSubmissions.map((row) => row.id),
+            ),
+        }),
+        db.query.confirmedAssignments.findMany({
+            where: inArray(confirmedAssignments.id, [
+                ...new Set(memberRows.map((row) => row.assignmentId)),
+            ]),
+        }),
+    ]);
+    const applicable = new Map<number, (typeof submissions)[number]>();
     for (const id of new Set(submissions.map((row) => row.studentId))) {
         const project = context.projectId
             ? latest(
@@ -380,9 +383,9 @@ export async function loadStudentProfiles(
                     preferenceHistory,
                     relationships,
                     restrictions,
-                    enrollments: enrollmentRows
-                        .filter((row) => row.studentId === person.id)
-                        .map(({ rosterSnapshot: _private, ...row }) => row),
+                    enrollments: enrollmentRows.filter(
+                        (row) => row.studentId === person.id,
+                    ),
                     assignments: assignmentHistory,
                     needsReview:
                         !preference ||

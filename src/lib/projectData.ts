@@ -1,7 +1,7 @@
-import { sql } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import { students, responses } from '../../db/schema';
 import type { AppDatabase } from './db';
-import { projectFilter, type TeacherAccess } from './access';
+import { isMaster, projectFilter, type TeacherAccess } from './access';
 import { scoredSkills } from './skills';
 
 export async function loadDashboard(db: AppDatabase, access?: TeacherAccess) {
@@ -17,6 +17,11 @@ export async function loadDashboard(db: AppDatabase, access?: TeacherAccess) {
                 completed: sql<number>`sum(case when ${students.hasCompleted} = 1 and coalesce(${students.isExcluded}, 0) = 0 then 1 else 0 end)`,
             })
             .from(students)
+            .where(
+                access && !isMaster(access)
+                    ? inArray(students.projectId, [...access.projectIds])
+                    : undefined,
+            )
             .groupBy(students.projectId),
     ]);
     const byProject = new Map(counts.map((count) => [count.projectId, count]));

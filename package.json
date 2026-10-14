@@ -16,6 +16,8 @@
     "format": "prettier --write",
     "format:check": "prettier --check .",
     "benchmark:data": "tsx scripts/benchmark-data.ts",
+    "benchmark:remote": "tsx scripts/benchmark-remote.ts",
+    "benchmark:startup": "tsx scripts/benchmark-startup.ts",
     "db:context": "tsx scripts/project-context.ts"
   },
   "dependencies": {

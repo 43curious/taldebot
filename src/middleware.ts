@@ -1,5 +1,4 @@
 import { defineMiddleware } from 'astro/middleware';
-import { db } from './lib/db';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import {
@@ -18,12 +17,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     ) {
         if (path !== '/api/admin/logout') {
             const adminId = await context.session?.get<number>('adminId');
-            const user = adminId
+            // Resolve the session before middleware loads the database client.
+            const db = adminId ? (await import('./lib/db')).db : undefined;
+            const user = db && adminId
                 ? await db.query.users.findFirst({
                       where: eq(users.id, adminId),
                   })
                 : null;
-            if (!user)
+            if (!user || !db)
                 return path.startsWith('/api/')
                     ? new Response('Unauthorized', { status: 401 })
                     : context.redirect('/admin/login');

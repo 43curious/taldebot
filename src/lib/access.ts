@@ -1,11 +1,5 @@
-import { eq, inArray, isNull } from 'drizzle-orm';
-import {
-    classes,
-    enrollments,
-    studentRecords,
-    projects,
-    teacherResponsibilities,
-} from '../../db/schema';
+import { inArray, sql } from 'drizzle-orm';
+import { classes, studentRecords, projects } from '../../db/schema';
 import type { AppDatabase } from './db';
 import { InputError } from './input';
 
@@ -22,7 +16,7 @@ export interface TeacherAccess {
 }
 
 export async function teachingAccess(
-    db: Pick<AppDatabase, 'query'>,
+    db: Pick<AppDatabase, 'all'>,
     actor: TeacherActor,
 ): Promise<TeacherAccess> {
     const access: TeacherAccess = {
@@ -33,58 +27,49 @@ export async function teachingAccess(
         projectIds: new Set(),
     };
     if (actor.role === 'master') return access;
-    const grants = await db.query.teacherResponsibilities.findMany({
-        where: eq(teacherResponsibilities.userId, actor.id),
-    });
-    const grantedDegrees = new Set(
-        grants.flatMap((grant) =>
-            grant.degreeId === null ? [] : [grant.degreeId],
-        ),
-    );
-    const groups = await db.query.classes.findMany();
-    for (const grant of grants) {
-        if (grant.degreeId !== null) access.degreeIds.add(grant.degreeId);
-        if (grant.classId !== null) access.classIds.add(grant.classId);
-    }
-    for (const group of groups) {
-        if (group.degreeId !== null && grantedDegrees.has(group.degreeId))
-            access.classIds.add(group.id);
-        if (access.classIds.has(group.id) && group.degreeId !== null)
-            access.degreeIds.add(group.degreeId);
-    }
-    // Degree IDs displayed for a class grant do not grant access to sibling classes.
-    const active = await db.query.enrollments.findMany({
-        where: isNull(enrollments.endedAt),
-    });
-    const enrolled = new Set(active.map((row) => row.studentId));
-    for (const row of active)
-        if (row.classId !== null && access.classIds.has(row.classId))
-            access.studentIds.add(row.studentId);
-    const collected = await db.query.studentRecords.findMany({
-        where: eq(studentRecords.createdBy, actor.id),
-    });
-    for (const person of collected)
-        if (!enrolled.has(person.id)) access.studentIds.add(person.id);
-    const [allProjects, participants] = await Promise.all([
-        db.query.projects.findMany(),
-        db.query.students.findMany(),
-    ]);
-    const grouped = new Map<number, typeof participants>();
-    for (const row of participants)
-        if (row.projectId !== null) {
-            const members = grouped.get(row.projectId) ?? [];
-            members.push(row);
-            grouped.set(row.projectId, members);
-        }
-    for (const project of allProjects) {
-        const members = grouped.get(project.id) ?? [];
-        const allVisible = members.every(
-            (row) =>
-                row.studentRecordId !== null &&
-                access.studentIds.has(row.studentRecordId),
-        );
-        if (allVisible && (members.length > 0 || project.ownerId === actor.id))
-            access.projectIds.add(project.id);
+    // One statement reads a consistent responsibility snapshot without transferring
+    // unrelated rosters, participant snapshots or private enrollment metadata.
+    const scopes = await db.all<{
+        kind: 'class' | 'degree' | 'student' | 'project';
+        id: number;
+    }>(sql`
+        WITH granted_classes AS (
+            SELECT c.id, c.degree_id FROM classes c
+            WHERE EXISTS (
+                SELECT 1 FROM teacher_responsibilities r
+                WHERE r.user_id = ${actor.id}
+                AND (r.class_id = c.id OR r.degree_id = c.degree_id)
+            )
+        ), visible_students AS (
+            SELECT e.student_id AS id FROM enrollments e
+            JOIN granted_classes c ON c.id = e.class_id
+            WHERE e.ended_at IS NULL
+            UNION
+            SELECT s.id FROM student_records s
+            WHERE s.created_by = ${actor.id}
+            AND NOT EXISTS (
+                SELECT 1 FROM enrollments e
+                WHERE e.student_id = s.id AND e.ended_at IS NULL
+            )
+        ), visible_projects AS (
+            SELECT p.id FROM projects p
+            WHERE NOT EXISTS (
+                SELECT 1 FROM students s WHERE s.project_id = p.id
+                AND (s.student_record_id IS NULL OR s.student_record_id NOT IN (SELECT id FROM visible_students))
+            )
+            AND (p.owner_id = ${actor.id} OR EXISTS (SELECT 1 FROM students s WHERE s.project_id = p.id))
+        )
+        SELECT 'class' AS kind, id FROM granted_classes
+        UNION SELECT 'degree', degree_id FROM granted_classes WHERE degree_id IS NOT NULL
+        UNION SELECT 'degree', degree_id FROM teacher_responsibilities WHERE user_id = ${actor.id} AND degree_id IS NOT NULL
+        UNION SELECT 'student', id FROM visible_students
+        UNION SELECT 'project', id FROM visible_projects
+    `);
+    for (const { kind, id } of scopes) {
+        if (kind === 'class') access.classIds.add(id);
+        else if (kind === 'degree') access.degreeIds.add(id);
+        else if (kind === 'student') access.studentIds.add(id);
+        else access.projectIds.add(id);
     }
     return access;
 }
