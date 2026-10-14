@@ -15,6 +15,7 @@ const groups = await db
     .select({
         id: classes.id,
         name: classes.name,
+        year: classes.year,
         degreeId: classes.degreeId,
         degreeName: degrees.name,
     })
@@ -76,411 +77,343 @@ const degreeOptions = [
     ).values(),
 ];
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import { classOptionLabel } from '../../lib/classSelection';
+const initialSpecialty =
+    initialClass &&
+    ['sormena', 'digitala'].includes(Astro.url.searchParams.get('group') || '')
+        ? Astro.url.searchParams.get('group')
+        : null;
 ---
 
-<AdminLayout title="Proiektua Sortu">
-    <div class="max-w-4xl mx-auto">
-        <div class="md:flex md:items-center md:justify-between mb-10">
-            <div class="flex-1 min-w-0">
-                <h2 class="text-3xl font-black text-slate-900 tracking-tight">
-                    Proiektu Berria Konfiguratu
-                </h2>
-                <p class="mt-2 text-slate-500 font-medium">
-                    Zehaztu taldeak osatzeko oinarrizko parametroak.
-                </p>
-            </div>
-        </div>
-
+<AdminLayout title="Proiektu berria">
+    <section class="teacher-page" aria-labelledby="create-project-heading">
+        <header class="mb-6">
+            <h1 id="create-project-heading">Proiektu berria</h1>
+            <p class="mt-2 text-sm text-slate-500">
+                Aukeratu parte-hartzaileak eta prestatu jarduera. Taldeak gero
+                osatu eta berretsi daitezke.
+            </p>
+        </header>
         <form
             id="create-project-form"
             action="/api/admin/create-project"
             method="POST"
-            class="space-y-0 bg-white shadow-2xl shadow-slate-200/50 rounded-3xl border border-slate-200/60 overflow-hidden"
+            class="space-y-5"
         >
-            <div class="p-8 space-y-10">
-                <!-- Project Details -->
-                <div class="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6 mb-10">
-                    <div class="sm:col-span-3">
-                        <label
-                            for="name"
-                            class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                        >
-                            Proiektuaren Izena
-                        </label>
+            <section
+                class="teacher-panel p-4 sm:p-5"
+                aria-label="Proiektuaren datuak"
+            >
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <label class="teacher-label" for="name">
+                        Proiektuaren izena
                         <input
                             type="text"
                             name="name"
                             id="name"
                             required
-                            placeholder="Ej. Proyecto Final 2024"
-                            class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
+                            placeholder="Adibidez, azken film laburra"
                         />
-                    </div>
-
-                    <div class="sm:col-span-3">
-                        <label
-                            for="adminEmail"
-                            class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                        >
-                            Administratzailearen Emaila
-                        </label>
+                    </label>
+                    <label class="teacher-label" for="adminEmail">
+                        Harremanetarako emaila
                         <input
                             type="email"
                             name="adminEmail"
                             id="adminEmail"
                             required
-                            placeholder="admin@ejemplo.com"
-                            class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
+                            value={Astro.locals.teacher.email || ''}
+                            autocomplete="email"
                         />
-                    </div>
+                    </label>
+                    <label class="teacher-label" for="numTeams">
+                        Talde kopurua
+                        <input
+                            type="number"
+                            name="numTeams"
+                            id="numTeams"
+                            min="1"
+                            required
+                            placeholder="Adibidez, 5"
+                        />
+                    </label>
                 </div>
-
-                <!-- Student Roster -->
-                <div class="border-t border-slate-100 pt-8">
-                    <h3 class="text-lg font-bold text-slate-900 mb-6">
-                        Ikasleen Zerrenda
-                    </h3>
-
-                    <div class="space-y-6">
-                        <div class="flex gap-6 mb-6 border-b border-slate-100">
-                            <button
-                                type="button"
-                                id="tab-roster"
-                                class="pb-3 px-2 text-sm font-bold text-teal-700"
-                            >
-                                Klaseko ikasleak
-                            </button>
-                            <button
-                                type="button"
-                                id="tab-manual"
-                                class="pb-3 px-2 text-sm font-bold border-b-2 border-teal-600 text-teal-600 transition-all"
-                            >
-                                Eskuz sartu
-                            </button>
-                            <button
-                                type="button"
-                                id="tab-csv"
-                                class="pb-3 px-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all"
-                            >
-                                CSV igo
-                            </button>
-                        </div>
-
-                        <div id="roster-entry-container">
-                            <div class="flex flex-wrap gap-3 mb-4">
-                                <label class="teacher-label">
-                                    Gradua
-                                    <select id="roster-degree">
-                                        <option value="">
-                                            Aukeratu gradua
-                                        </option>
-                                        {degreeOptions.map((degree) => (
-                                            <option
-                                                value={degree.id}
-                                                selected={
-                                                    String(degree.id) ===
-                                                    initialDegree
-                                                }
-                                            >
-                                                {degree.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label class="teacher-label">
-                                    Klasea
-                                    <select id="roster-class">
-                                        <option value="">
-                                            Aukeratu klasea
-                                        </option>
-                                        {groups.map((group) => (
-                                            <option
-                                                value={group.id}
-                                                selected={
-                                                    group.id ===
-                                                    initialClass?.id
-                                                }
-                                                data-degree={
-                                                    group.degreeId ?? 0
-                                                }
-                                            >
-                                                {group.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label class="teacher-label">
-                                    Moduluko taldea
-                                    <select
-                                        id="roster-module-group"
-                                        name="classGroupId"
+            </section>
+            <section
+                class="teacher-panel p-4 sm:p-5"
+                aria-labelledby="participants-heading"
+            >
+                <h2 id="participants-heading" class="mb-4 text-base">
+                    Parte-hartzaileak
+                </h2>
+                <div id="roster-entry-container">
+                    <div class="grid gap-3 sm:grid-cols-3 mb-4">
+                        <label class="teacher-label" for="roster-degree">
+                            Gradua
+                            <select id="roster-degree">
+                                <option value="">Aukeratu gradua</option>
+                                {degreeOptions.map((degree) => (
+                                    <option
+                                        value={degree.id}
+                                        selected={
+                                            String(degree.id) === initialDegree
+                                        }
                                     >
-                                        <option value="">Klase osoa</option>
-                                        {moduleGroups.map((group) => (
-                                            <option
-                                                value={group.id}
-                                                data-class={group.classId}
-                                                selected={
-                                                    group.id ===
-                                                    initialGroup?.id
-                                                }
-                                            >
-                                                {group.moduleName} ·{' '}
-                                                {group.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                            </div>
-                            <div
-                                class="divide-y divide-slate-100 max-h-80 overflow-auto"
-                                id="roster-rows"
-                            >
-                                {roster.map((member) => (
-                                    <label
-                                        class="hidden items-center gap-3 py-3"
-                                        data-roster-class={member.classId}
-                                        data-roster-groups={JSON.stringify(
-                                            groupMembers
-                                                .filter(
-                                                    (row) =>
-                                                        row.studentId ===
-                                                        member.studentRecordId,
-                                                )
-                                                .map((row) => row.groupId),
-                                        )}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            data-roster-id={
-                                                member.studentRecordId
-                                            }
-                                            data-name={member.name}
-                                            data-email={member.email || ''}
-                                        />
-                                        <span>
-                                            {member.name}
-                                            <small class="block text-slate-500">
-                                                {member.email}
-                                            </small>
-                                        </span>
-                                    </label>
+                                        {degree.name}
+                                    </option>
                                 ))}
-                            </div>
-                            <p class="text-xs text-slate-500 mt-3">
-                                Aukeratu klasea eta parte-hartzaileak. Jarraipen
-                                bera mantenduko dute proiektu berrian.
-                            </p>
-                        </div>
-                        <div id="manual-entry-container" class="hidden">
+                            </select>
+                        </label>
+                        <label class="teacher-label" for="roster-class">
+                            Klasea
+                            <select id="roster-class">
+                                <option value="">Aukeratu klasea</option>
+                                {groups.map((group) => (
+                                    <option
+                                        value={group.id}
+                                        selected={group.id === initialClass?.id}
+                                        data-degree={group.degreeId ?? 0}
+                                    >
+                                        {classOptionLabel(group)}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <label class="teacher-label" for="roster-module-group">
+                            Moduluko taldea
+                            <select id="roster-module-group">
+                                <option value="">Klase osoa</option>
+                                <optgroup label="Espezialitatea">
+                                    <option
+                                        value="sormena"
+                                        selected={
+                                            initialSpecialty === 'sormena'
+                                        }
+                                    >
+                                        Sormena
+                                    </option>
+                                    <option
+                                        value="digitala"
+                                        selected={
+                                            initialSpecialty === 'digitala'
+                                        }
+                                    >
+                                        Digitala
+                                    </option>
+                                </optgroup>
+                                <optgroup label="Moduluko taldeak">
+                                    {moduleGroups.map((group) => (
+                                        <option
+                                            value={group.id}
+                                            data-class={group.classId}
+                                            selected={
+                                                group.id === initialGroup?.id
+                                            }
+                                        >
+                                            {group.moduleName} · {group.name}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            </select>
+                        </label>
+                    </div>
+                    <div
+                        class="divide-y divide-slate-100 max-h-80 overflow-y-auto"
+                        id="roster-rows"
+                    >
+                        {roster.map((member) => (
                             <label
-                                for="studentList"
-                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3"
+                                class="hidden items-center gap-3 py-3 text-sm"
+                                data-roster-class={member.classId}
+                                data-roster-division={member.division || ''}
+                                data-roster-groups={JSON.stringify(
+                                    groupMembers
+                                        .filter(
+                                            (row) =>
+                                                row.studentId ===
+                                                member.studentRecordId,
+                                        )
+                                        .map((row) => row.groupId),
+                                )}
                             >
-                                Ikasleen izenak (bat lerro bakoitzeko)
+                                <input
+                                    type="checkbox"
+                                    data-roster-id={member.studentRecordId!}
+                                    data-name={member.name}
+                                    data-email={member.email || ''}
+                                />
+                                <span class="min-w-0 break-words">
+                                    {member.name}
+                                    <small class="block text-xs text-slate-500 break-all">
+                                        {member.email}
+                                    </small>
+                                </span>
                             </label>
+                        ))}
+                    </div>
+                    <p id="roster-empty" class="py-3 text-sm text-slate-500">
+                        Aukeratu gradua eta klasea ikasleak ikusteko.
+                    </p>
+                    <p
+                        id="roster-status"
+                        role="status"
+                        aria-live="polite"
+                        class="mt-3 text-xs text-slate-500"
+                    ></p>
+                    <p class="mt-2 text-xs text-slate-500">
+                        Klasea edo taldea hautatzean, ikasle guztiak aukeratzen
+                        dira. Kendu parte hartuko ez dutenen marka.
+                    </p>
+                </div>
+                <details class="mt-4 border-t border-slate-100 pt-3">
+                    <summary class="cursor-pointer text-sm text-slate-500">
+                        Parte-hartzaileen beste iturri bat erabili
+                    </summary>
+                    <div
+                        class="teacher-toolbar mt-3"
+                        role="group"
+                        aria-label="Parte-hartzaileen iturria"
+                    >
+                        <button
+                            type="button"
+                            id="tab-roster"
+                            class="teacher-button"
+                            aria-pressed="true"
+                        >
+                            Klaseko zerrenda
+                        </button>
+                        <button
+                            type="button"
+                            id="tab-manual"
+                            class="teacher-button"
+                            aria-pressed="false"
+                        >
+                            Eskuz sartu
+                        </button>
+                        <button
+                            type="button"
+                            id="tab-csv"
+                            class="teacher-button"
+                            aria-pressed="false"
+                        >
+                            CSV igo
+                        </button>
+                    </div>
+                    <div id="manual-entry-container" hidden class="mt-4">
+                        <label class="teacher-label" for="studentList">
+                            Ikasleen izenak, bat lerro bakoitzeko
                             <textarea
                                 id="studentList"
                                 name="studentList"
-                                rows={8}
-                                class="block w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm font-mono leading-relaxed"
-                                placeholder="Juan Pérez
-María García
-..."
+                                rows="6"
+                                placeholder="Ane Agirre&#10;Iker Etxeberria"
+                                class="w-full"
                             ></textarea>
-                            <p class="mt-3 text-xs text-slate-400 font-medium">
-                                Posta elektronikoak geroago editatu daitezke
-                                monitorizazio panelean.
-                            </p>
-                        </div>
-
-                        <div id="csv-upload-container" class="hidden">
-                            <div class="flex items-center justify-center p-10 border-2 border-slate-200 border-dashed rounded-2xl bg-slate-50/50 hover:bg-slate-50 hover:border-teal-300 transition-all group cursor-pointer">
-                                <div class="space-y-2 text-center">
-                                    <svg
-                                        class="mx-auto h-12 w-12 text-slate-300 group-hover:text-teal-400 transition-colors"
-                                        stroke="currentColor"
-                                        fill="none"
-                                        viewBox="0 0 48 48"
-                                        aria-hidden="true"
-                                    >
-                                        <path
-                                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                                            stroke-width="2"
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                        ></path>
-                                    </svg>
-                                    <div class="flex text-sm text-slate-600">
-                                        <label
-                                            for="csv-file"
-                                            class="relative cursor-pointer font-bold text-teal-600 hover:text-teal-700"
-                                        >
-                                            <span>Igo CSV fitxategia</span>
-                                            <input
-                                                id="csv-file"
-                                                type="file"
-                                                accept=".csv"
-                                                class="sr-only"
-                                            />
-                                        </label>
-                                    </div>
-                                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-                                        Formatua: izena, emaila
-                                    </p>
-                                </div>
-                            </div>
-                            <div id="csv-preview" class="mt-4 hidden">
-                                <h4 class="text-sm font-medium text-gray-700 mb-2">
-                                    CSV Data Preview (
-                                    <span id="csv-count">0</span> students
-                                    found)
-                                </h4>
-                                <div class="max-h-40 overflow-y-auto border border-gray-200 rounded text-xs">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                        <tbody
-                                            id="csv-preview-body"
-                                            class="bg-white divide-y divide-gray-200"
-                                        ></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                        {/* Hidden field for JSON student data from CSV */}
-                        <input
-                            type="hidden"
-                            name="studentsJson"
-                            id="studentsJson"
-                        />
+                        </label>
+                        <p class="mt-2 text-xs text-slate-500">
+                            Izen anbiguoak ez dira automatikoki lotzen.
+                            Identitatea argitzeko, erabili emaildun CSV bat edo
+                            klaseko zerrenda.
+                        </p>
                     </div>
-                </div>
-
-                <!-- Team Configuration -->
-                <div class="border-t border-slate-100 pt-8 mt-4">
-                    <h3 class="text-lg font-bold text-slate-900 mb-6">
-                        Taldeen Konfigurazioa
-                    </h3>
-                    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                        <div class="sm:col-span-3" id="numTeamsContainer">
-                            <label
-                                for="numTeams"
-                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                            >
-                                Talde Kopurua
-                            </label>
+                    <div id="csv-upload-container" hidden class="mt-4">
+                        <label class="teacher-label" for="csv-file">
+                            CSV fitxategia
                             <input
-                                type="number"
-                                name="numTeams"
-                                id="numTeams"
-                                min="1"
-                                required
-                                placeholder="Ej. 5"
-                                class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
+                                id="csv-file"
+                                type="file"
+                                accept=".csv"
+                                aria-describedby="csv-help"
+                                class="w-full"
                             />
-                        </div>
-
-                        <div
-                            class="sm:col-span-6 bg-teal-50 border border-teal-100 rounded-2xl p-6"
-                            id="distributionPreview"
-                        >
-                            <div class="flex items-center gap-3 text-teal-700 font-bold text-sm mb-2">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="h-5 w-5"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2.5"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="9" cy="7" r="4"></circle>
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                </svg>
-                                Banaketaren aurrebista
-                            </div>
-                            <p
-                                class="text-sm text-teal-600/80 font-medium leading-relaxed"
-                                id="previewText"
-                            >
-                                Sartu ikasleen zerrenda eta talde kopurua nola
-                                banatuko diren ikusteko.
+                        </label>
+                        <p id="csv-help" class="mt-2 text-xs text-slate-500">
+                            Zutabeak: izena, emaila (edo name, email).
+                        </p>
+                        <div id="csv-preview" hidden class="mt-3">
+                            <p class="mb-2 text-xs text-slate-500">
+                                <span id="csv-count">0</span> ikasle aurkitu
+                                dira · Lehen 10 errenkadak
                             </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Final Details -->
-                <div class="border-t border-slate-100 pt-8">
-                    <h3 class="text-lg font-bold text-slate-900 mb-6">
-                        Xehetasun gehiago
-                    </h3>
-                    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                        <div class="sm:col-span-6">
-                            <label
-                                for="description"
-                                class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2"
-                            >
-                                Deskribapena
-                            </label>
-                            <textarea
-                                id="description"
-                                name="description"
-                                rows={3}
-                                class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm leading-relaxed"
-                                placeholder="Proiektuaren helburuen deskribapen laburra..."
-                            ></textarea>
-                        </div>
-
-                        <div class="sm:col-span-6">
-                            <span class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
-                                Algoritmoaren Irizpidea
-                            </span>
-                            <div class="flex flex-wrap gap-4">
-                                {[
-                                    'balanced',
-                                    'technical',
-                                    'narrative',
-                                    'management',
-                                ].map((type) => (
-                                    <label class="relative flex items-center cursor-pointer group">
-                                        <input
-                                            type="radio"
-                                            name="projectType"
-                                            value={type}
-                                            checked={type === 'balanced'}
-                                            class="sr-only peer"
-                                        />
-                                        <div class="px-5 py-2.5 border rounded-full text-xs font-bold uppercase tracking-wider border-slate-200 text-slate-400 peer-checked:bg-teal-600 peer-checked:text-white peer-checked:border-teal-600 peer-checked:shadow-lg peer-checked:shadow-teal-600/30 transition-all active:scale-95 group-hover:border-teal-200">
-                                            {type === 'balanced'
-                                                ? 'Equilibrado'
-                                                : type === 'technical'
-                                                  ? 'Técnico'
-                                                  : type === 'narrative'
-                                                    ? 'Narrativo'
-                                                    : 'Gestión'}
-                                        </div>
-                                    </label>
-                                ))}
+                            <div class="max-h-40 overflow-auto">
+                                <table class="w-full text-left text-xs">
+                                    <thead>
+                                        <tr class="text-slate-500">
+                                            <th scope="col" class="p-2">
+                                                Izena
+                                            </th>
+                                            <th scope="col" class="p-2">
+                                                Emaila
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody
+                                        id="csv-preview-body"
+                                        class="divide-y divide-slate-100"
+                                    ></tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
+                </details>
+                <input type="hidden" name="studentsJson" id="studentsJson" />
+                <input type="hidden" name="classGroupId" id="classGroupId" />
+            </section>
+            <details class="teacher-panel">
+                <summary class="cursor-pointer p-4 sm:p-5 text-sm text-slate-600">
+                    Deskribapena eta inkesta bidezko talde-irizpidea
+                </summary>
+                <div class="space-y-4 border-t border-slate-100 p-4 sm:p-5">
+                    <label class="teacher-label" for="description">
+                        Deskribapena
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows="3"
+                            class="w-full"
+                        ></textarea>
+                    </label>
+                    <label class="teacher-label" for="projectType">
+                        Inkesta bidezko taldeak osatzeko irizpidea
+                        <select id="projectType" name="projectType">
+                            <option value="balanced">Orekatua</option>
+                            <option value="technical">Teknikoa</option>
+                            <option value="narrative">Narratiba</option>
+                            <option value="management">Kudeaketa</option>
+                        </select>
+                    </label>
+                    <p class="text-xs text-slate-500">
+                        Ausazko edo eskuzko taldeak osatzeko aukera proiektuaren
+                        Taldeak orrian dago.
+                    </p>
                 </div>
-            </div>
-
-            <div class="px-8 py-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+            </details>
+            <p
+                id="previewText"
+                class="text-sm text-slate-500"
+                role="status"
+                aria-live="polite"
+            ></p>
+            <p
+                id="create-project-feedback"
+                class="text-sm text-red-700"
+                role="alert"
+                tabindex="-1"
+                hidden
+            ></p>
+            <div class="teacher-toolbar">
                 <button
                     type="submit"
-                    class="inline-flex justify-center px-10 py-4 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-teal-600/20 transition-all active:scale-95"
+                    class="teacher-button teacher-button-primary"
                 >
-                    Proiektua Sortu
+                    Proiektua sortu
                 </button>
+                <a href="/admin/dashboard" class="teacher-button">
+                    Utzi
+                </a>
             </div>
         </form>
-    </div>
-
+    </section>
     <script>
         import Papa from 'papaparse';
         const form = document.querySelector<HTMLFormElement>(
@@ -493,6 +426,13 @@ María García
         const moduleGroup = form.querySelector<HTMLSelectElement>(
             '#roster-module-group',
         )!;
+        const groupId = form.querySelector<HTMLInputElement>('#classGroupId')!;
+        const empty = form.querySelector<HTMLElement>('#roster-empty')!;
+        const rosterStatus = form.querySelector<HTMLElement>('#roster-status')!;
+        const feedback = form.querySelector<HTMLElement>(
+            '#create-project-feedback',
+        )!;
+        let participantCount = 0;
         const count = form.querySelector<HTMLInputElement>('#numTeams')!;
         const preview = document.getElementById('previewText')!;
         const sourceNames = ['roster', 'manual', 'csv'] as const;
@@ -503,7 +443,7 @@ María García
         );
         function update() {
             const selectedRows = rosterInputs
-                .filter((row) => row.checked)
+                .filter((row) => row.checked && !row.disabled)
                 .map((row) => ({
                     studentRecordId: Number(row.dataset.rosterId),
                     name: row.dataset.name,
@@ -514,7 +454,16 @@ María García
                     selectedRows.map((row) => [row.studentRecordId, row]),
                 ).values(),
             ];
-            moduleGroup.disabled = source !== 'roster';
+            moduleGroup.disabled = source !== 'roster' || !group.value;
+            const namedGroup = Number(moduleGroup.value);
+            groupId.value =
+                Number.isSafeInteger(namedGroup) && namedGroup > 0
+                    ? String(namedGroup)
+                    : '';
+            groupId.disabled = source !== 'roster';
+            degree.required = source === 'roster';
+            group.required = source === 'roster';
+            text.required = source === 'manual';
             text.disabled = source !== 'manual';
             json.disabled = source === 'manual';
             json.value = JSON.stringify(source === 'roster' ? selected : csv);
@@ -525,6 +474,13 @@ María García
                       ? csv.length
                       : text.value.split('\n').filter((row) => row.trim())
                             .length;
+            participantCount = total;
+            const visibleCount = rosterInputs.filter(
+                (row) => !row.disabled,
+            ).length;
+            rosterStatus.textContent = group.value
+                ? `${selected.length} / ${visibleCount} ikasle aukeratuta`
+                : '';
             const teams = Number(count.value);
             preview.textContent = !total
                 ? 'Ikasleen zerrendaren zain…'
@@ -539,10 +495,10 @@ María García
                           ? 'manual-entry-container'
                           : 'csv-upload-container',
                 )!;
-                container.classList.toggle('hidden', name !== source);
+                container.hidden = name !== source;
                 const tab = document.getElementById(`tab-${name}`)!;
                 tab.setAttribute('aria-pressed', String(name === source));
-                tab.className = `pb-3 px-2 text-sm font-semibold border-b-2 ${name === source ? 'border-teal-600 text-teal-700' : 'border-transparent text-slate-500'}`;
+                tab.className = `teacher-button ${name === source ? 'teacher-button-primary' : ''}`;
             }
         }
         sourceNames.forEach((name) =>
@@ -561,10 +517,13 @@ María García
                 (row) => {
                     const visible =
                         row.dataset.rosterClass === group.value &&
-                        (!moduleGroup.value ||
-                            JSON.parse(
-                                row.dataset.rosterGroups || '[]',
-                            ).includes(Number(moduleGroup.value)));
+                        (moduleGroup.value === 'sormena' ||
+                        moduleGroup.value === 'digitala'
+                            ? row.dataset.rosterDivision === moduleGroup.value
+                            : !moduleGroup.value ||
+                              JSON.parse(
+                                  row.dataset.rosterGroups || '[]',
+                              ).includes(Number(moduleGroup.value)));
                     row.classList.toggle('hidden', !visible);
                     row.classList.toggle('flex', visible);
                     const checkbox =
@@ -574,16 +533,31 @@ María García
                     else if (selectMembers) checkbox.checked = true;
                 },
             );
+            const visibleCount = rosterInputs.filter(
+                (row) => !row.disabled,
+            ).length;
+            empty.hidden = visibleCount > 0;
+            empty.textContent = !degree.value
+                ? 'Aukeratu gradua ikasleak ikusteko.'
+                : !group.value
+                  ? 'Aukeratu klasea ikasleak ikusteko.'
+                  : moduleGroup.value
+                    ? 'Hautatutako taldeak ez du ikaslerik klase honetan.'
+                    : 'Klase honetan ez dago parte-hartzaile erabilgarririk.';
             update();
         }
         function filterGroups() {
             for (const option of moduleGroup.options)
                 if (option.value) {
-                    option.hidden = option.dataset.class !== group.value;
-                    option.disabled = option.hidden;
+                    option.hidden = Boolean(
+                        option.dataset.class &&
+                        option.dataset.class !== group.value,
+                    );
+                    option.disabled = !group.value || option.hidden;
                 }
         }
         function filterClasses() {
+            group.disabled = !degree.value;
             for (const option of group.options)
                 if (option.value) {
                     option.hidden = option.dataset.degree !== degree.value;
@@ -600,7 +574,7 @@ María García
         group.addEventListener('change', () => {
             moduleGroup.value = '';
             filterGroups();
-            filterRoster();
+            filterRoster(true);
         });
         moduleGroup.addEventListener('change', () => filterRoster(true));
         form.querySelector<HTMLInputElement>('#csv-file')!.addEventListener(
@@ -633,9 +607,7 @@ María García
                         });
                         document.getElementById('csv-count')!.textContent =
                             String(csv.length);
-                        document
-                            .getElementById('csv-preview')!
-                            .classList.remove('hidden');
+                        document.getElementById('csv-preview')!.hidden = false;
                         update();
                     },
                 });
@@ -645,7 +617,7 @@ María García
         if (group.selectedOptions[0]?.disabled) group.value = '';
         filterGroups();
         if (moduleGroup.selectedOptions[0]?.disabled) moduleGroup.value = '';
-        filterRoster(Boolean(moduleGroup.value));
+        filterRoster(Boolean(group.value));
         update();
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -654,6 +626,14 @@ María García
                 'button[type="submit"]',
             )!;
             if (button.disabled) return;
+            feedback.hidden = true;
+            if (!participantCount) {
+                feedback.textContent =
+                    'Aukeratu gutxienez ikasle bat proiektua sortzeko.';
+                feedback.hidden = false;
+                feedback.focus();
+                return;
+            }
             const label = button.textContent;
             button.disabled = true;
             button.textContent = 'Sortzen…';
@@ -665,19 +645,33 @@ María García
                 if (!response.ok || !response.redirected) {
                     const data = await response.json();
                     throw new Error(
-                        data.error || 'Ezin izan da proiektua sortu.',
+                        data.error === 'Invalid input'
+                            ? 'Egiaztatu proiektuaren datuak eta saiatu berriro.'
+                            : data.error || 'Ezin izan da proiektua sortu.',
                     );
                 }
                 window.location.assign(response.url);
             } catch (error) {
-                alert(
+                feedback.textContent =
                     error instanceof Error
                         ? error.message
-                        : 'Ezin izan da proiektua sortu.',
-                );
+                        : 'Ezin izan da proiektua sortu.';
+                feedback.hidden = false;
+                feedback.focus();
                 button.disabled = false;
                 button.textContent = label;
             }
         });
     </script>
 </AdminLayout>
+
+<style>
+    #roster-rows input[type='checkbox'] {
+        width: 1rem;
+        height: 1rem;
+        min-height: 1rem;
+        padding: 0;
+        flex-shrink: 0;
+        accent-color: #0f766e;
+    }
+</style>
