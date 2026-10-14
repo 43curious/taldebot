@@ -5,6 +5,8 @@ import type { Client } from '@libsql/client';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { backfillTracking } from './migrate-tracking';
+import { backfillStudentLocations } from '../src/lib/studentLocations';
+import * as schema from '../db/schema';
 import { migrateClasses } from './migrate-classes.mjs';
 
 const migrationsFolder = fileURLToPath(
@@ -126,4 +128,5 @@ export async function migrateDatabase(client: Client) {
     }
     await migrate(drizzle(client), { migrationsFolder });
     await backfillTracking(client);
+    await backfillStudentLocations(drizzle(client, { schema }));
 }

@@ -21,6 +21,7 @@ import {
 } from '../../../lib/access';
 import { addRestriction, withdrawRestriction } from '../../../lib/pairingRules';
 import { positiveId } from '../../../lib/input';
+import { updateStudentLocation } from '../../../lib/studentLocations';
 const id = Number(Astro.params.studentId);
 const access = Astro.locals.teacherAccess;
 requireStudent(access, id);
@@ -44,6 +45,15 @@ if (Astro.request.method === 'POST') {
             );
             feedback =
                 'Identitatea eguneratu da. Aurreko emailen loturak eta historia mantendu dira.';
+        } else if (action === 'location') {
+            await updateStudentLocation(
+                db,
+                access,
+                id,
+                String(form.get('termTimeTown') || ''),
+            );
+            feedback =
+                'Ikasturteko bizilekua eguneratu da. Aurreko esleipenen kokapenak mantendu dira.';
         } else if (action === 'restriction') {
             const input = z
                 .object({
@@ -152,6 +162,17 @@ const draft = (key: string, fallback: string) =>
                     {profile.person.email}
                 </p>
             )}
+            <p class="mt-2 text-xs text-slate-500">
+                Ikasturteko herria:{' '}
+                {profile.person.termTimeTownSource === 'teacher' &&
+                profile.person.termTimeTown
+                    ? profile.person.termTimeTown
+                    : 'Ezezaguna'}{' '}
+                ·{' '}
+                <a href="#student-location" class="underline">
+                    Kokapena editatu
+                </a>
+            </p>
         </header>
         {error && (
             <p role="alert" class="mb-4 text-sm text-red-700">
@@ -173,6 +194,47 @@ const draft = (key: string, fallback: string) =>
                 )}
             </p>
         )}
+        <details
+            id="student-location"
+            class="teacher-panel mb-5"
+            open={Boolean(error && submitted?.get('action') === 'location')}
+        >
+            <summary class="cursor-pointer p-4 text-sm text-slate-600">
+                Ikasturteko bizilekua editatu
+            </summary>
+            <form method="POST" class="border-t border-slate-100 p-4">
+                <input type="hidden" name="action" value="location" />
+                <p class="mb-3 text-xs text-slate-500">
+                    Ikasturtean bizi den herria, ez nahitaez jaioterria.
+                    Ikaslearen klase guztietan partekatzen da. Utzi hutsik
+                    kokapena ezagutzen ez baduzu.
+                </p>
+                {profile.person.termTimeTownSource === 'roster' && (
+                    <p class="mb-3 text-xs text-amber-700">
+                        {profile.person.termTimeTown
+                            ? 'Zerrendatik jasotako herria da. Egiaztatu ikasturteko bizilekua dela eta gorde taldeetan erabiltzeko.'
+                            : 'Zerrendetako kokapena ez dago argi. Ez da herririk asmatu; baieztatu egungo bizilekua.'}
+                    </p>
+                )}
+                <div class="teacher-toolbar">
+                    <label class="teacher-label">
+                        Ikasturteko herria
+                        <input
+                            name="termTimeTown"
+                            maxlength="120"
+                            value={
+                                error && submitted?.get('action') === 'location'
+                                    ? String(
+                                          submitted.get('termTimeTown') || '',
+                                      )
+                                    : profile.person.termTimeTown || ''
+                            }
+                        />
+                    </label>
+                    <button class="teacher-button">Kokapena gorde</button>
+                </div>
+            </form>
+        </details>
         <div class="grid items-start gap-5 lg:grid-cols-2">
             <section class="teacher-panel p-5">
                 <h2 class="text-base">Autoebaluazioa</h2>

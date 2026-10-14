@@ -797,6 +797,88 @@ it('keeps class and dashboard actions available after a real login', async () =>
                 })
             ).rows[0].n,
         ).toBe(1);
+
+        for (let i = 0; i < formationIds.length; i++) {
+            const location = await fetch(
+                `${base}/admin/students/${formationIds[i]}`,
+                {
+                    method: 'POST',
+                    headers: { cookie, origin: base },
+                    body: new URLSearchParams({
+                        action: 'location',
+                        termTimeTown: i < 2 ? 'Bilbao' : 'Donostia',
+                    }),
+                },
+            );
+            expect(location.status).toBe(200);
+        }
+        const invalidLocation = await fetch(
+            `${base}/admin/students/${formationIds[0]}`,
+            {
+                method: 'POST',
+                headers: { cookie, origin: base },
+                body: new URLSearchParams({
+                    action: 'location',
+                    termTimeTown: 'x'.repeat(121),
+                }),
+            },
+        );
+        expect(await invalidLocation.text()).toContain(
+            'value="' + 'x'.repeat(121) + '"',
+        );
+        expect(
+            (
+                await fetch(`${base}/admin/students/${formationIds[0]}`, {
+                    method: 'POST',
+                    headers: { ...scopedHeaders, origin: base },
+                    body: new URLSearchParams({
+                        action: 'location',
+                        termTimeTown: 'Eibar',
+                    }),
+                })
+            ).status,
+        ).toBe(403);
+        const geographicDraft = await fetch(
+            `${base}/api/admin/generate-teams?projectId=${formationProject}`,
+            {
+                method: 'POST',
+                headers: { cookie, origin: base },
+                redirect: 'manual',
+                body: new URLSearchParams({
+                    method: 'location',
+                    numTeams: '2',
+                }),
+            },
+        );
+        expect(geographicDraft.status).toBe(302);
+        const townTeams = await fetch(
+            `${base}/admin/teams/${formationProject}`,
+            { headers: { cookie } },
+        );
+        const townHtml = await townTeams.text();
+        expect(townTeams.status).toBe(200);
+        expect(townHtml).toContain('Bilbao');
+        expect(townHtml).toContain('Donostia');
+        const townDraftId = Number(
+            (
+                await db.execute({
+                    sql: 'SELECT draft_id FROM teams WHERE project_id=? LIMIT 1',
+                    args: [formationProject],
+                })
+            ).rows[0].draft_id,
+        );
+        expect(
+            (await jsonPost({ action: 'confirm', draftId: townDraftId }))
+                .status,
+        ).toBe(200);
+        expect(
+            (
+                await db.execute({
+                    sql: 'SELECT COUNT(*) n FROM confirmed_assignments WHERE project_id=?',
+                    args: [formationProject],
+                })
+            ).rows[0].n,
+        ).toBe(2);
         const revoked = await fetch(`${base}/admin/users`, {
             method: 'POST',
             headers: { cookie, origin: base },

@@ -3,7 +3,7 @@ import type { Skills } from './skills';
 export type AssessmentValues = { [Key in keyof Skills]: Partial<Skills[Key]> };
 export type PreferenceKind = 'comfort' | 'preferWith' | 'preferAvoid';
 export type HistoryMode = 'variety' | 'balanced' | 'familiar';
-export type FormationMethod = 'survey' | 'random' | 'manual';
+export type FormationMethod = 'survey' | 'random' | 'manual' | 'location';
 export interface Allocation {
     teamNumber: number;
     studentIds: number[];
@@ -22,10 +22,16 @@ export interface FormationInput {
     preferences: Record<PreferenceKind, number[]>;
     excluded: boolean;
     needsReview: boolean;
+    location?: {
+        town: string | null;
+        source: 'unknown' | 'roster' | 'teacher';
+        updatedAt: string | null;
+    };
 }
 export interface FormationSnapshot {
     // Absent on older snapshots, whose method was survey-informed.
     method?: FormationMethod;
+    locationPolicy?: 'same-term-time-town-v1';
     capturedAt: string;
     configuration: {
         projectType: string;

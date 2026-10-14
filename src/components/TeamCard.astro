@@ -4,8 +4,9 @@ interface Props {
     teamNumber: number;
     membersWithSkills: TeamMember[];
     justification: string;
+    towns?: Map<number, string | null>;
 }
-const { teamNumber, membersWithSkills, justification } = Astro.props;
+const { teamNumber, membersWithSkills, justification, towns } = Astro.props;
 ---
 
 <article class="teacher-panel flex flex-col">
@@ -19,6 +20,11 @@ const { teamNumber, membersWithSkills, justification } = Astro.props;
         {membersWithSkills.map((member) => (
             <li class="py-3 text-sm text-slate-800">
                 {member.name}
+                {towns && (
+                    <span class="ml-2 text-xs text-slate-500">
+                        {towns.get(member.id) || 'Kokapen ezezaguna'}
+                    </span>
+                )}
                 {member.isExcluded && (
                     <span class="ml-2 text-xs text-slate-400">Absent</span>
                 )}

@@ -37,7 +37,10 @@ A proposed allocation that may be regenerated, compared or adjusted. It does not
 _Avoid_: Confirmed team, collaboration history
 
 **Formation method**:
-The teacher's chosen way to propose teams: survey-informed, random or manual. Mandatory pairing restrictions apply to every method; random formation ignores skills, optional preferences and previous teams.
+The teacher's chosen way to propose teams: survey-informed, random, manual or by term-time town. Mandatory pairing restrictions apply to every method; random formation ignores skills, optional preferences and previous teams.
+
+**Term-time town**:
+A student's teacher-confirmed town of residence during teaching, shared across simultaneous enrollments. A historical roster town is a suggestion until confirmed; absent or conflicting locations remain unknown for formation.
 
 **Confirmed assignment**:
 A teacher-adopted project allocation with dated membership periods and retained decision inputs. Revisions preserve earlier assignments.

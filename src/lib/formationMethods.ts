@@ -3,11 +3,13 @@ import { InputError } from './input';
 import type { Allocation, FormationSnapshot } from './trackingTypes';
 
 export function formationMethodLabel(snapshot?: FormationSnapshot | null) {
-    return snapshot?.method === 'random'
-        ? 'Ausaz'
-        : snapshot?.method === 'manual'
-          ? 'Irakasleak eskuz'
-          : 'Gaitasunak eta hobespenak';
+    return snapshot?.method === 'location'
+        ? 'Ikasturteko herriaren arabera'
+        : snapshot?.method === 'random'
+          ? 'Ausaz'
+          : snapshot?.method === 'manual'
+            ? 'Irakasleak eskuz'
+            : 'Gaitasunak eta hobespenak';
 }
 
 // Fisher–Yates uses only chance; assessments, preferences and history are ignored.

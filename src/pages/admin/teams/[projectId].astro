@@ -101,6 +101,20 @@ const mandatoryPairs =
     snapshot?.restrictions.map((rule) => [rule.student1Id, rule.student2Id]) ??
     [];
 const generateUrl = `/api/admin/generate-teams?projectId=${pid}&version=${selectedVersion}`;
+const recordedTowns =
+    currentDraft?.inputSnapshot?.method === 'location'
+        ? new Map(
+              currentDraft.inputSnapshot.inputs.map((input) => [
+                  input.participantId,
+                  input.location?.source === 'teacher'
+                      ? input.location.town
+                      : null,
+              ]),
+          )
+        : undefined;
+const knownLocations = inputs.filter(
+    (input) => input.location?.source === 'teacher' && input.location.town,
+).length;
 const defaultCount =
     project.numTeams ||
     Math.max(1, Math.round(inputs.length / (project.targetTeamSize || 4)));
@@ -120,7 +134,7 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
             href={`/admin/monitor/${pid}`}
             class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700 print:hidden"
         >
-            ← Inkestaren jarraipena
+            ← Proiektuaren jarraipena
         </a>
         <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -135,7 +149,8 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                         : adopted
                           ? 'Berretsitako esleipena'
                           : 'Zirriborroa'}{' '}
-                    · {formationMethodLabel(currentDraft?.inputSnapshot)}
+                    {currentDraft &&
+                        `· ${formationMethodLabel(currentDraft.inputSnapshot)}`}
                 </p>
             </div>
             {projectTeams.length > 0 && (
@@ -174,6 +189,8 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                 <p class="text-xs text-slate-500">
                     Zirriborroek ez dute parekatze-historia osatzen. Berrespenak
                     sarrerak eta kideen datatutako esleipena gordetzen ditu.
+                    {currentDraft.inputSnapshot?.method === 'location' &&
+                        ' Txarteletako kokapenak zirriborroa sortzean jasotakoak dira.'}
                 </p>
             </div>
         )}
@@ -278,6 +295,15 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                                 >
                                     Gaitasunak eta hobespenak
                                 </option>
+                                <option
+                                    value="location"
+                                    selected={
+                                        currentDraft?.inputSnapshot?.method ===
+                                        'location'
+                                    }
+                                >
+                                    Ikasturteko herriaren arabera
+                                </option>
                             </select>
                         </label>
                         <label class="teacher-label">
@@ -320,6 +346,39 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                         </label>
                     </div>
                     <p id="method-help" class="text-xs text-slate-500"></p>
+                    <div data-location-controls hidden>
+                        <p class="text-xs text-slate-500">
+                            {knownLocations} kokapen baieztatu ·{' '}
+                            {inputs.length - knownLocations} kokapen ezezagun
+                            edo baieztatu gabe. Ezezagunak geratzen diren
+                            tokietan banatuko dira.
+                        </p>
+                        <details class="mt-3">
+                            <summary class="cursor-pointer text-xs text-slate-500">
+                                Kokapenak berrikusi / editatu
+                            </summary>
+                            <ul class="mt-2 divide-y divide-slate-100">
+                                {inputs.map((input) => (
+                                    <li class="flex flex-wrap justify-between gap-2 py-2 text-sm">
+                                        <a
+                                            class="underline"
+                                            href={`/admin/students/${input.studentId}#student-location`}
+                                        >
+                                            {input.name}
+                                        </a>
+                                        <span class="text-xs text-slate-500">
+                                            {input.location?.source ===
+                                                'teacher' && input.location.town
+                                                ? input.location.town
+                                                : input.location?.town
+                                                  ? `${input.location.town} · Baieztatu gabe`
+                                                  : 'Ezezaguna'}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </details>
+                    </div>
                     <div data-manual-controls hidden>
                         <div class="grid gap-3 sm:grid-cols-2">
                             {inputs.map((input) => (
@@ -502,6 +561,36 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                             ? 'Kide ezagunak'
                             : 'Oreka'}
                 </p>
+                {confirmed.inputSnapshot?.method === 'location' && (
+                    <details class="mt-3">
+                        <summary class="cursor-pointer text-xs text-slate-500">
+                            Berrespenean gordetako kokapenak
+                        </summary>
+                        <p class="mt-2 text-xs text-slate-500">
+                            Ikasturteko herri bera lehenetsi zen. Herri
+                            ezezagunek ez zuten kokapen-irizpiderik eman.
+                        </p>
+                        <ul class="mt-2 space-y-2">
+                            {confirmed.inputSnapshot.inputs
+                                .filter((input) => !input.excluded)
+                                .map((input) => (
+                                    <li class="text-xs text-slate-500">
+                                        {input.name} ·{' '}
+                                        {input.location?.source === 'teacher' &&
+                                        input.location.town
+                                            ? input.location.town
+                                            : 'Kokapen ezezaguna'}{' '}
+                                        ·{' '}
+                                        {input.location?.updatedAt
+                                            ? new Date(
+                                                  input.location.updatedAt,
+                                              ).toLocaleDateString('eu-ES')
+                                            : 'Baieztapenik gabe'}
+                                    </li>
+                                ))}
+                        </ul>
+                    </details>
+                )}
             </details>
         )}
         {generationError && (
@@ -515,6 +604,7 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                     teamNumber={team.teamNumber}
                     membersWithSkills={team.membersWithSkills}
                     justification={team.justification}
+                    towns={recordedTowns}
                 />
             ))}
             {projectTeams.length === 0 && !archived && (
@@ -664,6 +754,9 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
             formation!.querySelector<HTMLElement>(
                 '[data-survey-controls]',
             )!.hidden = method.value !== 'survey';
+            formation!.querySelector<HTMLElement>(
+                '[data-location-controls]',
+            )!.hidden = method.value !== 'location';
             formation!.querySelector<HTMLSelectElement>(
                 '[name="historyMode"]',
             )!.disabled = method.value !== 'survey';
@@ -676,7 +769,9 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                     ? 'Hautatu ikasle bakoitzaren taldea. Tamainak orekatu eta derrigorrezko murrizketak bete behar dira.'
                     : method.value === 'random'
                       ? 'Ausazko banaketa: tamainak, bertaratzea eta derrigorrezko murrizketak soilik. Gaitasunek, hobespenek eta aurreko taldeek ez dute eraginik.'
-                      : 'Autoebaluazioak, hobespenak eta berretsitako esleipenen historia erabiltzen dira. Erantzun ezezagunetarako algoritmoak 5eko ordezko balioa erabiltzen du.';
+                      : method.value === 'location'
+                        ? 'Ikasturtean herri berean bizi diren kideak elkartzea lehenesten da, tamainak eta derrigorrezko murrizketak betez. Ez da distantziarik kalkulatzen; gaitasunak, hobespenak eta aurreko taldeak ez dira erabiltzen.'
+                        : 'Autoebaluazioak, hobespenak eta berretsitako esleipenen historia erabiltzen dira. Erantzun ezezagunetarako algoritmoak 5eko ordezko balioa erabiltzen du.';
         }
         function manualCounts() {
             const counts = new Map<number, number>();

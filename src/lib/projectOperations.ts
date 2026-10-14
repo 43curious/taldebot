@@ -61,8 +61,17 @@ export async function createProject(
         const identities = new Set<number>();
         for (const participant of participants) {
             const person = await resolveStudent(tx, participant, access);
-            // Overlapping roster selections still represent one project participant.
-            if (identities.has(person.id)) continue;
+            // Deduplicate explicit roster IDs; repeated typed names still need review.
+            if (identities.has(person.id)) {
+                if (
+                    'studentRecordId' in participant &&
+                    participant.studentRecordId === person.id
+                )
+                    continue;
+                throw new InputError(
+                    'Ikasle bera ezin da proiektuan bitan gehitu. Bereizi izen bereko pertsonak emailaren bidez.',
+                );
+            }
             identities.add(person.id);
             await tx.insert(students).values({
                 projectId: project.id,

@@ -29,7 +29,7 @@ it('initializes every table, preserves existing rows and v2 labels, and records 
         ).toMatchObject([{ algorithm_version: 'v2', justification: 'keep' }]);
         expect(
             (await client.execute('SELECT * FROM __drizzle_migrations')).rows,
-        ).toHaveLength(4);
+        ).toHaveLength(5);
         expect(
             (await client.execute('PRAGMA foreign_key_check')).rows,
         ).toHaveLength(0);
@@ -155,6 +155,88 @@ it('marks only pre-version teams as v1 and rolls back unsupported legacy adoptio
                 )
             ).rows,
         ).toHaveLength(0);
+    } finally {
+        client.close();
+        await rm(dir, { recursive: true, force: true });
+    }
+});
+
+it('upgrades shared locations conservatively and preserves teacher clears on migration reruns', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'taldebot-location-migration-'));
+    const client = createClient({ url: `file:${join(dir, 'test.db')}` });
+    try {
+        const migrations = readMigrationFiles({
+            migrationsFolder: fileURLToPath(
+                new URL('../db/migrations', import.meta.url),
+            ),
+        });
+        await client.execute(
+            'CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at NUMERIC)',
+        );
+        for (const migration of migrations.slice(0, 4)) {
+            for (const statement of migration.sql)
+                await client.execute(statement);
+            await client.execute({
+                sql: 'INSERT INTO __drizzle_migrations(hash,created_at) VALUES (?,?)',
+                args: [migration.hash, migration.folderMillis],
+            });
+        }
+        await client.execute(
+            "INSERT INTO classes(id,name,year) VALUES (1,'First',1),(2,'Second',2)",
+        );
+        await client.execute(
+            "INSERT INTO student_records(id,name) VALUES (1,'Ane'),(2,'Iker'),(3,'Miren')",
+        );
+        await client.execute(
+            "INSERT INTO class_members(class_id,student_record_id,name,town) VALUES (1,1,'Ane','  Bilbao  '),(2,1,'Ane','bilbao'),(1,2,'Iker','Bilbao'),(2,2,'Iker','Donostia'),(1,3,'Miren',NULL),(2,NULL,'New person','Eibar')",
+        );
+        await migrateDatabase(client);
+        const rows = (
+            await client.execute(
+                'SELECT id,term_time_town,term_time_town_source,term_time_town_updated_at FROM student_records ORDER BY id',
+            )
+        ).rows;
+        expect(rows[0]).toMatchObject({
+            id: 1,
+            term_time_town_source: 'roster',
+            term_time_town_updated_at: null,
+        });
+        expect(String(rows[0].term_time_town).toLowerCase()).toBe('bilbao');
+        expect(rows[1]).toMatchObject({
+            id: 2,
+            term_time_town: null,
+            term_time_town_source: 'roster',
+        });
+        expect(rows[2]).toMatchObject({
+            id: 3,
+            term_time_town: null,
+            term_time_town_source: 'unknown',
+        });
+        expect(rows[3]).toMatchObject({
+            term_time_town: 'Eibar',
+            term_time_town_source: 'roster',
+        });
+        await client.execute(
+            "UPDATE student_records SET term_time_town=NULL,term_time_town_source='teacher',term_time_town_updated_at='2026-10-14' WHERE id=1",
+        );
+        await migrateDatabase(client);
+        expect(
+            (
+                await client.execute(
+                    'SELECT term_time_town,term_time_town_source FROM student_records WHERE id=1',
+                )
+            ).rows[0],
+        ).toEqual({ term_time_town: null, term_time_town_source: 'teacher' });
+        expect(
+            (
+                await client.execute(
+                    'SELECT town FROM class_members WHERE student_record_id=2 ORDER BY class_id',
+                )
+            ).rows,
+        ).toEqual([{ town: 'Bilbao' }, { town: 'Donostia' }]);
+        expect((await client.execute('PRAGMA foreign_key_check')).rows).toEqual(
+            [],
+        );
     } finally {
         client.close();
         await rm(dir, { recursive: true, force: true });

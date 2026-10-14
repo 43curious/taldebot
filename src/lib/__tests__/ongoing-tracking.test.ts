@@ -26,6 +26,7 @@ import {
     confirmedPairHistory,
 } from '../formation';
 import { migrateDatabase } from '../../../scripts/migrations';
+import { updateStudentLocation } from '../studentLocations';
 import { setProjectCollectionContext } from '../../../scripts/project-context';
 import { knowledgeSourceLabel } from '../knowledgeContext';
 let fixture: Awaited<ReturnType<typeof testDatabase>>;
@@ -814,6 +815,19 @@ it('starts manual formation without a generated draft and validates membership, 
 it('deduplicates durable roster identities across simultaneous enrollments when creating an activity', async () => {
     const s = await setup();
     await enrollStudent(s.db, s.people[0], s.groups[1].id, '2026-2027');
+    await expect(
+        createProject(
+            s.db,
+            projectSchema.parse({
+                name: 'Repeated names',
+                numTeams: 2,
+                projectType: 'balanced',
+                adminEmail: 'teacher@example.com',
+                studentList: 'Ane\nAne',
+            }),
+            s.access,
+        ),
+    ).rejects.toThrow('emailaren bidez');
     const project = await createProject(
         s.db,
         projectSchema.parse({
@@ -849,4 +863,118 @@ it('deduplicates durable roster identities across simultaneous enrollments when 
             },
         ]),
     ).rejects.toThrow();
+});
+
+it('forms town-based teams from shared verified locations and retains original locations through edits and confirmation', async () => {
+    const s = await setup(),
+        ids = s.people.map((person) => person.id);
+    for (let i = 0; i < ids.length; i++)
+        await updateStudentLocation(
+            s.db,
+            s.access,
+            ids[i],
+            i < 2 ? 'Bilbao' : 'Donostia',
+        );
+    await enrollStudent(s.db, s.people[0], s.groups[1].id, '2026-2027');
+    const draft = await generateDraft(s.db, s.access, s.project.id, 'v2', {
+        method: 'location',
+    });
+    expect(draft.inputSnapshot!.locationPolicy).toBe('same-term-time-town-v1');
+    expect(
+        draft.allocation.every((team) => {
+            const towns = team.studentIds.map(
+                (id) =>
+                    draft.inputSnapshot!.inputs.find(
+                        (input) => input.studentId === id,
+                    )!.location!.town,
+            );
+            return new Set(towns).size === 1;
+        }),
+    ).toBe(true);
+    await updateStudentLocation(s.db, s.access, ids[0], 'Eibar');
+    const adjusted = await adjustDraft(
+        s.db,
+        s.access,
+        s.project.id,
+        draft.id,
+        draft.allocation,
+    );
+    const confirmed = await confirmDraft(
+        s.db,
+        s.access,
+        s.project.id,
+        adjusted.id,
+    );
+    expect(
+        confirmed.inputSnapshot!.inputs.find(
+            (input) => input.studentId === ids[0],
+        )!.location!.town,
+    ).toBe('Bilbao');
+    const profile = (await loadStudentProfiles(s.db, s.access, [ids[0]])).get(
+        ids[0],
+    )!;
+    expect(profile.person.termTimeTown).toBe('Eibar');
+    expect(profile.enrollments.filter((row) => !row.endedAt)).toHaveLength(2);
+    await updateStudentLocation(s.db, s.access, ids[0], '');
+    expect(
+        (await s.db.query.studentRecords.findFirst({
+            where: eq(schema.studentRecords.id, ids[0]),
+        }))!.termTimeTown,
+    ).toBeNull();
+    const otherAccess = await teachingAccess(s.db, s.other);
+    await expect(
+        updateStudentLocation(s.db, otherAccess, ids[1], 'Eibar'),
+    ).rejects.toThrow();
+    await expect(
+        updateStudentLocation(s.db, s.access, ids[1], 'x'.repeat(121)),
+    ).rejects.toThrow();
+    expect(
+        (await confirmedPairHistory(s.db, ids)).every(
+            (pair) => pair.projects === 1,
+        ),
+    ).toBe(true);
+});
+it('keeps hard separations above town grouping and treats roster suggestions as unknown', async () => {
+    const s = await setup(),
+        ids = s.people.map((person) => person.id);
+    await updateStudentLocation(s.db, s.access, ids[0], 'Bilbao');
+    await updateStudentLocation(s.db, s.access, ids[1], 'bilbao');
+    await s.db
+        .update(schema.studentRecords)
+        .set({ termTimeTown: 'Bilbao', termTimeTownSource: 'roster' })
+        .where(eq(schema.studentRecords.id, ids[2]));
+    await s.db.insert(schema.pairingRestrictions).values({
+        student1Id: ids[0],
+        student2Id: ids[1],
+        scope: 'project',
+        projectId: s.project.id,
+        academicPeriod: '2026-2027',
+        createdBy: s.master.id,
+        createdAt: new Date().toISOString(),
+        reviewAt: '2027-01-01',
+    });
+    const draft = await generateDraft(s.db, s.access, s.project.id, 'v2', {
+        method: 'location',
+    });
+    expect(draft.allocation.every((team) => team.studentIds.length === 2)).toBe(
+        true,
+    );
+    expect(
+        draft.allocation.some(
+            (team) =>
+                team.studentIds.includes(ids[0]) &&
+                team.studentIds.includes(ids[1]),
+        ),
+    ).toBe(false);
+    expect(draft.inputSnapshot!.inputs[2].location).toMatchObject({
+        town: 'Bilbao',
+        source: 'roster',
+        updatedAt: null,
+    });
+    await expect(
+        generateDraft(s.db, s.access, s.project.id, 'v2', {
+            method: 'location',
+            numTeams: 1,
+        }),
+    ).rejects.toThrow('murrizketak');
 });

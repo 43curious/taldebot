@@ -43,6 +43,12 @@ export const studentRecords = sqliteTable('student_records', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     name: text('name').notNull(),
     email: text('email'),
+    termTimeTown: text('term_time_town'),
+    termTimeTownSource: text('term_time_town_source')
+        .$type<'unknown' | 'roster' | 'teacher'>()
+        .notNull()
+        .default('unknown'),
+    termTimeTownUpdatedAt: text('term_time_town_updated_at'),
     createdBy: integer('created_by').references(() => users.id, {
         onDelete: 'set null',
     }),

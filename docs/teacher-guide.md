@@ -28,7 +28,9 @@ Hasieran nodoak bakarrik agertzen dira; hautatutako ikaslearen loturak bakarrik 
 
 ## Taldeak prestatu eta berretsi
 
-Sortu zirriborroa, aukeratu talde kopurua eta jarraitutasuna, oreka edo aniztasuna. v1/v2 zirriborroak konparatu daitezke; birsortzeak eredu horren uneko zirriborroa ordezten du baieztapenaren ondoren.
+Proiektuko **Taldeak** orrian aukeratu metodoa eta talde kopurua. **Ausaz** aukerak tamainak, absentziak eta derrigorrezko bereizketak soilik erabiltzen ditu, inkestarik gabe. **Irakasleak eskuz** aukerak hasieran esleitu gabeko ikasle bakoitzaren taldea hautatzeko aukera ematen du; taldeek tamaina orekatuak izan behar dituzte. **Gaitasunak eta hobespenak** aukeran jarraitutasuna, oreka edo aniztasuna ere hautatu. v1/v2 zirriborroak konparatu daitezke; birsortzeak eredu horren uneko zirriborroa ordezten du baieztapenaren ondoren.
+
+**Ikasturteko herriaren arabera** aukerak herri berean bizi diren kideak elkartzea lehenesten du, tamainak eta derrigorrezko bereizketak betez. Ez du distantziarik kalkulatzen. Ikaslearen profilean **Ikasturteko bizilekua editatu** atalean herria gorde edo hutsik utzi; bere klase guztietan partekatzen da. Zerrenda zaharreko herria baieztatu behar da erabiltzeko; kontraesanak eta kokapen ezezagunak ez dira asmatzen. Berrikusi kokapen ezagunen kopurua taldeak sortu aurretik. Ezezagunak geratzen diren tokietan banatzen dira. Zirriborroaren txartelek erabilitako kokapenak erakusten dituzte; geroagoko aldaketek ez dituzte berretsitako kokapenak berridazten.
 
 Ikaslearen saiheste-hobespena biguna da. Profiletik sortutako irakaslearen bereizketa derrigorrezkoa da; arrazoia pribatua eta berrikuspen-data esplizitua dira. Data gainditzeak ez du araua kentzen. Talde kopuruarekin murrizketak bete ezin badira, aplikazioak aurreko zirriborroa mantentzen du eta irakaslearen erabakia eskatzen du.
 
