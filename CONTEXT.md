@@ -36,6 +36,9 @@ _Avoid_: Global student completion
 A proposed allocation that may be regenerated, compared or adjusted. It does not establish assignment history.
 _Avoid_: Confirmed team, collaboration history
 
+**Formation method**:
+The teacher's chosen way to propose teams: survey-informed, random or manual. Mandatory pairing restrictions apply to every method; random formation ignores skills, optional preferences and previous teams.
+
 **Confirmed assignment**:
 A teacher-adopted project allocation with dated membership periods and retained decision inputs. Revisions preserve earlier assignments.
 _Avoid_: Verified collaboration, worked together

@@ -23,6 +23,7 @@ import type { DataSession } from './studentIdentity';
 import { academicPeriod } from './studentIdentity';
 import { createTeams, type StudentData } from './teamMatcher';
 import { createTeamsV1 } from './teamMatcherV1';
+import { randomAllocation, validateTeamSizes } from './formationMethods';
 import { skillScale, type Skills } from './skills';
 import type {
     AssessmentValues,
@@ -176,6 +177,7 @@ export async function formationInputs(
                   (project.academicPeriod || academicPeriod())),
     );
     const snapshot: FormationSnapshot = {
+        method: 'survey',
         capturedAt: new Date().toISOString(),
         configuration: {
             projectType: project.projectType,
@@ -341,7 +343,8 @@ export function applyRestrictions(
         ...team,
         studentIds: teams[index],
         justification:
-            'Irakaslearen derrigorrezko murrizketak betetzeko egokitua. Gaitasunen oreka eta ikasleen hobespenak bigarren mailako irizpideak dira.',
+            team.justification +
+            '\nIrakaslearen derrigorrezko murrizketak betetzeko egokitua.',
     }));
 }
 
@@ -411,7 +414,11 @@ export async function generateDraft(
     access: TeacherAccess,
     projectId: number,
     version: 'v1' | 'v2',
-    options: { historyMode?: HistoryMode; numTeams?: number } = {},
+    options: {
+        historyMode?: HistoryMode;
+        numTeams?: number;
+        method?: 'survey' | 'random';
+    } = {},
 ) {
     const { project, snapshot } = await formationInputs(
         db,
@@ -431,6 +438,31 @@ export async function generateDraft(
             'Talde kopurua 1 eta ikasle aktiboen kopuruaren artekoa izan behar da.',
         );
     snapshot.configuration.numTeams = numTeams;
+    snapshot.method = options.method ?? 'survey';
+    if (snapshot.method === 'random') {
+        const allocation = applyRestrictions(
+            randomAllocation(
+                active.map((input) => input.studentId),
+                numTeams,
+            ),
+            snapshot.restrictions,
+        );
+        validateAllocation(
+            allocation,
+            active.map((input) => input.studentId),
+            snapshot.restrictions,
+        );
+        return persistDraft(
+            db,
+            access,
+            projectId,
+            version,
+            allocation,
+            snapshot,
+            'generated',
+            numTeams,
+        );
+    }
     const data: StudentData[] = active.map((input) => ({
         id: input.studentId,
         name: input.name,
@@ -484,6 +516,36 @@ export async function generateDraft(
         numTeams,
     );
 }
+export async function createManualDraft(
+    db: AppDatabase,
+    access: TeacherAccess,
+    projectId: number,
+    version: 'v1' | 'v2',
+    numTeams: number,
+    allocation: Allocation[],
+) {
+    const { snapshot } = await formationInputs(db, access, projectId);
+    const ids = snapshot.inputs
+        .filter((input) => !input.excluded)
+        .map((input) => input.studentId);
+    validateAllocation(allocation, ids, snapshot.restrictions);
+    validateTeamSizes(allocation, ids.length, numTeams);
+    snapshot.method = 'manual';
+    snapshot.configuration.numTeams = numTeams;
+    return persistDraft(
+        db,
+        access,
+        projectId,
+        version,
+        allocation.map((team) => ({
+            ...team,
+            justification: 'Irakasleak hasieratik eskuz osatutako taldea.',
+        })),
+        snapshot,
+        'manual-adjustment',
+        numTeams,
+    );
+}
 export async function adjustDraft(
     db: AppDatabase,
     access: TeacherAccess,
@@ -512,6 +574,15 @@ export async function adjustDraft(
         .filter((input) => !input.excluded)
         .map((input) => input.studentId);
     validateAllocation(allocation, actualIds, snapshot.restrictions);
+    if (
+        original.inputSnapshot?.method &&
+        original.inputSnapshot.method !== 'survey'
+    )
+        validateTeamSizes(
+            allocation,
+            actualIds.length,
+            original.inputSnapshot.configuration.numTeams!,
+        );
     if (
         original.inputSnapshot &&
         (original.inputSnapshot.inputs.filter((input) => !input.excluded)
@@ -578,32 +649,20 @@ export async function confirmDraft(
                 .map((input) => input.studentId),
             snapshot.restrictions,
         );
+        if (
+            draft.inputSnapshot.method &&
+            draft.inputSnapshot.method !== 'survey'
+        )
+            validateTeamSizes(
+                draft.allocation,
+                snapshot.inputs.filter((input) => !input.excluded).length,
+                draft.inputSnapshot.configuration.numTeams!,
+            );
         const previous = await tx.query.confirmedAssignments.findFirst({
             where: eq(confirmedAssignments.projectId, projectId),
             orderBy: (row, { desc }) => [desc(row.revision)],
         });
         if (previous?.draftId === draft.id) return previous;
-        if (
-            previous &&
-            JSON.stringify(
-                previous.allocation
-                    .map((team) => [
-                        team.teamNumber,
-                        [...team.studentIds].sort((a, b) => a - b),
-                    ])
-                    .sort(),
-            ) ===
-                JSON.stringify(
-                    draft.allocation
-                        .map((team) => [
-                            team.teamNumber,
-                            [...team.studentIds].sort((a, b) => a - b),
-                        ])
-                        .sort(),
-                ) &&
-            previous.algorithmVersion === draft.algorithmVersion
-        )
-            return previous;
         const date = new Date().toISOString();
         if (previous)
             await tx

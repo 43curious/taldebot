@@ -3,6 +3,7 @@ import type { Skills } from './skills';
 export type AssessmentValues = { [Key in keyof Skills]: Partial<Skills[Key]> };
 export type PreferenceKind = 'comfort' | 'preferWith' | 'preferAvoid';
 export type HistoryMode = 'variety' | 'balanced' | 'familiar';
+export type FormationMethod = 'survey' | 'random' | 'manual';
 export interface Allocation {
     teamNumber: number;
     studentIds: number[];
@@ -23,6 +24,8 @@ export interface FormationInput {
     needsReview: boolean;
 }
 export interface FormationSnapshot {
+    // Absent on older snapshots, whose method was survey-informed.
+    method?: FormationMethod;
     capturedAt: string;
     configuration: {
         projectType: string;

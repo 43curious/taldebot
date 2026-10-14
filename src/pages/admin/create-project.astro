@@ -415,13 +415,18 @@ María García
             form.querySelectorAll<HTMLInputElement>('[data-roster-id]'),
         );
         function update() {
-            const selected = rosterInputs
+            const selectedRows = rosterInputs
                 .filter((row) => row.checked)
                 .map((row) => ({
                     studentRecordId: Number(row.dataset.rosterId),
                     name: row.dataset.name,
                     email: row.dataset.email || undefined,
                 }));
+            const selected = [
+                ...new Map(
+                    selectedRows.map((row) => [row.studentRecordId, row]),
+                ).values(),
+            ];
             text.disabled = source !== 'manual';
             json.disabled = source === 'manual';
             json.value = JSON.stringify(source === 'roster' ? selected : csv);

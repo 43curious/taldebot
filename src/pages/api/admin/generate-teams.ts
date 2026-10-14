@@ -4,6 +4,7 @@ import { db } from '../../../lib/db';
 import { parseId, routeError } from '../../../lib/input';
 import { generateDraft } from '../../../lib/formation';
 const optionsSchema = z.object({
+    method: z.enum(['survey', 'random']).optional(),
     numTeams: z.preprocess(
         (value) => (value === '' || value === undefined ? undefined : value),
         z.coerce.number().int().positive().optional(),

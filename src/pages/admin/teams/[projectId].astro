@@ -13,6 +13,8 @@ import {
 import { eq, and } from 'drizzle-orm';
 import TeamCard from '../../../components/TeamCard.astro';
 
+import { formationMethodLabel } from '../../../lib/formationMethods';
+import { isArchivedProject } from '../../../lib/projectLifecycle';
 import { formationInputs } from '../../../lib/formation';
 import { scoredSkills } from '../../../lib/skills';
 import { teamMembers } from '../../../lib/projectData';
@@ -60,10 +62,18 @@ const confirmed = await db.query.confirmedAssignments.findFirst({
     where: eq(confirmedAssignments.projectId, pid),
     orderBy: (row, { desc }) => [desc(row.revision)],
 });
-const inputState = project.archivedAt
+const archived = isArchivedProject(project);
+let inputError = '';
+const inputState = archived
     ? undefined
     : await formationInputs(db, Astro.locals.teacherAccess, pid).catch(
-          () => undefined,
+          (error) => {
+              inputError =
+                  error instanceof Error
+                      ? error.message
+                      : 'Ezin izan dira sarrerak kargatu.';
+              return undefined;
+          },
       );
 const snapshot = inputState?.snapshot;
 const inputs = snapshot?.inputs.filter((input) => !input.excluded) ?? [];
@@ -84,31 +94,16 @@ for (const member of members.values()) {
             .sort((a, b) => (b.val ?? 0) - (a.val ?? 0))
             .slice(0, 3);
 }
-const sameAllocation =
-    confirmed &&
-    currentDraft &&
-    JSON.stringify(
-        confirmed.allocation.map((team) => [
-            team.teamNumber,
-            team.studentIds.slice().sort((a, b) => a - b),
-        ]),
-    ) ===
-        JSON.stringify(
-            currentDraft.allocation.map((team) => [
-                team.teamNumber,
-                team.studentIds.slice().sort((a, b) => a - b),
-            ]),
-        );
 const adopted = Boolean(
-    confirmed &&
-    currentDraft &&
-    confirmed.algorithmVersion === currentDraft.algorithmVersion &&
-    sameAllocation,
+    confirmed && currentDraft && confirmed.draftId === currentDraft.id,
 );
 const mandatoryPairs =
     snapshot?.restrictions.map((rule) => [rule.student1Id, rule.student2Id]) ??
     [];
 const generateUrl = `/api/admin/generate-teams?projectId=${pid}&version=${selectedVersion}`;
+const defaultCount =
+    project.numTeams ||
+    Math.max(1, Math.round(inputs.length / (project.targetTeamSize || 4)));
 const generationError = Astro.url.searchParams.get('error') === 'no-students';
 ---
 
@@ -118,6 +113,7 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
         data-project-id={pid}
         data-draft-id={currentDraftId}
         data-restrictions={JSON.stringify(mandatoryPairs)}
+        data-version={selectedVersion}
         aria-labelledby="teams-heading"
     >
         <a
@@ -134,11 +130,12 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                         ? `${projectTeams.length} talde · ${projectTeams.reduce((count, team) => count + team.memberIds.length, 0)} ikasle`
                         : 'Taldeen esleipena'}{' '}
                     ·{' '}
-                    {project.archivedAt
+                    {archived
                         ? 'Artxibatuta'
                         : adopted
                           ? 'Berretsitako esleipena'
-                          : 'Zirriborroa'}
+                          : 'Zirriborroa'}{' '}
+                    · {formationMethodLabel(currentDraft?.inputSnapshot)}
                 </p>
             </div>
             {projectTeams.length > 0 && (
@@ -164,7 +161,7 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
             role="status"
             class="mb-4 text-sm text-slate-600"
         ></p>
-        {currentDraft && !project.archivedAt && (
+        {currentDraft && !archived && (
             <div class="teacher-toolbar mb-5">
                 <button
                     type="button"
@@ -223,10 +220,147 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                 )}
             </div>
         </details>
-        {!project.archivedAt && (
+        {inputError && (
+            <p role="alert" class="mb-4 text-sm text-amber-700">
+                {inputError}
+            </p>
+        )}
+        {!archived && snapshot && (
+            <section
+                class="teacher-panel mb-5 p-4 print:hidden"
+                aria-labelledby="formation-heading"
+            >
+                <h2 id="formation-heading" class="text-base">
+                    Taldeak osatu
+                </h2>
+                <p class="mt-2 text-xs text-slate-500">
+                    {inputs.length} ikasle aktibo ·{' '}
+                    {snapshot.inputs.filter((input) => input.excluded).length}{' '}
+                    kanpoan · {mandatoryPairs.length} derrigorrezko murrizketa.
+                    Ausaz edo eskuz osatzeko ez da inkestarik behar.
+                </p>
+                <form
+                    id="formation-form"
+                    action={generateUrl}
+                    method="POST"
+                    class="mt-4 space-y-4"
+                >
+                    <div class="teacher-toolbar">
+                        <label class="teacher-label">
+                            Metodoa
+                            <select name="method">
+                                <option
+                                    value="random"
+                                    selected={
+                                        currentDraft?.inputSnapshot?.method ===
+                                            'random' || !currentDraft
+                                    }
+                                >
+                                    Ausaz
+                                </option>
+                                <option
+                                    value="manual"
+                                    selected={
+                                        currentDraft?.inputSnapshot?.method ===
+                                        'manual'
+                                    }
+                                >
+                                    Irakasleak eskuz
+                                </option>
+                                <option
+                                    value="survey"
+                                    selected={
+                                        currentDraft &&
+                                        (!currentDraft.inputSnapshot?.method ||
+                                            currentDraft.inputSnapshot
+                                                .method === 'survey')
+                                    }
+                                >
+                                    Gaitasunak eta hobespenak
+                                </option>
+                            </select>
+                        </label>
+                        <label class="teacher-label">
+                            Talde kopurua
+                            <input
+                                name="numTeams"
+                                type="number"
+                                min="1"
+                                max={Math.max(1, inputs.length)}
+                                value={defaultCount}
+                                required
+                            />
+                        </label>
+                        <label class="teacher-label" data-survey-controls>
+                            Jarraitutasuna / berritasuna
+                            <select name="historyMode">
+                                <option
+                                    value="balanced"
+                                    selected={
+                                        project.historyMode === 'balanced'
+                                    }
+                                >
+                                    Oreka
+                                </option>
+                                <option
+                                    value="variety"
+                                    selected={project.historyMode === 'variety'}
+                                >
+                                    Kide berriak lehenetsi
+                                </option>
+                                <option
+                                    value="familiar"
+                                    selected={
+                                        project.historyMode === 'familiar'
+                                    }
+                                >
+                                    Kide ezagunak lehenetsi
+                                </option>
+                            </select>
+                        </label>
+                    </div>
+                    <p id="method-help" class="text-xs text-slate-500"></p>
+                    <div data-manual-controls hidden>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            {inputs.map((input) => (
+                                <label class="teacher-label">
+                                    {input.name}
+                                    <select
+                                        data-manual-student={input.studentId}
+                                        aria-label={`${input.name}: taldea`}
+                                    >
+                                        <option value="">Taldea hautatu</option>
+                                        {Array.from(
+                                            { length: defaultCount },
+                                            (_, i) => (
+                                                <option value={i + 1}>
+                                                    {i + 1}. taldea
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </label>
+                            ))}
+                        </div>
+                        <p
+                            id="manual-feedback"
+                            role="status"
+                            class="mt-3 text-xs text-slate-500"
+                        ></p>
+                    </div>
+                    <button
+                        class="teacher-button teacher-button-primary"
+                        disabled={!inputs.length}
+                    >
+                        Zirriborroa sortu
+                    </button>
+                </form>
+            </section>
+        )}
+        {!archived && (
             <details class="teacher-panel mb-5 print:hidden">
                 <summary class="cursor-pointer p-4 text-sm text-slate-600">
-                    Sarrerak berrikusi eta zirriborro berria sortu
+                    Sarrerak eta derrigorrezko murrizketak berrikusi
                 </summary>
                 <div class="border-t border-slate-100 p-4">
                     <p class="text-xs leading-relaxed text-slate-500">
@@ -290,67 +424,10 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                             </li>
                         ))}
                     </ul>
-                    <form
-                        action={generateUrl}
-                        method="POST"
-                        data-regenerate
-                        class="teacher-toolbar"
-                    >
-                        <label class="teacher-label">
-                            Talde kopurua
-                            <input
-                                name="numTeams"
-                                type="number"
-                                min="1"
-                                max={Math.max(1, inputs.length)}
-                                value={
-                                    project.numTeams ||
-                                    Math.max(
-                                        1,
-                                        Math.round(
-                                            inputs.length /
-                                                (project.targetTeamSize || 4),
-                                        ),
-                                    )
-                                }
-                                required
-                            />
-                        </label>
-                        <label class="teacher-label">
-                            Jarraitutasuna / berritasuna
-                            <select name="historyMode">
-                                <option
-                                    value="balanced"
-                                    selected={
-                                        project.historyMode === 'balanced'
-                                    }
-                                >
-                                    Oreka
-                                </option>
-                                <option
-                                    value="variety"
-                                    selected={project.historyMode === 'variety'}
-                                >
-                                    Kide berriak lehenetsi
-                                </option>
-                                <option
-                                    value="familiar"
-                                    selected={
-                                        project.historyMode === 'familiar'
-                                    }
-                                >
-                                    Kide ezagunak lehenetsi
-                                </option>
-                            </select>
-                        </label>
-                        <button class="teacher-button">
-                            Zirriborroa sortu
-                        </button>
-                    </form>
                 </div>
             </details>
         )}
-        {currentDraft && !project.archivedAt && (
+        {currentDraft && !archived && (
             <details class="teacher-panel mb-5 print:hidden">
                 <summary class="cursor-pointer p-4 text-sm text-slate-600">
                     Kideak mugitu / trukatu
@@ -415,12 +492,15 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                               confirmed.inputSnapshot.capturedAt,
                           ).toLocaleString('eu-ES')
                         : 'Aurretiko datuak'}{' '}
-                    ·{' '}
-                    {confirmed.inputSnapshot?.historyMode === 'variety'
-                        ? 'Kide berriak'
-                        : confirmed.inputSnapshot?.historyMode === 'familiar'
-                          ? 'Kide ezagunak'
-                          : 'Oreka'}
+                    · {formationMethodLabel(confirmed.inputSnapshot)}{' '}
+                    {confirmed.inputSnapshot?.method &&
+                    confirmed.inputSnapshot.method !== 'survey'
+                        ? ''
+                        : confirmed.inputSnapshot?.historyMode === 'variety'
+                          ? 'Kide berriak'
+                          : confirmed.inputSnapshot?.historyMode === 'familiar'
+                            ? 'Kide ezagunak'
+                            : 'Oreka'}
                 </p>
             </details>
         )}
@@ -437,21 +517,16 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                     justification={team.justification}
                 />
             ))}
-            {projectTeams.length === 0 && !project.archivedAt && (
+            {projectTeams.length === 0 && !archived && (
                 <div class="teacher-panel col-span-full p-10 text-center">
                     <h2 class="text-base text-slate-800">
                         Ez dago talderik sortuta oraindik.
                     </h2>
                     <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">
-                        Sortu taldeak ikasleen gaitasunak eta lan-hobespenak
-                        erabiliz. Erantzun ezezagunetarako algoritmoak 5eko
-                        ordezko balioa erabiliko du.
+                        Hautatu goiko metodoa: ausaz, eskuz edo gaitasunak eta
+                        hobespenak erabiliz. Berretsi esleipena taldeak
+                        historian gordetzeko.
                     </p>
-                    <form action={generateUrl} method="POST" class="mt-5">
-                        <button class="teacher-button teacher-button-primary">
-                            Taldeak sortu
-                        </button>
-                    </form>
                 </div>
             )}
         </div>
@@ -569,6 +644,83 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
         }
     });
     validate();
+    const formation =
+        document.querySelector<HTMLFormElement>('#formation-form');
+    if (formation) {
+        const method =
+            formation.querySelector<HTMLSelectElement>('[name="method"]')!;
+        const count =
+            formation.querySelector<HTMLInputElement>('[name="numTeams"]')!;
+        const manualControls = [
+            ...formation.querySelectorAll<HTMLSelectElement>(
+                '[data-manual-student]',
+            ),
+        ];
+        function updateMethod() {
+            const manual = method.value === 'manual';
+            formation!.querySelector<HTMLElement>(
+                '[data-manual-controls]',
+            )!.hidden = !manual;
+            formation!.querySelector<HTMLElement>(
+                '[data-survey-controls]',
+            )!.hidden = method.value !== 'survey';
+            formation!.querySelector<HTMLSelectElement>(
+                '[name="historyMode"]',
+            )!.disabled = method.value !== 'survey';
+            manualControls.forEach((control) => {
+                control.required = manual;
+                control.disabled = !manual;
+            });
+            document.querySelector<HTMLElement>('#method-help')!.textContent =
+                manual
+                    ? 'Hautatu ikasle bakoitzaren taldea. Tamainak orekatu eta derrigorrezko murrizketak bete behar dira.'
+                    : method.value === 'random'
+                      ? 'Ausazko banaketa: tamainak, bertaratzea eta derrigorrezko murrizketak soilik. Gaitasunek, hobespenek eta aurreko taldeek ez dute eraginik.'
+                      : 'Autoebaluazioak, hobespenak eta berretsitako esleipenen historia erabiltzen dira. Erantzun ezezagunetarako algoritmoak 5eko ordezko balioa erabiltzen du.';
+        }
+        function manualCounts() {
+            const counts = new Map<number, number>();
+            manualControls.forEach((control) => {
+                if (control.value)
+                    counts.set(
+                        Number(control.value),
+                        (counts.get(Number(control.value)) || 0) + 1,
+                    );
+            });
+            const min = Math.floor(manualControls.length / Number(count.value)),
+                max = Math.ceil(manualControls.length / Number(count.value));
+            document.querySelector<HTMLElement>(
+                '#manual-feedback',
+            )!.textContent =
+                `Taldeko ${min === max ? min : `${min}–${max}`} kide · ` +
+                Array.from(
+                    { length: Number(count.value) },
+                    (_, i) => `${i + 1}. taldea: ${counts.get(i + 1) || 0}`,
+                ).join(' · ');
+        }
+        count.addEventListener('change', () => {
+            if (!count.checkValidity()) return;
+            manualControls.forEach((control) => {
+                const previous = control.value;
+                control.replaceChildren(
+                    new Option('Taldea hautatu', ''),
+                    ...Array.from(
+                        { length: Number(count.value) },
+                        (_, i) => new Option(`${i + 1}. taldea`, String(i + 1)),
+                    ),
+                );
+                if (Number(previous) <= Number(count.value))
+                    control.value = previous;
+            });
+            manualCounts();
+        });
+        manualControls.forEach((control) =>
+            control.addEventListener('change', manualCounts),
+        );
+        method.addEventListener('change', updateMethod);
+        updateMethod();
+        manualCounts();
+    }
     document
         .querySelectorAll<HTMLFormElement>('form[action*="generate-teams"]')
         .forEach((form) => {
@@ -584,6 +736,45 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
                 const button = form.querySelector<HTMLButtonElement>('button')!;
                 button.disabled = true;
                 try {
+                    const method =
+                        form.querySelector<HTMLSelectElement>(
+                            '[name="method"]',
+                        )!.value;
+                    if (method === 'manual') {
+                        const count = Number(
+                            form.querySelector<HTMLInputElement>(
+                                '[name="numTeams"]',
+                            )!.value,
+                        );
+                        const allocation = Array.from(
+                            { length: count },
+                            (_, index) => ({
+                                teamNumber: index + 1,
+                                studentIds: [] as number[],
+                                justification: '',
+                            }),
+                        );
+                        for (const control of form.querySelectorAll<HTMLSelectElement>(
+                            '[data-manual-student]',
+                        )) {
+                            const group = Number(control.value);
+                            if (!group || !allocation[group - 1])
+                                throw new Error(
+                                    'Hautatu ikasle guztien taldea.',
+                                );
+                            allocation[group - 1].studentIds.push(
+                                Number(control.dataset.manualStudent),
+                            );
+                        }
+                        await requestUpdate({
+                            action: 'manual',
+                            version: page.dataset.version,
+                            numTeams: count,
+                            allocation,
+                        });
+                        window.location.reload();
+                        return;
+                    }
                     const response = await fetch(form.action, {
                         method: 'POST',
                         body: new FormData(form),

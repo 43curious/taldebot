@@ -61,10 +61,8 @@ export async function createProject(
         const identities = new Set<number>();
         for (const participant of participants) {
             const person = await resolveStudent(tx, participant, access);
-            if (identities.has(person.id))
-                throw new InputError(
-                    'Ikasle bera ezin da proiektuan bitan gehitu.',
-                );
+            // Overlapping roster selections still represent one project participant.
+            if (identities.has(person.id)) continue;
             identities.add(person.id);
             await tx.insert(students).values({
                 projectId: project.id,

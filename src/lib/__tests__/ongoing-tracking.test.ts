@@ -20,6 +20,7 @@ import {
 } from '../studentUpdates';
 import {
     generateDraft,
+    createManualDraft,
     confirmDraft,
     adjustDraft,
     confirmedPairHistory,
@@ -686,4 +687,166 @@ it('keeps canonical full-name collisions across classes ambiguous during migrati
     ).toBe(false);
     const review = (await db.query.identityReviews.findFirst())!;
     expect(review.candidates).toHaveLength(2);
+});
+
+it('forms random teams without responses, respects attendance and hard restrictions, and preserves inputs after later answers', async () => {
+    const s = await setup();
+    const ids = s.people.map((person) => person.id);
+    await s.db
+        .update(schema.students)
+        .set({ isExcluded: true })
+        .where(eq(schema.students.studentRecordId, ids[3]));
+    await s.db.insert(schema.pairingRestrictions).values({
+        student1Id: ids[0],
+        student2Id: ids[1],
+        scope: 'project',
+        projectId: s.project.id,
+        academicPeriod: '2026-2027',
+        createdBy: s.master.id,
+        createdAt: new Date().toISOString(),
+        reviewAt: '2027-01-01',
+    });
+    const draft = await generateDraft(s.db, s.access, s.project.id, 'v2', {
+        method: 'random',
+        numTeams: 2,
+    });
+    expect(draft.inputSnapshot!.method).toBe('random');
+    expect(draft.allocation.flatMap((team) => team.studentIds).sort()).toEqual(
+        ids.slice(0, 3).sort(),
+    );
+    expect(
+        draft.allocation.map((team) => team.studentIds.length).sort(),
+    ).toEqual([1, 2]);
+    expect(
+        draft.allocation.some((team) =>
+            ids.slice(0, 2).every((id) => team.studentIds.includes(id)),
+        ),
+    ).toBe(false);
+    expect(await confirmedPairHistory(s.db, ids)).toEqual([]);
+    const confirmed = await confirmDraft(
+        s.db,
+        s.access,
+        s.project.id,
+        draft.id,
+    );
+    const assessment = emptyAssessment();
+    assessment.skillsTechnical.camera = 10;
+    await saveKnowledge(s.db, {
+        studentId: ids[0],
+        assessment,
+        source: 'project-survey',
+        scope: 'project',
+        projectId: s.project.id,
+        projectName: 'Film',
+        academicPeriod: '2026-2027',
+    });
+    const retained = await s.db.query.confirmedAssignments.findFirst({
+        where: eq(schema.confirmedAssignments.id, confirmed.id),
+    });
+    expect(retained!.allocation).toEqual(draft.allocation);
+    expect(
+        retained!.inputSnapshot!.inputs[0].assessment.skillsTechnical.camera,
+    ).toBeUndefined();
+    expect((await confirmedPairHistory(s.db, ids))[0].projects).toBe(1);
+    await expect(
+        generateDraft(s.db, s.access, s.project.id, 'v2', {
+            method: 'random',
+            numTeams: 1,
+        }),
+    ).rejects.toThrow('murrizketak');
+});
+it('starts manual formation without a generated draft and validates membership, capacities and mandatory rules', async () => {
+    const s = await setup();
+    const ids = s.people.map((person) => person.id);
+    const allocation = [
+        { teamNumber: 1, studentIds: ids.slice(0, 2), justification: '' },
+        { teamNumber: 2, studentIds: ids.slice(2), justification: '' },
+    ];
+    await expect(
+        createManualDraft(s.db, s.access, s.project.id, 'v2', 2, [
+            { ...allocation[0], studentIds: ids },
+        ]),
+    ).rejects.toThrow('Osatu');
+    await expect(
+        createManualDraft(s.db, s.access, s.project.id, 'v2', 2, [
+            { ...allocation[0], studentIds: [ids[0], ids[0]] },
+            allocation[1],
+        ]),
+    ).rejects.toThrow('behin');
+    const draft = await createManualDraft(
+        s.db,
+        s.access,
+        s.project.id,
+        'v2',
+        2,
+        allocation,
+    );
+    expect(draft.inputSnapshot!.method).toBe('manual');
+    const first = await confirmDraft(s.db, s.access, s.project.id, draft.id);
+    // Identical members formed by another method still retain that teacher decision.
+    const next = await generateDraft(s.db, s.access, s.project.id, 'v2', {
+        method: 'random',
+    });
+    const restored = await adjustDraft(
+        s.db,
+        s.access,
+        s.project.id,
+        next.id,
+        allocation,
+    );
+    const second = await confirmDraft(
+        s.db,
+        s.access,
+        s.project.id,
+        restored.id,
+    );
+    expect(second.revision).toBe(first.revision + 1);
+    expect(second.inputSnapshot!.method).toBe('random');
+    expect(
+        (await confirmedPairHistory(s.db, ids)).every(
+            (pair) => pair.projects === 1,
+        ),
+    ).toBe(true);
+    await expect(
+        adjustDraft(s.db, s.access, s.project.id, draft.id, allocation),
+    ).rejects.toThrow('aldatu');
+});
+it('deduplicates durable roster identities across simultaneous enrollments when creating an activity', async () => {
+    const s = await setup();
+    await enrollStudent(s.db, s.people[0], s.groups[1].id, '2026-2027');
+    const project = await createProject(
+        s.db,
+        projectSchema.parse({
+            name: 'Shared roster',
+            numTeams: 2,
+            projectType: 'balanced',
+            adminEmail: 'teacher@example.com',
+            studentsJson: JSON.stringify(
+                [s.people[0], s.people[0], s.people[1]].map((person) => ({
+                    name: person.name,
+                    studentRecordId: person.id,
+                })),
+            ),
+        }),
+        s.access,
+    );
+    expect(
+        await s.db.query.students.findMany({
+            where: eq(schema.students.projectId, project.id),
+        }),
+    ).toHaveLength(2);
+    const draft = await generateDraft(s.db, s.access, project.id, 'v2', {
+        method: 'random',
+    });
+    expect(draft.allocation.flatMap((team) => team.studentIds)).toHaveLength(2);
+    const other = await teachingAccess(s.db, s.other);
+    await expect(
+        createManualDraft(s.db, other, s.project.id, 'v2', 2, [
+            {
+                teamNumber: 1,
+                studentIds: s.people.map((person) => person.id),
+                justification: '',
+            },
+        ]),
+    ).rejects.toThrow();
 });

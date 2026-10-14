@@ -711,6 +711,92 @@ it('keeps class and dashboard actions available after a real login', async () =>
                 })
             ).rows[0].name,
         ).toBe('Lifecycle test');
+
+        const newActivity = await fetch(`${base}/api/admin/create-project`, {
+            method: 'POST',
+            headers: { cookie, origin: base },
+            redirect: 'manual',
+            body: new URLSearchParams({
+                name: 'No survey teams',
+                numTeams: '2',
+                projectType: 'balanced',
+                adminEmail: 'test@example.com',
+                studentList:
+                    'Unsurveyed One\nUnsurveyed Two\nUnsurveyed Three\nUnsurveyed Four',
+            }),
+        });
+        expect(newActivity.status).toBe(302);
+        const formationProject = Number(
+            (
+                await db.execute(
+                    "SELECT id FROM projects WHERE name='No survey teams'",
+                )
+            ).rows[0].id,
+        );
+        const randomDraft = await fetch(
+            `${base}/api/admin/generate-teams?projectId=${formationProject}`,
+            {
+                method: 'POST',
+                headers: { cookie, origin: base },
+                redirect: 'manual',
+                body: new URLSearchParams({ method: 'random', numTeams: '2' }),
+            },
+        );
+        expect(randomDraft.status).toBe(302);
+        const teamsPage = await fetch(
+            `${base}/admin/teams/${formationProject}`,
+            { headers: { cookie } },
+        );
+        expect(teamsPage.status).toBe(200);
+        expect(await teamsPage.text()).toContain('Unsurveyed One');
+        const latestDraft = Number(
+            (
+                await db.execute({
+                    sql: 'SELECT draft_id FROM teams WHERE project_id=? LIMIT 1',
+                    args: [formationProject],
+                })
+            ).rows[0].draft_id,
+        );
+        const jsonPost = (body) =>
+            fetch(`${base}/api/admin/team-draft`, {
+                method: 'POST',
+                headers: {
+                    cookie,
+                    origin: base,
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify({ ...body, projectId: formationProject }),
+            });
+        expect(
+            (await jsonPost({ action: 'confirm', draftId: latestDraft }))
+                .status,
+        ).toBe(200);
+        const formationIds = (
+            await db.execute({
+                sql: 'SELECT student_record_id FROM students WHERE project_id=? ORDER BY id',
+                args: [formationProject],
+            })
+        ).rows.map((row) => Number(row.student_record_id));
+        expect(
+            (
+                await jsonPost({
+                    action: 'manual',
+                    numTeams: 2,
+                    allocation: [
+                        { teamNumber: 1, studentIds: formationIds.slice(0, 2) },
+                        { teamNumber: 2, studentIds: formationIds.slice(2) },
+                    ],
+                })
+            ).status,
+        ).toBe(200);
+        expect(
+            (
+                await db.execute({
+                    sql: 'SELECT COUNT(*) n FROM confirmed_assignments WHERE project_id=?',
+                    args: [formationProject],
+                })
+            ).rows[0].n,
+        ).toBe(1);
         const revoked = await fetch(`${base}/admin/users`, {
             method: 'POST',
             headers: { cookie, origin: base },
