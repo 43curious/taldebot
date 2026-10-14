@@ -535,7 +535,6 @@ it('keeps class and dashboard actions available after a real login', async () =>
             await fetch(`${base}/admin/dashboard`, { headers: { cookie } })
         ).text();
         expect(dashboard).toContain('Film lab');
-        expect(dashboard).toContain('xl:grid-cols-[minmax(0,1fr)_14rem_11rem]');
         expect(dashboard).toContain('aria-valuenow="50"');
         expect(dashboard).toContain('1 / 2 ikaslek erantzun dute');
         expect(dashboard).toContain('Ez dago ikaslerik oraindik');

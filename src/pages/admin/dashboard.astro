@@ -67,155 +67,184 @@ const feedback = new Map([
                 {feedback}
             </p>
             {projectStats.map((project) => (
-                <article class="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white xl:grid xl:grid-cols-[minmax(0,1fr)_14rem_11rem]">
-                    <div class="min-w-0 p-5">
-                        <div class="flex items-start justify-between gap-3">
-                            <h3 class="min-w-0 text-lg font-semibold leading-snug text-slate-900">
+                <article class="teacher-panel grid min-w-0 lg:grid-cols-[minmax(0,1fr)_14rem]">
+                    <div class="project-card-main grid min-w-0 grid-cols-[minmax(0,1fr)_8rem] gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-5 sm:p-5">
+                        <div class="project-info min-w-0">
+                            <h3 class="text-lg font-semibold leading-snug text-slate-900">
                                 <a
                                     href={`/admin/monitor/${project.id}`}
-                                    class="break-words transition-colors hover:text-teal-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
+                                    class="break-words hover:text-teal-700"
                                 >
                                     {project.name}
                                 </a>
                             </h3>
-                            <div class="flex shrink-0 flex-col gap-1">
-                                {isMaster(Astro.locals.teacherAccess) && (
-                                    <button
-                                        type="button"
-                                        class="project-action-btn flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-xs text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
-                                        data-action="delete"
-                                        data-project-id={project.id}
-                                        data-project-name={project.name}
-                                        aria-label={`Ezabatu betiko ${project.name}`}
-                                        title="Ezabatu proiektua betiko"
+                            {project.description && (
+                                <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">
+                                    {project.description}
+                                </p>
+                            )}
+                            <div class="mt-3">
+                                <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                    <span
+                                        class:list={[
+                                            'rounded-full border px-2.5 py-1 font-semibold',
+                                            project.status === 'active'
+                                                ? 'border-teal-200 bg-teal-50 text-teal-700'
+                                                : project.status === 'completed'
+                                                  ? 'border-slate-200 bg-slate-50 text-slate-600'
+                                                  : 'border-amber-200 bg-amber-50 text-amber-700',
+                                        ]}
                                     >
-                                        <svg
-                                            aria-hidden="true"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="h-5 w-5"
-                                            viewBox="0 0 20 20"
-                                            fill="currentColor"
-                                        >
-                                            <path
-                                                fill-rule="evenodd"
-                                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                                clip-rule="evenodd"
-                                            />
-                                        </svg>
-                                        Ezabatu betiko
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    class="project-action-btn teacher-button px-2 text-xs"
-                                    data-action={
-                                        showArchived ? 'restore' : 'archive'
-                                    }
-                                    data-project-id={project.id}
-                                    data-project-name={project.name}
-                                    aria-label={`${showArchived ? 'Leheneratu' : 'Artxibatu'} ${project.name}`}
-                                >
-                                    <svg
-                                        aria-hidden="true"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.5"
-                                    >
-                                        <path d="M4 8h16v12H4zM3 4h18v4H3zM9 12h6" />
-                                    </svg>
-                                    {showArchived ? 'Leheneratu' : 'Artxibatu'}
-                                </button>
-                            </div>
-                        </div>
-                        {project.description && (
-                            <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">
-                                {project.description}
-                            </p>
-                        )}
-                        <div class="mt-3">
-                            <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                                <span
-                                    class:list={[
-                                        'rounded-full border px-2.5 py-1 font-semibold',
-                                        project.status === 'active'
-                                            ? 'border-teal-200 bg-teal-50 text-teal-700'
+                                        {project.status === 'active'
+                                            ? 'Aktibo'
                                             : project.status === 'completed'
-                                              ? 'border-slate-200 bg-slate-50 text-slate-600'
-                                              : 'border-amber-200 bg-amber-50 text-amber-700',
-                                    ]}
-                                >
-                                    {project.status === 'active'
-                                        ? 'Aktibo'
-                                        : project.status === 'completed'
-                                          ? 'Amaituta'
-                                          : isArchivedProject(project)
-                                            ? 'Artxibatuta'
-                                            : 'Prestaketa'}
-                                </span>
-                                <span>
-                                    Sortua:{' '}
-                                    {project.createdAt
-                                        ? new Date(
-                                              project.createdAt,
-                                          ).toLocaleDateString('eu-ES')
-                                        : 'Data ezezaguna'}
-                                </span>
-                            </div>
-                        </div>
-                        {project.accessCode && (
-                            <div class="mt-4">
-                                <button
-                                    type="button"
-                                    class="copy-code-btn inline-flex min-h-11 max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-800 transition-colors hover:border-teal-300 hover:bg-teal-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:cursor-wait"
-                                    data-access-code={project.accessCode}
-                                    aria-label={`Kopiatu ${project.name} proiektuaren kodea: ${project.accessCode}`}
-                                    title="Kopiatu kodea"
-                                >
-                                    <span class="text-xs font-medium">
-                                        Kodea:
+                                              ? 'Amaituta'
+                                              : isArchivedProject(project)
+                                                ? 'Artxibatuta'
+                                                : 'Prestaketa'}
                                     </span>
-                                    <span class="break-all font-mono font-bold tracking-wider">
+                                    <span>
+                                        Sortua:{' '}
+                                        {project.createdAt
+                                            ? new Date(
+                                                  project.createdAt,
+                                              ).toLocaleDateString('eu-ES')
+                                            : 'Data ezezaguna'}
+                                    </span>
+                                </div>
+                            </div>
+                            {project.accessCode && (
+                                <div class="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                                    <span class="text-xs">Kodea:</span>
+                                    <span class="break-all font-mono font-semibold tracking-wider text-slate-800">
                                         {project.accessCode}
                                     </span>
+                                    <button
+                                        type="button"
+                                        class="copy-code-btn inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-teal-50 hover:text-teal-700"
+                                        data-access-code={project.accessCode}
+                                        aria-label={`Kopiatu ${project.name} proiektuaren kodea: ${project.accessCode}`}
+                                        title="Kopiatu kodea"
+                                    >
+                                        <span data-copy-icon aria-hidden="true">
+                                            <svg
+                                                aria-hidden="true"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                class="h-4 w-4"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                stroke-width="1.5"
+                                            >
+                                                <rect
+                                                    x="9"
+                                                    y="9"
+                                                    width="11"
+                                                    height="11"
+                                                    rx="2"
+                                                />
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4"
+                                                />
+                                            </svg>
+                                        </span>
+                                        <span
+                                            data-copy-check
+                                            hidden
+                                            aria-hidden="true"
+                                        >
+                                            <svg
+                                                aria-hidden="true"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                class="h-4 w-4 text-teal-700"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="m5 12 4 4L19 6"
+                                                />
+                                            </svg>
+                                        </span>
+                                        <span
+                                            class="copy-feedback sr-only"
+                                            role="status"
+                                            aria-live="polite"
+                                            aria-atomic="true"
+                                        ></span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <div class="project-controls flex min-w-0 flex-col items-end justify-between gap-4">
+                            <details class="project-menu teacher-menu">
+                                <summary
+                                    aria-label={`${project.name}: proiektuaren aukerak`}
+                                    title="Proiektuaren aukerak"
+                                >
                                     <svg
                                         aria-hidden="true"
                                         xmlns="http://www.w3.org/2000/svg"
-                                        class="h-4 w-4 shrink-0"
-                                        fill="none"
+                                        class="h-5 w-5"
+                                        fill="currentColor"
                                         viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                        stroke-width="1.5"
                                     >
-                                        <rect
-                                            x="9"
-                                            y="9"
-                                            width="11"
-                                            height="11"
-                                            rx="2"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4"
-                                        />
+                                        <circle cx="5" cy="12" r="2" />
+                                        <circle cx="12" cy="12" r="2" />
+                                        <circle cx="19" cy="12" r="2" />
                                     </svg>
-                                    <span
-                                        class="copy-feedback text-xs font-semibold"
-                                        role="status"
-                                        aria-live="polite"
-                                        aria-atomic="true"
+                                </summary>
+                                <div class="teacher-menu-content">
+                                    <button
+                                        type="button"
+                                        class="project-action-btn text-slate-700"
+                                        data-action={
+                                            showArchived ? 'restore' : 'archive'
+                                        }
+                                        data-project-id={project.id}
+                                        data-project-name={project.name}
+                                        aria-label={`${showArchived ? 'Leheneratu' : 'Artxibatu'} ${project.name}`}
                                     >
-                                        Kopiatu
-                                    </span>
-                                </button>
+                                        {showArchived
+                                            ? 'Leheneratu proiektua'
+                                            : 'Artxibatu proiektua'}
+                                    </button>
+                                    {isMaster(Astro.locals.teacherAccess) && (
+                                        <button
+                                            type="button"
+                                            class="project-action-btn text-red-700"
+                                            data-action="delete"
+                                            data-project-id={project.id}
+                                            data-project-name={project.name}
+                                            aria-label={`Ezabatu betiko ${project.name}`}
+                                        >
+                                            Ezabatu betiko
+                                        </button>
+                                    )}
+                                </div>
+                            </details>
+                            <div class="grid w-full gap-2">
+                                <a
+                                    href={`/admin/monitor/${project.id}`}
+                                    class="teacher-button teacher-button-primary text-center"
+                                >
+                                    Kudeatu
+                                </a>
+                                <a
+                                    href={`/admin/teams/${project.id}`}
+                                    class="teacher-button text-center"
+                                >
+                                    Ikusi taldeak
+                                </a>
                             </div>
-                        )}
+                        </div>
                     </div>
-                    <div class="flex flex-col justify-center border-t border-slate-100 bg-slate-50/60 p-5 xl:border-l xl:border-t-0">
+                    <div class="flex flex-col justify-center project-progress rounded-b-xl border-t border-slate-100 bg-slate-50/60 p-5 lg:rounded-b-none lg:rounded-r-xl lg:border-l lg:border-t-0">
                         <div class="mb-3 flex items-end justify-between gap-2">
                             <span class="text-xs text-slate-500">
                                 Inkestaren egoera
@@ -243,20 +272,6 @@ const feedback = new Map([
                                 : `${project.completedStudents} / ${project.totalStudents} ikaslek erantzun dute`}
                         </p>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 border-t border-slate-100 p-4 xl:content-center xl:grid-cols-1 xl:border-l xl:border-t-0">
-                        <a
-                            href={`/admin/monitor/${project.id}`}
-                            class="flex min-h-11 items-center justify-center rounded-lg bg-teal-600 px-3 py-2 text-center text-sm font-bold text-white transition-colors hover:bg-teal-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
-                        >
-                            Kudeatu
-                        </a>
-                        <a
-                            href={`/admin/teams/${project.id}`}
-                            class="flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
-                        >
-                            Ikusi taldeak
-                        </a>
-                    </div>
                 </article>
             ))}
             {projectStats.length === 0 && (
@@ -276,28 +291,63 @@ const feedback = new Map([
         .forEach((button) => {
             const feedback =
                 button.querySelector<HTMLElement>('.copy-feedback');
+            const copyIcon =
+                button.querySelector<HTMLElement>('[data-copy-icon]');
+            const checkIcon =
+                button.querySelector<HTMLElement>('[data-copy-check]');
             const code = button.dataset.accessCode;
-            if (!feedback || !code) return;
+            if (!feedback || !copyIcon || !checkIcon || !code) return;
+            const label = button.getAttribute('aria-label') || 'Kopiatu kodea';
             let resetTimer: number | undefined;
 
             button.addEventListener('click', async () => {
                 window.clearTimeout(resetTimer);
                 button.disabled = true;
+                button.setAttribute('aria-label', label);
+                button.title = 'Kopiatzen…';
+                copyIcon.removeAttribute('hidden');
+                checkIcon.setAttribute('hidden', '');
                 feedback.textContent = 'Kopiatzen…';
                 try {
                     await navigator.clipboard.writeText(code);
+                    copyIcon.setAttribute('hidden', '');
+                    checkIcon.removeAttribute('hidden');
                     feedback.textContent = 'Kopiatuta!';
+                    button.setAttribute('aria-label', 'Kodea kopiatuta');
+                    button.title = 'Kodea kopiatuta';
                 } catch {
                     feedback.textContent =
                         'Ezin izan da kopiatu. Saiatu berriro.';
+                    button.title = feedback.textContent;
                 } finally {
                     button.disabled = false;
                     resetTimer = window.setTimeout(() => {
-                        feedback.textContent = 'Kopiatu';
+                        feedback.textContent = '';
+                        copyIcon.removeAttribute('hidden');
+                        checkIcon.setAttribute('hidden', '');
+                        button.setAttribute('aria-label', label);
+                        button.title = 'Kopiatu kodea';
                     }, 1500);
                 }
             });
         });
+
+    const menus =
+        document.querySelectorAll<HTMLDetailsElement>('.project-menu');
+    document.addEventListener('click', (event) => {
+        menus.forEach((menu) => {
+            if (event.target instanceof Node && !menu.contains(event.target))
+                menu.open = false;
+        });
+    });
+    menus.forEach((menu) => {
+        menu.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && menu.open) {
+                menu.open = false;
+                menu.querySelector('summary')?.focus();
+            }
+        });
+    });
 
     document
         .querySelectorAll<HTMLButtonElement>('.project-action-btn')
@@ -319,6 +369,8 @@ const feedback = new Map([
                           ? `Artxibatu "${projectName}"? Datuak mantenduko dira eta proiektua leheneratu ahal izango duzu. Inkestarako esteka zaharrak baliogabetuko dira.`
                           : `Leheneratu "${projectName}"? Aurreko egoerara itzuliko da; egoera ezezaguna bada, prestaketara. Inkestarako esteka berriak sortu beharko dira.`;
                 if (!confirm(message)) return;
+                const menu = button.closest('details');
+                if (menu) menu.open = false;
                 const feedback = document.getElementById(
                     'project-action-feedback',
                 );
