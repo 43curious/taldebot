@@ -4,6 +4,7 @@ import type {
     FormationSnapshot,
     HistoryMode,
     PreferenceKind,
+    ClassGroupAudience,
 } from '../src/lib/trackingTypes';
 import type { Skills } from '../src/lib/skills';
 import {
@@ -12,6 +13,7 @@ import {
     integer,
     unique,
     index,
+    uniqueIndex,
     check,
 } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
@@ -104,6 +106,9 @@ export const projects = sqliteTable('projects', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     name: text('name').notNull(),
     description: text('description'),
+    audienceSnapshot: text('audience_snapshot', {
+        mode: 'json',
+    }).$type<ClassGroupAudience>(),
     numTeams: integer('num_teams'),
     targetTeamSize: integer('target_team_size'),
     projectType: text('project_type')
@@ -130,10 +135,66 @@ export const projects = sqliteTable('projects', {
     accessCode: text('access_code').unique(),
 });
 
+export const classGroups = sqliteTable(
+    'class_groups',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        classId: integer('class_id').references(() => classes.id, {
+            onDelete: 'set null',
+        }),
+        className: text('class_name').notNull(),
+        name: text('name').notNull(),
+        moduleName: text('module_name').notNull(),
+        sourceAssignmentId: integer('source_assignment_id').references(
+            () => confirmedAssignments.id,
+            { onDelete: 'restrict' },
+        ),
+        createdBy: integer('created_by')
+            .notNull()
+            .references(() => users.id, { onDelete: 'restrict' }),
+        createdAt: text('created_at').notNull(),
+        archivedAt: text('archived_at'),
+    },
+    (table) => [
+        uniqueIndex('active_class_group_name')
+            .on(table.classId, table.moduleName, table.name)
+            .where(sql`${table.archivedAt} IS NULL`),
+    ],
+);
+
+export const classGroupMembers = sqliteTable(
+    'class_group_members',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        groupId: integer('group_id')
+            .notNull()
+            .references(() => classGroups.id, { onDelete: 'restrict' }),
+        studentId: integer('student_id')
+            .notNull()
+            .references(() => studentRecords.id, { onDelete: 'restrict' }),
+        joinedAt: text('joined_at').notNull(),
+        leftAt: text('left_at'),
+        addedBy: integer('added_by')
+            .notNull()
+            .references(() => users.id, { onDelete: 'restrict' }),
+        source: text('source')
+            .$type<'manual' | 'confirmed-assignment'>()
+            .notNull(),
+    },
+    (table) => [
+        uniqueIndex('active_group_membership')
+            .on(table.groupId, table.studentId)
+            .where(sql`${table.leftAt} IS NULL`),
+    ],
+);
+
 // Minimal provenance for retained student history after the working project is deleted.
 export const deletedProjectSources = sqliteTable('deleted_project_sources', {
     id: integer('id').primaryKey(),
     name: text('name').notNull(),
+    audienceSnapshot: text('audience_snapshot', {
+        mode: 'json',
+    }).$type<ClassGroupAudience>(),
     projectType: text('project_type').notNull(),
     academicPeriod: text('academic_period'),
     collectionYear: integer('collection_year'),

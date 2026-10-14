@@ -92,6 +92,14 @@ const filterUrl = (nextStatus: string) =>
                 <h1 id="tracking-heading" class="break-words">
                     {project.name}
                 </h1>
+                {project.audienceSnapshot && (
+                    <p class="mt-2 text-xs text-slate-500">
+                        {project.audienceSnapshot.className} ·{' '}
+                        {project.audienceSnapshot.moduleName} ·{' '}
+                        {project.audienceSnapshot.groupName} · Jarduera sortzean
+                        hautatutako kideak
+                    </p>
+                )}
                 <p class="mt-2 text-sm text-slate-500">
                     Inkestaren jarraipena ·{' '}
                     {project.numTeams

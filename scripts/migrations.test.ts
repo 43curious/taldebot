@@ -29,7 +29,7 @@ it('initializes every table, preserves existing rows and v2 labels, and records 
         ).toMatchObject([{ algorithm_version: 'v2', justification: 'keep' }]);
         expect(
             (await client.execute('SELECT * FROM __drizzle_migrations')).rows,
-        ).toHaveLength(5);
+        ).toHaveLength(6);
         expect(
             (await client.execute('PRAGMA foreign_key_check')).rows,
         ).toHaveLength(0);

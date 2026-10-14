@@ -13,6 +13,7 @@ import {
     updateStudentIdentity,
     endEnrollment,
     moveStudent,
+    enrollExistingStudent,
 } from '../../lib/studentIdentity';
 import {
     requireClass,
@@ -77,6 +78,7 @@ if (Astro.request.method === 'POST') {
                 'import',
                 'delete-student',
                 'move-student',
+                'enroll-student',
             ].includes(action)
         )
             requireClass(access, Number(value(form, 'classId')));
@@ -215,6 +217,24 @@ if (Astro.request.method === 'POST') {
                 ),
             );
             success = 'Matrikula amaitu da. Ikaslearen jarraipena gorde da.';
+        } else if (action === 'enroll-student') {
+            const member = await db.query.classMembers.findFirst({
+                where: and(
+                    eq(classMembers.id, Number(value(form, 'id'))),
+                    eq(classMembers.classId, activeClassId),
+                ),
+            });
+            if (!member?.studentRecordId)
+                throw new Error('Ikaslearen identitatea berrikusi behar da.');
+            await enrollExistingStudent(
+                db,
+                access,
+                member.studentRecordId,
+                Number(value(form, 'destinationClassId')),
+                value(form, 'academicPeriod') || academicPeriod(),
+            );
+            success =
+                'Matrikula gehitu da. Aurreko klaseetako matrikulak mantendu dira.';
         } else if (action === 'move-student') {
             await moveStudent(
                 db,
@@ -557,6 +577,14 @@ if (unassignedClasses.length)
             </>
         ) : (
             <>
+                {classScope.selectedClass && (
+                    <a
+                        href={`/admin/groups?${new URLSearchParams({ degree: classScope.degree, class: String(classScope.selectedClass.id) })}`}
+                        class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700"
+                    >
+                        Moduluko taldeak kudeatu →
+                    </a>
+                )}
                 <ClassSelector degrees={allDegrees} scope={classScope} />
                 {classScope.selectedClass && (
                     <form
@@ -1429,20 +1457,34 @@ if (unassignedClasses.length)
                                                                                         </a>
                                                                                         <details class="mt-3">
                                                                                             <summary class="cursor-pointer text-xs text-slate-500">
-                                                                                                Klasez
+                                                                                                Beste
+                                                                                                matrikula
+                                                                                                gehitu
                                                                                                 /
-                                                                                                ikasturtez
+                                                                                                klasez
                                                                                                 aldatu
                                                                                             </summary>
                                                                                             <form
                                                                                                 method="POST"
                                                                                                 class="teacher-toolbar mt-3"
                                                                                             >
-                                                                                                <input
-                                                                                                    type="hidden"
-                                                                                                    name="action"
-                                                                                                    value="move-student"
-                                                                                                />
+                                                                                                <label class="teacher-label">
+                                                                                                    Matrikula
+                                                                                                    <select name="action">
+                                                                                                        <option value="enroll-student">
+                                                                                                            Beste
+                                                                                                            matrikula
+                                                                                                            gehitu
+                                                                                                        </option>
+                                                                                                        <option value="move-student">
+                                                                                                            Oraingoa
+                                                                                                            amaitu
+                                                                                                            eta
+                                                                                                            lekuz
+                                                                                                            aldatu
+                                                                                                        </option>
+                                                                                                    </select>
+                                                                                                </label>
                                                                                                 <input
                                                                                                     type="hidden"
                                                                                                     name="id"
@@ -1495,7 +1537,8 @@ if (unassignedClasses.length)
                                                                                                     />
                                                                                                 </label>
                                                                                                 <button class="teacher-button">
-                                                                                                    Aldatu
+                                                                                                    Matrikula
+                                                                                                    gorde
                                                                                                 </button>
                                                                                             </form>
                                                                                         </details>

@@ -12,6 +12,8 @@ import { resolveStudent, academicPeriod } from './studentIdentity';
 import { saveKnowledge, consumeRequest } from './studentUpdates';
 import type { TeacherAccess } from './access';
 import { InputError, type ProjectInput, type Submission } from './input';
+import { teachingAccess } from './access';
+import { classGroupAudience } from './classGroups';
 
 function accessCode() {
     return `${Math.floor(1000 + Math.random() * 9000)}${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]}`;
@@ -30,6 +32,23 @@ export async function createProject(
             .filter(Boolean)
             .map((name) => ({ name, email: '' }));
     return db.transaction(async (tx) => {
+        let audience: Awaited<ReturnType<typeof classGroupAudience>> | null =
+            null;
+        if (data.classGroupId) {
+            if (!access)
+                throw new InputError('Klasearen baimena behar da.', 403);
+            audience = await classGroupAudience(
+                tx,
+                await teachingAccess(tx, access.actor),
+                data.classGroupId,
+                participants.map((person) =>
+                    'studentRecordId' in person &&
+                    typeof person.studentRecordId === 'number'
+                        ? person.studentRecordId
+                        : 0,
+                ),
+            );
+        }
         let code = accessCode();
         for (
             let attempts = 0;
@@ -50,6 +69,7 @@ export async function createProject(
                 historyMode: data.historyMode || 'balanced',
                 name: data.name,
                 description: data.description,
+                audienceSnapshot: audience,
                 numTeams: data.numTeams ?? null,
                 targetTeamSize: data.targetTeamSize ?? null,
                 projectType: data.projectType,

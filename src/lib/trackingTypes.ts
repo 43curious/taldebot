@@ -4,6 +4,16 @@ export type AssessmentValues = { [Key in keyof Skills]: Partial<Skills[Key]> };
 export type PreferenceKind = 'comfort' | 'preferWith' | 'preferAvoid';
 export type HistoryMode = 'variety' | 'balanced' | 'familiar';
 export type FormationMethod = 'survey' | 'random' | 'manual' | 'location';
+export interface ClassGroupAudience {
+    groupId: number;
+    groupName: string;
+    moduleName: string;
+    classId: number;
+    className: string;
+    year: number;
+    capturedAt: string;
+    studentIds: number[];
+}
 export interface Allocation {
     teamNumber: number;
     studentIds: number[];
@@ -29,6 +39,7 @@ export interface FormationInput {
     };
 }
 export interface FormationSnapshot {
+    audience?: ClassGroupAudience | null;
     // Absent on older snapshots, whose method was survey-informed.
     method?: FormationMethod;
     locationPolicy?: 'same-term-time-town-v1';

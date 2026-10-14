@@ -180,6 +180,7 @@ export async function formationInputs(
                   (project.academicPeriod || academicPeriod())),
     );
     const snapshot: FormationSnapshot = {
+        audience: project.audienceSnapshot,
         method: 'survey',
         capturedAt: new Date().toISOString(),
         configuration: {

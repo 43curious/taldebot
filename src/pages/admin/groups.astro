@@ -1,0 +1,577 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import ClassSelector from '../../components/ClassSelector.astro';
+import { db } from '../../lib/db';
+import {
+    degrees,
+    classMembers,
+    classGroups,
+    classGroupMembers,
+    confirmedAssignments,
+} from '../../../db/schema';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { classFilter, isMaster, canReadProject } from '../../lib/access';
+import { selectClassScope } from '../../lib/classSelection';
+import {
+    saveClassGroup,
+    archiveClassGroup,
+    importAssignmentGroups,
+} from '../../lib/classGroups';
+import { positiveId } from '../../lib/input';
+import { formationMethodLabel } from '../../lib/formationMethods';
+const access = Astro.locals.teacherAccess;
+let error = '',
+    feedback = '';
+let submitted: FormData | null = null;
+let selectedId = Number(Astro.url.searchParams.get('group')) || 0;
+if (Astro.request.method === 'POST') {
+    try {
+        submitted = await Astro.request.formData();
+        const action = String(submitted.get('action'));
+        if (action === 'archive') {
+            await archiveClassGroup(
+                db,
+                access,
+                positiveId.parse(submitted.get('groupId')),
+            );
+            selectedId = 0;
+            feedback =
+                'Taldea artxibatu da. Kidealdien eta jardueren historia mantendu da.';
+        } else if (action === 'import') {
+            const ids = await importAssignmentGroups(
+                db,
+                access,
+                positiveId.parse(submitted.get('classId')),
+                positiveId.parse(submitted.get('assignmentId')),
+                String(submitted.get('moduleName') || ''),
+                String(submitted.get('name') || ''),
+            );
+            selectedId = ids[0];
+            feedback = `${ids.length} moduluko talde sortu dira berretsitako esleipenetik.`;
+        } else if (action === 'create' || action === 'save') {
+            selectedId = await saveClassGroup(
+                db,
+                access,
+                {
+                    classId: positiveId.parse(submitted.get('classId')),
+                    name: String(submitted.get('name') || ''),
+                    moduleName: String(submitted.get('moduleName') || ''),
+                    studentIds: submitted
+                        .getAll('studentId')
+                        .map((value) => positiveId.parse(value)),
+                },
+                action === 'save'
+                    ? positiveId.parse(submitted.get('groupId'))
+                    : undefined,
+            );
+            feedback =
+                'Taldea gorde da. Aurreko jardueren parte-hartzaileak ez dira aldatu.';
+        }
+    } catch (caught) {
+        error =
+            caught instanceof Error
+                ? caught.message
+                : 'Ezin izan da taldea gorde.';
+    }
+}
+const [allDegrees, allClasses] = await Promise.all([
+    db.query.degrees.findMany({
+        where: isMaster(access)
+            ? undefined
+            : inArray(degrees.id, [...access.degreeIds]),
+        orderBy: (row, { asc }) => [asc(row.name)],
+    }),
+    db.query.classes.findMany({
+        where: classFilter(access),
+        orderBy: (row, { asc }) => [asc(row.year), asc(row.name)],
+    }),
+]);
+const roster = await db.query.classMembers.findMany({
+    where: inArray(
+        classMembers.classId,
+        allClasses.map((row) => row.id),
+    ),
+    orderBy: (row, { asc }) => [asc(row.name)],
+});
+const scope = selectClassScope(
+    allDegrees,
+    allClasses.map((row) => ({
+        ...row,
+        studentCount: roster.filter((member) => member.classId === row.id)
+            .length,
+    })),
+    Astro.url.searchParams,
+);
+const classId = scope.selectedClass?.id;
+const currentRoster = roster.filter((row) => row.classId === classId);
+const currentIds = new Set(
+    currentRoster.flatMap((row) =>
+        row.studentRecordId ? [row.studentRecordId] : [],
+    ),
+);
+const groups = classId
+    ? await db.query.classGroups.findMany({
+          where: and(
+              eq(classGroups.classId, classId),
+              isNull(classGroups.archivedAt),
+          ),
+          orderBy: (row, { asc }) => [asc(row.moduleName), asc(row.name)],
+      })
+    : [];
+const selected = groups.find((row) => row.id === selectedId);
+const memberships = groups.length
+    ? await db.query.classGroupMembers.findMany({
+          where: inArray(
+              classGroupMembers.groupId,
+              groups.map((row) => row.id),
+          ),
+      })
+    : [];
+const activeIds = new Set(
+    memberships
+        .filter((row) => row.groupId === selected?.id && !row.leftAt)
+        .map((row) => row.studentId),
+);
+const visibleRoster = selected
+    ? currentRoster.filter(
+          (row) => row.studentRecordId && activeIds.has(row.studentRecordId),
+      )
+    : currentRoster;
+const assignments = classId
+    ? (
+          await db.query.confirmedAssignments.findMany({
+              where: and(
+                  isNull(confirmedAssignments.supersededAt),
+                  isMaster(access)
+                      ? undefined
+                      : inArray(confirmedAssignments.projectId, [
+                            ...access.projectIds,
+                        ]),
+              ),
+              orderBy: (row, { desc }) => [desc(row.confirmedAt)],
+          })
+      ).filter(
+          (row) =>
+              row.projectId &&
+              canReadProject(access, row.projectId) &&
+              !row.supersededAt &&
+              row.allocation.length &&
+              row.allocation
+                  .flatMap((team) => team.studentIds)
+                  .every((id) => currentIds.has(id)),
+      )
+    : [];
+const sourceAssignment = assignments.find(
+    (row) => row.id === selected?.sourceAssignmentId,
+);
+const classQuery = new URLSearchParams({
+    degree: scope.degree,
+    class: String(classId || ''),
+});
+const draft = (action: string, key: string, fallback = '') =>
+    error && submitted?.get('action') === action
+        ? String(submitted.get(key) || '')
+        : fallback;
+const checked = (action: string, id: number, fallback: boolean) =>
+    error && submitted?.get('action') === action
+        ? submitted.getAll('studentId').map(Number).includes(id)
+        : fallback;
+const date = (value: string) => new Date(value).toLocaleString('eu-ES');
+---
+
+<AdminLayout title="Moduluko taldeak">
+    <section class="teacher-page">
+        <header class="mb-5">
+            <h1>Moduluko taldeak</h1>
+            <p class="mt-2 text-sm text-slate-500">
+                Klase baten talde berrerabilgarriak. Ikasle bat hainbat taldetan
+                egon daiteke.
+            </p>
+        </header>
+        {error && (
+            <p role="alert" class="mb-4 text-sm text-red-700">
+                {error}
+            </p>
+        )}
+        {feedback && (
+            <p role="status" class="mb-4 text-sm text-teal-700">
+                {feedback}
+            </p>
+        )}
+        <ClassSelector degrees={allDegrees} scope={scope} />
+        {classId ? (
+            <>
+                <form method="GET" class="teacher-toolbar mb-4">
+                    <input type="hidden" name="degree" value={scope.degree} />
+                    <input type="hidden" name="class" value={classId} />
+                    <label class="teacher-label">
+                        Moduluko taldea
+                        <select name="group">
+                            <option value="">Klase osoa</option>
+                            {groups.map((group) => (
+                                <option
+                                    value={group.id}
+                                    selected={group.id === selected?.id}
+                                >
+                                    {group.moduleName} · {group.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <button class="teacher-button">Ikusi</button>
+                    {selected && (
+                        <a
+                            class="teacher-button"
+                            href={`/admin/create-project?${classQuery}&group=${selected.id}`}
+                        >
+                            Talde honekin jarduera / inkesta sortu
+                        </a>
+                    )}
+                </form>
+                <section class="teacher-panel mb-5">
+                    <header class="border-b border-slate-100 p-4">
+                        <h2 class="text-sm">
+                            {selected
+                                ? `${selected.moduleName} · ${selected.name}`
+                                : scope.selectedClass?.name}{' '}
+                            · {visibleRoster.length} ikasle
+                        </h2>
+                    </header>
+                    <ul class="divide-y divide-slate-100 px-4">
+                        {visibleRoster.map((member) => (
+                            <li class="flex flex-wrap justify-between gap-2 py-3 text-sm">
+                                <span>
+                                    {member.studentRecordId ? (
+                                        <a
+                                            href={`/admin/students/${member.studentRecordId}`}
+                                            class="hover:text-teal-700"
+                                        >
+                                            {member.name}
+                                        </a>
+                                    ) : (
+                                        member.name
+                                    )}
+                                </span>
+                                <span class="text-xs text-slate-500">
+                                    {member.division === 'sormena'
+                                        ? 'Sormena'
+                                        : member.division === 'digitala'
+                                          ? 'Digitala'
+                                          : 'Espezialitaterik gabe'}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                    {!visibleRoster.length && (
+                        <p class="p-4 text-sm text-slate-500">
+                            {selected
+                                ? 'Talde honek ez du egungo kiderik. Gehitu klaseko ikasleak beheko edizioan.'
+                                : 'Klase honek ez du ikaslerik. Gehitu ikasleak klaseen kudeaketan.'}
+                        </p>
+                    )}
+                </section>
+                {selected && (
+                    <details
+                        class="teacher-panel mb-5"
+                        open={Boolean(
+                            error && submitted?.get('action') === 'save',
+                        )}
+                    >
+                        <summary class="cursor-pointer p-4 text-sm text-slate-600">
+                            Taldea eta kideak editatu
+                        </summary>
+                        <form
+                            method="POST"
+                            class="space-y-4 border-t border-slate-100 p-4"
+                        >
+                            <input type="hidden" name="action" value="save" />
+                            <input
+                                type="hidden"
+                                name="groupId"
+                                value={selected.id}
+                            />
+                            <input
+                                type="hidden"
+                                name="classId"
+                                value={classId}
+                            />
+                            <div class="teacher-toolbar">
+                                <label class="teacher-label">
+                                    Modulua
+                                    <input
+                                        name="moduleName"
+                                        required
+                                        maxlength="100"
+                                        value={draft(
+                                            'save',
+                                            'moduleName',
+                                            selected.moduleName,
+                                        )}
+                                    />
+                                </label>
+                                <label class="teacher-label">
+                                    Taldearen izena
+                                    <input
+                                        name="name"
+                                        required
+                                        maxlength="100"
+                                        value={draft(
+                                            'save',
+                                            'name',
+                                            selected.name,
+                                        )}
+                                    />
+                                </label>
+                            </div>
+                            <p class="text-xs text-slate-500">
+                                Kideak kentzeak taldeko kidealdia amaitzen du.
+                                Aurreko esleipenak eta erantzunak mantentzen
+                                dira.
+                            </p>
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                {currentRoster
+                                    .filter((row) => row.studentRecordId)
+                                    .map((member) => (
+                                        <label class="flex min-h-11 items-center gap-3 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                name="studentId"
+                                                value={member.studentRecordId!}
+                                                checked={checked(
+                                                    'save',
+                                                    member.studentRecordId!,
+                                                    activeIds.has(
+                                                        member.studentRecordId!,
+                                                    ),
+                                                )}
+                                            />
+                                            {member.name}
+                                        </label>
+                                    ))}
+                            </div>
+                            <button class="teacher-button">
+                                Aldaketak gorde
+                            </button>
+                        </form>
+                        <details class="border-t border-slate-100 p-4">
+                            <summary class="cursor-pointer text-xs text-slate-500">
+                                Kideen historia eta jatorria
+                            </summary>
+                            <p class="mt-3 text-xs text-slate-500">
+                                {selected.sourceAssignmentId
+                                    ? sourceAssignment
+                                        ? `${sourceAssignment.projectName} · ${sourceAssignment.revision}. berrikuspen berretsitik`
+                                        : 'Berretsitako jardueraren taldetik'
+                                    : 'Eskuz sortutako taldea'}{' '}
+                                · {date(selected.createdAt)}
+                            </p>
+                            <ul class="mt-3 space-y-2">
+                                {memberships
+                                    .filter(
+                                        (row) => row.groupId === selected.id,
+                                    )
+                                    .map((row) => (
+                                        <li class="text-xs text-slate-500">
+                                            {currentRoster.find(
+                                                (member) =>
+                                                    member.studentRecordId ===
+                                                    row.studentId,
+                                            )?.name ||
+                                                'Klase honetako matrikula amaituta'}{' '}
+                                            · {date(row.joinedAt)} →{' '}
+                                            {row.leftAt
+                                                ? date(row.leftAt)
+                                                : 'Egungoa'}{' '}
+                                            ·{' '}
+                                            {row.source ===
+                                            'confirmed-assignment'
+                                                ? 'Berretsitako taldetik'
+                                                : 'Irakasleak eskuz'}
+                                        </li>
+                                    ))}
+                            </ul>
+                        </details>
+                        <form
+                            method="POST"
+                            class="border-t border-slate-100 p-4"
+                            onsubmit="return confirm('Taldea artxibatu eta egungo kidealdiak amaitu? Aurreko jarduerak mantenduko dira.')"
+                        >
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="archive"
+                            />
+                            <input
+                                type="hidden"
+                                name="groupId"
+                                value={selected.id}
+                            />
+                            <button class="teacher-button">
+                                Taldea artxibatu
+                            </button>
+                        </form>
+                    </details>
+                )}
+                <details
+                    class="teacher-panel mb-5"
+                    open={Boolean(
+                        error && submitted?.get('action') === 'create',
+                    )}
+                >
+                    <summary class="cursor-pointer p-4 text-sm text-slate-600">
+                        Moduluko talde berria sortu
+                    </summary>
+                    <form
+                        method="POST"
+                        class="space-y-4 border-t border-slate-100 p-4"
+                    >
+                        <input type="hidden" name="action" value="create" />
+                        <input type="hidden" name="classId" value={classId} />
+                        <div class="teacher-toolbar">
+                            <label class="teacher-label">
+                                Modulua
+                                <input
+                                    name="moduleName"
+                                    required
+                                    maxlength="100"
+                                    value={draft('create', 'moduleName')}
+                                />
+                            </label>
+                            <label class="teacher-label">
+                                Taldearen izena
+                                <input
+                                    name="name"
+                                    required
+                                    maxlength="100"
+                                    value={draft('create', 'name')}
+                                />
+                            </label>
+                        </div>
+                        <div class="grid gap-2 sm:grid-cols-2">
+                            {currentRoster
+                                .filter((row) => row.studentRecordId)
+                                .map((member) => (
+                                    <label class="flex min-h-11 items-center gap-3 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            name="studentId"
+                                            value={member.studentRecordId!}
+                                            checked={checked(
+                                                'create',
+                                                member.studentRecordId!,
+                                                false,
+                                            )}
+                                        />
+                                        {member.name}
+                                    </label>
+                                ))}
+                        </div>
+                        <button class="teacher-button">Taldea sortu</button>
+                    </form>
+                </details>
+                <details
+                    class="teacher-panel mb-5"
+                    open={Boolean(
+                        error && submitted?.get('action') === 'import',
+                    )}
+                >
+                    <summary class="cursor-pointer p-4 text-sm text-slate-600">
+                        Berretsitako taldeak modulurako gorde
+                    </summary>
+                    <div class="space-y-4 border-t border-slate-100 p-4">
+                        <p class="text-xs text-slate-500">
+                            Ausazko taldeak prestatzeko, sortu klaseko jarduera
+                            bat, aukeratu «Ausaz» eta berretsi taldeak. Ondoren,
+                            gorde hemen. Zirriborroek ez dute talde
+                            berrerabilgarririk sortzen.
+                        </p>
+                        <a
+                            class="teacher-button"
+                            href={`/admin/create-project?${classQuery}`}
+                        >
+                            Klaseko jarduera sortu
+                        </a>
+                        {assignments.length ? (
+                            <form method="POST" class="space-y-3">
+                                <input
+                                    type="hidden"
+                                    name="action"
+                                    value="import"
+                                />
+                                <input
+                                    type="hidden"
+                                    name="classId"
+                                    value={classId}
+                                />
+                                <label class="teacher-label">
+                                    Berretsitako esleipena
+                                    <select name="assignmentId" required>
+                                        {assignments.map((row) => (
+                                            <option
+                                                value={row.id}
+                                                selected={
+                                                    draft(
+                                                        'import',
+                                                        'assignmentId',
+                                                    ) === String(row.id)
+                                                }
+                                            >
+                                                {row.projectName} ·{' '}
+                                                {row.revision}. berrikuspena ·{' '}
+                                                {formationMethodLabel(
+                                                    row.inputSnapshot,
+                                                )}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <div class="teacher-toolbar">
+                                    <label class="teacher-label">
+                                        Modulua
+                                        <input
+                                            name="moduleName"
+                                            required
+                                            maxlength="100"
+                                            value={draft(
+                                                'import',
+                                                'moduleName',
+                                            )}
+                                        />
+                                    </label>
+                                    <label class="teacher-label">
+                                        Taldeen izen-aurrizkia
+                                        <input
+                                            name="name"
+                                            required
+                                            maxlength="95"
+                                            value={draft('import', 'name')}
+                                        />
+                                    </label>
+                                </div>
+                                <button class="teacher-button">
+                                    Moduluko taldeak sortu
+                                </button>
+                            </form>
+                        ) : (
+                            <p class="text-sm text-slate-500">
+                                Ez dago klase honetako egungo ikasleekin
+                                osatutako berrespen erabilgarririk.
+                            </p>
+                        )}
+                    </div>
+                </details>
+                <a
+                    href={`/admin/classes?${classQuery}`}
+                    class="text-sm text-slate-500 hover:text-teal-700"
+                >
+                    ← Klaseko zerrenda
+                </a>
+            </>
+        ) : (
+            <p class="teacher-panel p-5 text-sm text-slate-500">
+                Sortu edo aukeratu klase bat moduluko taldeak kudeatzeko.
+            </p>
+        )}
+    </section>
+</AdminLayout>

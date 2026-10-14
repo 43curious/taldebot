@@ -6,7 +6,9 @@ import { teachingAccess, requireStudent, requireProject } from '../access';
 import {
     resolveStudent,
     enrollStudent,
+    enrollExistingStudent,
     moveStudent,
+    endEnrollment,
     updateStudentIdentity,
 } from '../studentIdentity';
 import { createProject } from '../projectOperations';
@@ -977,4 +979,55 @@ it('keeps hard separations above town grouping and treats roster suggestions as 
             numTeams: 1,
         }),
     ).rejects.toThrow('murrizketak');
+});
+
+it('adds an explicit concurrent enrollment without ending the first and rejects revoked destination access', async () => {
+    const s = await setup();
+    const first = await s.db.query.classMembers.findFirst({
+        where: eq(schema.classMembers.studentRecordId, s.people[0].id),
+    });
+    await enrollExistingStudent(
+        s.db,
+        s.access,
+        s.people[0].id,
+        s.groups[1].id,
+        '2026-2027',
+    );
+    await enrollExistingStudent(
+        s.db,
+        s.access,
+        s.people[0].id,
+        s.groups[1].id,
+        '2026-2027',
+    );
+    expect(
+        await s.db.query.classMembers.findMany({
+            where: eq(schema.classMembers.studentRecordId, s.people[0].id),
+        }),
+    ).toHaveLength(2);
+    expect(
+        (
+            await s.db.query.enrollments.findMany({
+                where: eq(schema.enrollments.studentId, s.people[0].id),
+            })
+        ).every((row) => row.endedAt === null),
+    ).toBe(true);
+    const access = await teachingAccess(s.db, s.teacher);
+    await expect(
+        enrollExistingStudent(
+            s.db,
+            access,
+            s.people[1].id,
+            s.groups[1].id,
+            '2026-2027',
+        ),
+    ).rejects.toThrow();
+    await endEnrollment(s.db, first!.id, s.groups[0].id);
+    expect(
+        (
+            await s.db.query.classMembers.findMany({
+                where: eq(schema.classMembers.studentRecordId, s.people[0].id),
+            })
+        ).map((row) => row.classId),
+    ).toEqual([s.groups[1].id]);
 });

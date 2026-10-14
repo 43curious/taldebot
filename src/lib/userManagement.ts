@@ -192,6 +192,8 @@ export async function deleteUser(
             UNION ALL SELECT id FROM identity_reviews WHERE resolved_by=${id}
             UNION ALL SELECT id FROM projects WHERE owner_id=${id}
             UNION ALL SELECT id FROM deleted_project_sources WHERE deleted_by=${id}
+            UNION ALL SELECT id FROM class_groups WHERE created_by=${id}
+            UNION ALL SELECT id FROM class_group_members WHERE added_by=${id}
         `);
         if (authored.length)
             throw new InputError(

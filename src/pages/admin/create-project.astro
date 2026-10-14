@@ -1,9 +1,15 @@
 ---
 export const prerender = false;
 import { db } from '../../lib/db';
-import { classes, degrees } from '../../../db/schema';
+import {
+    classes,
+    degrees,
+    classMembers,
+    classGroups,
+    classGroupMembers,
+} from '../../../db/schema';
 import { classFilter } from '../../lib/access';
-import { eq } from 'drizzle-orm';
+import { eq, inArray, and, isNull } from 'drizzle-orm';
 const access = Astro.locals.teacherAccess;
 const groups = await db
     .select({
@@ -15,7 +21,44 @@ const groups = await db
     .from(classes)
     .leftJoin(degrees, eq(classes.degreeId, degrees.id))
     .where(classFilter(access));
-const members = await db.query.classMembers.findMany();
+const members = await db.query.classMembers.findMany({
+    where: inArray(
+        classMembers.classId,
+        groups.map((group) => group.id),
+    ),
+});
+const moduleGroups = await db.query.classGroups.findMany({
+    where: and(
+        inArray(
+            classGroups.classId,
+            groups.map((group) => group.id),
+        ),
+        isNull(classGroups.archivedAt),
+    ),
+});
+const groupMembers = moduleGroups.length
+    ? await db.query.classGroupMembers.findMany({
+          where: and(
+              inArray(
+                  classGroupMembers.groupId,
+                  moduleGroups.map((group) => group.id),
+              ),
+              isNull(classGroupMembers.leftAt),
+          ),
+      })
+    : [];
+const initialDegree =
+    Astro.url.searchParams.get('degree') === 'none'
+        ? '0'
+        : Astro.url.searchParams.get('degree');
+const initialClass = groups.find(
+    (group) => String(group.id) === Astro.url.searchParams.get('class'),
+);
+const initialGroup = moduleGroups.find(
+    (group) =>
+        group.classId === initialClass?.id &&
+        String(group.id) === Astro.url.searchParams.get('group'),
+);
 const roster = members.filter(
     (row) =>
         row.studentRecordId !== null &&
@@ -132,7 +175,13 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                                             Aukeratu gradua
                                         </option>
                                         {degreeOptions.map((degree) => (
-                                            <option value={degree.id}>
+                                            <option
+                                                value={degree.id}
+                                                selected={
+                                                    String(degree.id) ===
+                                                    initialDegree
+                                                }
+                                            >
                                                 {degree.name}
                                             </option>
                                         ))}
@@ -147,10 +196,36 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                                         {groups.map((group) => (
                                             <option
                                                 value={group.id}
+                                                selected={
+                                                    group.id ===
+                                                    initialClass?.id
+                                                }
                                                 data-degree={
                                                     group.degreeId ?? 0
                                                 }
                                             >
+                                                {group.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label class="teacher-label">
+                                    Moduluko taldea
+                                    <select
+                                        id="roster-module-group"
+                                        name="classGroupId"
+                                    >
+                                        <option value="">Klase osoa</option>
+                                        {moduleGroups.map((group) => (
+                                            <option
+                                                value={group.id}
+                                                data-class={group.classId}
+                                                selected={
+                                                    group.id ===
+                                                    initialGroup?.id
+                                                }
+                                            >
+                                                {group.moduleName} ·{' '}
                                                 {group.name}
                                             </option>
                                         ))}
@@ -165,6 +240,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                                     <label
                                         class="hidden items-center gap-3 py-3"
                                         data-roster-class={member.classId}
+                                        data-roster-groups={JSON.stringify(
+                                            groupMembers
+                                                .filter(
+                                                    (row) =>
+                                                        row.studentId ===
+                                                        member.studentRecordId,
+                                                )
+                                                .map((row) => row.groupId),
+                                        )}
                                     >
                                         <input
                                             type="checkbox"
@@ -288,7 +372,7 @@ María García
                                 type="number"
                                 name="numTeams"
                                 id="numTeams"
-                                min="2"
+                                min="1"
                                 required
                                 placeholder="Ej. 5"
                                 class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-all outline-none text-sm"
@@ -406,6 +490,9 @@ María García
         const json = form.querySelector<HTMLInputElement>('#studentsJson')!;
         const degree = form.querySelector<HTMLSelectElement>('#roster-degree')!;
         const group = form.querySelector<HTMLSelectElement>('#roster-class')!;
+        const moduleGroup = form.querySelector<HTMLSelectElement>(
+            '#roster-module-group',
+        )!;
         const count = form.querySelector<HTMLInputElement>('#numTeams')!;
         const preview = document.getElementById('previewText')!;
         const sourceNames = ['roster', 'manual', 'csv'] as const;
@@ -427,6 +514,7 @@ María García
                     selectedRows.map((row) => [row.studentRecordId, row]),
                 ).values(),
             ];
+            moduleGroup.disabled = source !== 'roster';
             text.disabled = source !== 'manual';
             json.disabled = source === 'manual';
             json.value = JSON.stringify(source === 'roster' ? selected : csv);
@@ -468,28 +556,53 @@ María García
         rosterInputs.forEach((row) => row.addEventListener('change', update));
         text.addEventListener('input', update);
         count.addEventListener('input', update);
-        degree.addEventListener('change', () => {
-            group.value = '';
-            Array.from(group.options).forEach((option) => {
+        function filterRoster(selectMembers = false) {
+            form.querySelectorAll<HTMLElement>('[data-roster-class]').forEach(
+                (row) => {
+                    const visible =
+                        row.dataset.rosterClass === group.value &&
+                        (!moduleGroup.value ||
+                            JSON.parse(
+                                row.dataset.rosterGroups || '[]',
+                            ).includes(Number(moduleGroup.value)));
+                    row.classList.toggle('hidden', !visible);
+                    row.classList.toggle('flex', visible);
+                    const checkbox =
+                        row.querySelector<HTMLInputElement>('input')!;
+                    checkbox.disabled = !visible;
+                    if (!visible) checkbox.checked = false;
+                    else if (selectMembers) checkbox.checked = true;
+                },
+            );
+            update();
+        }
+        function filterGroups() {
+            for (const option of moduleGroup.options)
+                if (option.value) {
+                    option.hidden = option.dataset.class !== group.value;
+                    option.disabled = option.hidden;
+                }
+        }
+        function filterClasses() {
+            for (const option of group.options)
                 if (option.value) {
                     option.hidden = option.dataset.degree !== degree.value;
                     option.disabled = option.hidden;
                 }
-            });
-            group.dispatchEvent(new Event('change'));
+        }
+        degree.addEventListener('change', () => {
+            group.value = '';
+            moduleGroup.value = '';
+            filterClasses();
+            filterGroups();
+            filterRoster();
         });
         group.addEventListener('change', () => {
-            form.querySelectorAll<HTMLElement>('[data-roster-class]').forEach(
-                (row) => {
-                    const visible = row.dataset.rosterClass === group.value;
-                    row.classList.toggle('hidden', !visible);
-                    row.classList.toggle('flex', visible);
-                    row.querySelector<HTMLInputElement>('input')!.checked =
-                        false;
-                },
-            );
-            update();
+            moduleGroup.value = '';
+            filterGroups();
+            filterRoster();
         });
+        moduleGroup.addEventListener('change', () => filterRoster(true));
         form.querySelector<HTMLInputElement>('#csv-file')!.addEventListener(
             'change',
             (event) => {
@@ -528,7 +641,11 @@ María García
                 });
             },
         );
-        degree.dispatchEvent(new Event('change'));
+        filterClasses();
+        if (group.selectedOptions[0]?.disabled) group.value = '';
+        filterGroups();
+        if (moduleGroup.selectedOptions[0]?.disabled) moduleGroup.value = '';
+        filterRoster(Boolean(moduleGroup.value));
         update();
         form.addEventListener('submit', async (event) => {
             event.preventDefault();

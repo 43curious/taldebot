@@ -6,9 +6,17 @@ TaldeBot-ek ikaslearen etengabeko jarraipena eta proiektuko parte-hartzea bereiz
 
 Masterrak **Erabiltzaileen kudeaketa** orrian esleitzen ditu irakasleen gradu edo klaseko baimenak. Aukeratu gradua eta klasea **Klaseak** orrian; zerrenda kontrolen azpian dago. Ikaslearen izenak bere profil iraunkorra irekitzen du: datatutako gaitasunak, hobespenak, matrikulak eta berretsitako esleipenak.
 
-**Klaseak kudeatu** atalean datuak editatu edo CSV inportatu. Klasez aldatzeak ikaslearen identitatea eta historia mantentzen ditu; matrikula amaitzeak egungo zerrendatik kentzen du, jarraipena gordeaz. Sarbidea egungo arduraren arabera aldatzen da. Ohar pribatuak egileak eta masterrak ikusten dituzte.
+**Klaseak kudeatu** atalean datuak editatu edo CSV inportatu. Ikaslearen aukeretan **Beste matrikula gehitu** hautatzeak beste klaseko matrikula gehitzen du, oraingoa eta beste matrikulak mantenduz. **Oraingoa amaitu eta lekuz aldatu** hautatzeak une horretako klaseko matrikula bakarrik amaitzen du eta helmugakoa gehitzen du. Matrikula amaitzeak egungo zerrenda horretatik kentzen du, beste matrikulak eta jarraipena gordeaz. Sarbidea egungo arduraren arabera aldatzen da. Ohar pribatuak egileak eta masterrak ikusten dituzte.
 
 Profiletik autoebaluazioa, hobespenak edo biak eguneratzeko esteka pertsonala sortu daiteke, proiekturik gabe. Ikasturtea aukeratu eta esteka ikasle horrekin bakarrik partekatu. 30 eguneko balioa du, behin erabil daiteke eta beste bat sortzeak aurrekoa baliogabetzen du. Hautaketa hutsak testuinguru horretako aurreko hobespenak erretiratzen ditu; eskatu gabeko atalak mantentzen dira. Erantzun zaharrak historian geratzen dira.
+
+## Moduluko taldeak
+
+Klaseko **Moduluko taldeak kudeatu** estekan aukeratu gradua, klasea eta moduluko taldea. Taldeak klase bakarreko azpimultzo berrerabilgarriak dira; ikasle bat hainbat taldetan egon daiteke. Espezialitatea klase bakoitzeko aukerako **Sormena** edo **Digitala** da, eta taldeko kidealdietatik bereizten da.
+
+**Moduluko talde berria sortu** atalean idatzi modulua eta taldearen izena, eta aukeratu klaseko ikasleak. **Taldea eta kideak editatu** atalean kideak gehitu edo kendu; historia datatuta geratzen da. Klaseko matrikula amaitzean klase horren taldeetako kidealdiak ere amaitzen dira, beste klaseetakoak eta aurreko jarduerak mantenduz. Taldea artxibatzeak egungo kidealdiak amaitzen ditu eta jatorria gordetzen du.
+
+Ausazko taldeak modulurako gordetzeko, prestatu eta berretsi klaseko jarduera baten taldeak, eta erabili **Berretsitako taldeak modulurako gorde**. Horrek ez du parekatze-historia berririk sortzen. Taldea hautatu ondoren, **Talde honekin jarduera / inkesta sortu** aukerak egungo kideak eskaintzen ditu; parte-hartzaileak berrikusi eta talde kopurua aukeratu. Jarduerak une horretako taldea eta hautatutako ikasleak gordetzen ditu. Taldearen izena edo kideak gero aldatzeak ez ditu jarduera horretako erantzunak eta taldeak aldatzen.
 
 ## Proiektua eta inkesta
 

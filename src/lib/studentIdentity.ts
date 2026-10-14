@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, inArray } from 'drizzle-orm';
 import {
     studentRecords,
     studentEmails,
@@ -6,11 +6,19 @@ import {
     classes,
     degrees,
     enrollments,
+    classGroups,
+    classGroupMembers,
 } from '../../db/schema';
 import type { AppDatabase } from './db';
 import { studentNameKey } from './identityMatching';
 import { InputError } from './input';
-import { canReadStudent, requireClass, type TeacherAccess } from './access';
+import {
+    canReadStudent,
+    requireClass,
+    requireStudent,
+    teachingAccess,
+    type TeacherAccess,
+} from './access';
 
 export type DataSession = Pick<
     AppDatabase,
@@ -146,6 +154,28 @@ export async function importStudents(
         return inserted;
     });
 }
+// Adding a class membership never ends another enrollment.
+export async function enrollExistingStudent(
+    db: AppDatabase,
+    access: TeacherAccess,
+    studentId: number,
+    classId: number,
+    period: string,
+) {
+    return db.transaction(async (tx) => {
+        const current = await teachingAccess(tx, access.actor);
+        requireClass(current, classId);
+        requireStudent(current, studentId);
+        const person = await tx.query.studentRecords.findFirst({
+            where: eq(studentRecords.id, studentId),
+        });
+        if (!person || person.needsReview)
+            throw new InputError('Ikaslearen identitatea berrikusi behar da.');
+        if (!/^\d{4}-\d{4}$/.test(period))
+            throw new InputError('Ikasturtea ez da balioduna.');
+        return enrollStudent(tx, person, classId, period);
+    });
+}
 export async function updateStudentIdentity(
     store: DataSession,
     studentId: number,
@@ -183,6 +213,23 @@ export async function endEnrollment(
         (expectedClassId !== undefined && member.classId !== expectedClassId)
     )
         throw new InputError('Matrikula ez da existitzen.', 404);
+    if (member.studentRecordId)
+        await store
+            .update(classGroupMembers)
+            .set({ leftAt: new Date().toISOString() })
+            .where(
+                and(
+                    eq(classGroupMembers.studentId, member.studentRecordId),
+                    isNull(classGroupMembers.leftAt),
+                    inArray(
+                        classGroupMembers.groupId,
+                        store
+                            .select({ id: classGroups.id })
+                            .from(classGroups)
+                            .where(eq(classGroups.classId, member.classId)),
+                    ),
+                ),
+            );
     if (member.studentRecordId)
         await store
             .update(enrollments)

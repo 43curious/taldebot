@@ -899,6 +899,166 @@ it('keeps class and dashboard actions available after a real login', async () =>
                 })
             ).status,
         ).toBe(403);
+
+        const enrollmentSource = (
+            await db.execute(
+                'SELECT id,student_record_id FROM class_members WHERE class_id=1 AND student_record_id IS NOT NULL LIMIT 1',
+            )
+        ).rows[0];
+        const enrolled = await fetch(`${base}/admin/classes?mode=edit`, {
+            method: 'POST',
+            headers: { cookie, origin: base },
+            body: new URLSearchParams({
+                action: 'enroll-student',
+                id: String(enrollmentSource.id),
+                classId: '1',
+                destinationClassId: '4',
+                academicPeriod: '2026-2027',
+            }),
+        });
+        expect(enrolled.status).toBe(200);
+        const simultaneous = (
+            await db.execute({
+                sql: 'SELECT id,class_id FROM class_members WHERE student_record_id=? ORDER BY class_id',
+                args: [enrollmentSource.student_record_id],
+            })
+        ).rows;
+        expect(simultaneous.some((row) => row.class_id === 1)).toBe(true);
+        const addedMembership = simultaneous.find((row) => row.class_id === 4);
+        expect(addedMembership).toBeDefined();
+        const endedMembership = await fetch(`${base}/admin/classes?mode=edit`, {
+            method: 'POST',
+            headers: { cookie, origin: base },
+            body: new URLSearchParams({
+                action: 'delete-student',
+                id: String(addedMembership.id),
+                classId: '4',
+            }),
+        });
+        expect(endedMembership.status).toBe(200);
+        expect(
+            (
+                await db.execute({
+                    sql: 'SELECT id FROM class_members WHERE id=?',
+                    args: [enrollmentSource.id],
+                })
+            ).rows,
+        ).toHaveLength(1);
+
+        const groupStudentIds = (
+            await db.execute(
+                'SELECT DISTINCT c.student_record_id FROM class_members c JOIN student_records p ON p.id=c.student_record_id WHERE c.class_id=1 AND p.needs_review=0 ORDER BY c.id LIMIT 2',
+            )
+        ).rows.map((row) => Number(row.student_record_id));
+        expect(groupStudentIds).toHaveLength(2);
+        const groupBody = new URLSearchParams({
+            action: 'create',
+            classId: '1',
+            moduleName: 'Writing',
+            name: 'Script team',
+        });
+        groupStudentIds.forEach((id) =>
+            groupBody.append('studentId', String(id)),
+        );
+        const groupCreated = await fetch(
+            `${base}/admin/groups?degree=1&class=1`,
+            {
+                method: 'POST',
+                headers: { cookie, origin: base },
+                body: groupBody,
+            },
+        );
+        expect(groupCreated.status).toBe(200);
+        expect(await groupCreated.text()).toContain('Script team');
+        const reusableId = Number(
+            (
+                await db.execute(
+                    "SELECT id FROM class_groups WHERE name='Script team'",
+                )
+            ).rows[0].id,
+        );
+        const selectedGroupPage = await fetch(
+            `${base}/admin/create-project?degree=1&class=1&group=${reusableId}`,
+            { headers: { cookie } },
+        );
+        expect(selectedGroupPage.status).toBe(200);
+        expect(await selectedGroupPage.text()).toContain('Script team');
+        const activityFromGroup = await fetch(
+            `${base}/api/admin/create-project`,
+            {
+                method: 'POST',
+                redirect: 'manual',
+                headers: { cookie, origin: base },
+                body: new URLSearchParams({
+                    name: 'Group audience',
+                    numTeams: '1',
+                    projectType: 'balanced',
+                    adminEmail: 'test@example.com',
+                    classGroupId: String(reusableId),
+                    studentsJson: JSON.stringify(
+                        groupStudentIds.map((id) => ({
+                            name: 'Roster',
+                            studentRecordId: id,
+                        })),
+                    ),
+                }),
+            },
+        );
+        expect(activityFromGroup.status).toBe(302);
+        const audienceBefore = (
+            await db.execute(
+                "SELECT audience_snapshot FROM projects WHERE name='Group audience'",
+            )
+        ).rows[0].audience_snapshot;
+        expect(JSON.parse(String(audienceBefore)).groupName).toBe(
+            'Script team',
+        );
+        const changedGroup = await fetch(
+            `${base}/admin/groups?degree=1&class=1&group=${reusableId}`,
+            {
+                method: 'POST',
+                headers: { cookie, origin: base },
+                body: new URLSearchParams({
+                    action: 'save',
+                    classId: '1',
+                    groupId: String(reusableId),
+                    moduleName: 'Writing',
+                    name: 'Revised team',
+                    studentId: String(groupStudentIds[0]),
+                }),
+            },
+        );
+        expect(changedGroup.status).toBe(200);
+        expect(
+            (
+                await db.execute(
+                    "SELECT audience_snapshot FROM projects WHERE name='Group audience'",
+                )
+            ).rows[0].audience_snapshot,
+        ).toBe(audienceBefore);
+        const forgedGroup = await fetch(
+            `${base}/admin/groups?degree=1&class=1&group=${reusableId}`,
+            {
+                method: 'POST',
+                headers: { ...scopedHeaders, origin: base },
+                body: new URLSearchParams({
+                    action: 'save',
+                    classId: '1',
+                    groupId: String(reusableId),
+                    moduleName: 'Writing',
+                    name: 'Denied rename',
+                }),
+            },
+        );
+        expect(await forgedGroup.text()).toContain('baimenik');
+        expect(
+            (
+                await db.execute({
+                    sql: 'SELECT name FROM class_groups WHERE id=?',
+                    args: [reusableId],
+                })
+            ).rows[0].name,
+        ).toBe('Revised team');
     } finally {
         if (server && server.exitCode === null && server.signalCode === null) {
             server.kill();

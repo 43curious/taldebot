@@ -139,6 +139,14 @@ const generationError = Astro.url.searchParams.get('error') === 'no-students';
         <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 id="teams-heading">{project.name}</h1>
+                {project.audienceSnapshot && (
+                    <p class="mt-2 text-xs text-slate-500">
+                        {project.audienceSnapshot.className} ·{' '}
+                        {project.audienceSnapshot.moduleName} ·{' '}
+                        {project.audienceSnapshot.groupName} · Jarduera sortzean
+                        hautatutako kideak
+                    </p>
+                )}
                 <p class="mt-2 text-sm text-slate-500">
                     {projectTeams.length
                         ? `${projectTeams.length} talde · ${projectTeams.reduce((count, team) => count + team.memberIds.length, 0)} ikasle`

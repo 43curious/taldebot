@@ -16,6 +16,15 @@ _Avoid_: Class member as a permanent person
 A student's involvement in one project, including that project's attendance and survey state.
 _Avoid_: Student when referring to project-local completion or absence
 
+**Specialty**:
+An optional Sormena or Digitala specialization within one class. It is separate from a temporary working team or membership in another class.
+
+**Module group**:
+A named, reusable subset of one class for a teaching module, with dated membership. A student may belong to several groups; groups can be prepared manually or saved from confirmed activity teams.
+
+**Activity audience**:
+The students selected for an activity or its survey, retaining the class and module-group context at creation. Later membership changes do not change this audience.
+
 **Assessment**:
 A dated self-assessment with its author, questionnaire version and collection context. It is a student's reported confidence, not an academic grade.
 _Avoid_: Grade, objective ability score

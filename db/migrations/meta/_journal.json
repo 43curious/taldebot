@@ -36,6 +36,13 @@
       "when": 1791979068407,
       "tag": "0004_student_location",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791982525588,
+      "tag": "0005_class_groups",
+      "breakpoints": true
     }
   ]
 }

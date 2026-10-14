@@ -85,7 +85,7 @@ export type Submission = z.infer<typeof submissionSchema>;
 
 const optionalCount = z.preprocess(
     (value) => (value === '' || value === undefined ? undefined : value),
-    z.coerce.number().int().min(2).max(Number.MAX_SAFE_INTEGER).optional(),
+    z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional(),
 );
 const participantSchema = z.object({
     name: z.string().trim().min(1),
@@ -111,6 +111,10 @@ export const projectSchema = z
         ]),
         adminEmail: z.string().trim().email(),
         studentList: z.string().optional(),
+        classGroupId: z.preprocess(
+            (value) => (value === '' ? undefined : value),
+            positiveId.optional(),
+        ),
         studentsJson: z.preprocess(
             (value) => (value === '' ? undefined : value),
             json.pipe(z.array(participantSchema)).optional(),

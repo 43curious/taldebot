@@ -212,6 +212,7 @@ export async function deleteProject(
         await tx.insert(deletedProjectSources).values({
             id,
             name: project.name,
+            audienceSnapshot: project.audienceSnapshot,
             projectType: project.projectType,
             academicPeriod: project.academicPeriod,
             collectionYear: project.collectionYear,
