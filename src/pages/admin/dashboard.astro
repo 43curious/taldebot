@@ -3,13 +3,26 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { db } from '../../lib/db';
 import { loadDashboard } from '../../lib/projectData';
+import { isMaster } from '../../lib/access';
+import { isArchivedProject } from '../../lib/projectLifecycle';
 
 const adminUser = (await Astro.session?.get<string>('adminUser')) || 'Admin';
 const allStats = await loadDashboard(db, Astro.locals.teacherAccess);
 const showArchived = Astro.url.searchParams.get('archived') === '1';
 const projectStats = allStats.filter((project) =>
-    showArchived ? Boolean(project.archivedAt) : !project.archivedAt,
+    showArchived ? isArchivedProject(project) : !isArchivedProject(project),
 );
+const feedback = new Map([
+    ['archive', 'Proiektua artxibatu da. Historia mantendu da.'],
+    [
+        'restore',
+        'Proiektua leheneratu da. Inkestarako esteka berriak sortu behar dira.',
+    ],
+    [
+        'delete',
+        'Proiektua ezabatu da. Ikasleen historia eta jatorria mantendu dira.',
+    ],
+]).get(Astro.url.searchParams.get('feedback') || '');
 ---
 
 <AdminLayout title="Arbel nagusia">
@@ -46,6 +59,13 @@ const projectStats = allStats.filter((project) =>
             </span>
         </h2>
         <div class="space-y-4">
+            <p
+                id="project-action-feedback"
+                role="status"
+                class="text-sm text-teal-700"
+            >
+                {feedback}
+            </p>
             {projectStats.map((project) => (
                 <article class="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white xl:grid xl:grid-cols-[minmax(0,1fr)_14rem_11rem]">
                     <div class="min-w-0 p-5">
@@ -58,29 +78,58 @@ const projectStats = allStats.filter((project) =>
                                     {project.name}
                                 </a>
                             </h3>
-                            <button
-                                type="button"
-                                class="delete-project-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
-                                data-project-id={project.id}
-                                data-project-name={project.name}
-                                aria-label={`Artxibatu ${project.name}`}
-                                title="Artxibatu proiektua"
-                                disabled={Boolean(project.archivedAt)}
-                            >
-                                <svg
-                                    aria-hidden="true"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="h-5 w-5"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
+                            <div class="flex shrink-0 flex-col gap-1">
+                                {isMaster(Astro.locals.teacherAccess) && (
+                                    <button
+                                        type="button"
+                                        class="project-action-btn flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-xs text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+                                        data-action="delete"
+                                        data-project-id={project.id}
+                                        data-project-name={project.name}
+                                        aria-label={`Ezabatu betiko ${project.name}`}
+                                        title="Ezabatu proiektua betiko"
+                                    >
+                                        <svg
+                                            aria-hidden="true"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                        >
+                                            <path
+                                                fill-rule="evenodd"
+                                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                                clip-rule="evenodd"
+                                            />
+                                        </svg>
+                                        Ezabatu betiko
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    class="project-action-btn teacher-button px-2 text-xs"
+                                    data-action={
+                                        showArchived ? 'restore' : 'archive'
+                                    }
+                                    data-project-id={project.id}
+                                    data-project-name={project.name}
+                                    aria-label={`${showArchived ? 'Leheneratu' : 'Artxibatu'} ${project.name}`}
                                 >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                            </button>
+                                    <svg
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                    >
+                                        <path d="M4 8h16v12H4zM3 4h18v4H3zM9 12h6" />
+                                    </svg>
+                                    {showArchived ? 'Leheneratu' : 'Artxibatu'}
+                                </button>
+                            </div>
                         </div>
                         {project.description && (
                             <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">
@@ -103,7 +152,7 @@ const projectStats = allStats.filter((project) =>
                                         ? 'Aktibo'
                                         : project.status === 'completed'
                                           ? 'Amaituta'
-                                          : project.archivedAt
+                                          : isArchivedProject(project)
                                             ? 'Artxibatuta'
                                             : 'Prestaketa'}
                                 </span>
@@ -212,7 +261,9 @@ const projectStats = allStats.filter((project) =>
             ))}
             {projectStats.length === 0 && (
                 <p class="col-span-full rounded-2xl border-2 border-dashed border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
-                    Ez dago proiekturik oraindik. Sortu zure lehena hasteko!
+                    {showArchived
+                        ? 'Ez dago artxibatutako proiekturik.'
+                        : 'Ez dago proiekturik oraindik. Sortu zure lehena hasteko!'}
                 </p>
             )}
         </div>
@@ -248,37 +299,74 @@ const projectStats = allStats.filter((project) =>
             });
         });
 
-    const deleteButtons = document.querySelectorAll('.delete-project-btn');
-
-    deleteButtons.forEach((btn) => {
-        btn.addEventListener('click', async () => {
-            const projectId = btn.getAttribute('data-project-id');
-            const projectName = btn.getAttribute('data-project-name');
-
-            const message = `Seguru zaude "${projectName}" artxibatu nahi duzula? Ikasleen jarraipena eta aurreko esleipenak gordeko dira.`;
-
-            if (confirm(message)) {
-                try {
-                    const response = await fetch('/api/admin/delete-project', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            projectId: parseInt(projectId!),
-                        }),
-                    });
-
-                    if (response.ok) {
-                        window.location.reload();
-                    } else {
-                        alert('Errorea proiektua artxibatzerakoan.');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Errorea proiektua artxibatzerakoan.');
+    document
+        .querySelectorAll<HTMLButtonElement>('.project-action-btn')
+        .forEach((button) => {
+            button.addEventListener('click', async () => {
+                const action = button.dataset.action;
+                const projectId = Number(button.dataset.projectId);
+                const projectName = button.dataset.projectName;
+                if (
+                    action !== 'archive' &&
+                    action !== 'restore' &&
+                    action !== 'delete'
+                )
+                    return;
+                const message =
+                    action === 'delete'
+                        ? `Ezabatu "${projectName}" betiko? Proiektua, parte-hartzaileak, jatorrizko proiektuko erantzunak eta uneko taldeak ezabatuko dira. Ikasleen datatutako historia, berretsitako esleipenak eta jatorriaren datuak gordeko dira. Ezin da desegin.`
+                        : action === 'archive'
+                          ? `Artxibatu "${projectName}"? Datuak mantenduko dira eta proiektua leheneratu ahal izango duzu. Inkestarako esteka zaharrak baliogabetuko dira.`
+                          : `Leheneratu "${projectName}"? Aurreko egoerara itzuliko da; egoera ezezaguna bada, prestaketara. Inkestarako esteka berriak sortu beharko dira.`;
+                if (!confirm(message)) return;
+                const feedback = document.getElementById(
+                    'project-action-feedback',
+                );
+                const controls = button
+                    .closest('article')
+                    ?.querySelectorAll<HTMLButtonElement>(
+                        '.project-action-btn',
+                    );
+                controls?.forEach((control) => (control.disabled = true));
+                if (feedback) {
+                    feedback.setAttribute('role', 'status');
+                    feedback.textContent = 'Aldaketa gordetzen…';
                 }
-            }
+                try {
+                    const response = await fetch(
+                        action === 'delete'
+                            ? '/api/admin/delete-project'
+                            : '/api/admin/archive-project',
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                projectId,
+                                action,
+                                ...(action === 'delete'
+                                    ? { confirmed: true }
+                                    : {}),
+                            }),
+                        },
+                    );
+                    const result = await response.json();
+                    if (!response.ok)
+                        throw new Error(
+                            result.error || 'Ezin izan da aldaketa gorde.',
+                        );
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('feedback', action);
+                    window.location.assign(url.toString());
+                } catch (caught) {
+                    if (feedback) {
+                        feedback.setAttribute('role', 'alert');
+                        feedback.textContent =
+                            caught instanceof Error
+                                ? caught.message
+                                : 'Ezin izan da aldaketa gorde. Saiatu berriro.';
+                    }
+                    controls?.forEach((control) => (control.disabled = false));
+                }
+            });
         });
-    });
 </script>

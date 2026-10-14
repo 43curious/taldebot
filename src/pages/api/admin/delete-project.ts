@@ -2,12 +2,11 @@ import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { db } from '../../../lib/db';
 import { InputError, routeError } from '../../../lib/input';
-import { requireProject } from '../../../lib/access';
-import { projects } from '../../../../db/schema';
-import { eq } from 'drizzle-orm';
+import { deleteProject } from '../../../lib/projectLifecycle';
 
 const deletionSchema = z.object({
     projectId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    confirmed: z.literal(true),
 });
 export const POST: APIRoute = async ({ request, locals }) => {
     try {
@@ -15,14 +14,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
             throw new InputError('Invalid JSON');
         });
         const { projectId } = deletionSchema.parse(body);
-        requireProject(locals.teacherAccess, projectId);
-        const deleted = await db
-            .update(projects)
-            .set({ status: 'archived', archivedAt: new Date().toISOString() })
-            .where(eq(projects.id, projectId))
-            .returning({ id: projects.id });
-        if (!deleted.length) throw new InputError('Project not found', 404);
-        return Response.json({ success: true });
+        await deleteProject(db, locals.teacherAccess, projectId);
+        return Response.json({
+            success: true,
+            message:
+                'Proiektua ezabatu da. Ikasleen historia eta jatorria mantendu dira.',
+        });
     } catch (error) {
         return routeError(error);
     }

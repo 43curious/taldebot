@@ -18,6 +18,8 @@ Proiektu-kodea sarrera orokorra da. **Kudeatu** orriko ikaslearen aukeretan sort
 
 Enter teklak ez du automatikoki bidaltzen. Huts egitean sartutako datuak mantentzen dira. Absentzia proiektu horretarako bakarrik da: ikaslea talde-sorkuntzatik eta inkestaren bete-mailatik kanpo uzten du. Erantzuna berrabiarazteak uneko erantzuna erretiratzen du eta inkesta berriz irekitzen du, baieztapenaren ondoren; datatutako historia gordetzen da.
 
+Arbelean **Artxibatu** botoiak proiektua artxibatutako zerrendara eramaten du, datuak mantenduz. **Leheneratu** botoiak aurreko egoerara itzultzen du; egoera zaharra ezezaguna bada, prestaketara. Esteka zaharrak ez dira berriz aktibatzen: sortu esteka pertsonal berriak. **Ezabatu betiko** masterrentzat bakarrik da eta ezin da desegin. Proiektua, parte-hartzaileak, jatorrizko proiektuko erantzunak eta uneko taldeak ezabatzen ditu; ikasleen datatutako historia, berretsitako esleipenak eta jatorriaren datuak mantentzen ditu. Identitate zalantzagarriak edo inportatu gabeko historia badago, ebatzi lehenago edo artxibatu proiektua.
+
 ## Harremanen mapa
 
 Alboko **Harremanen mapa** sarreran aukeratu gradua eta klasea. Lehenetsitako ikuspegia etengabeko jarraipena da. **Testuingurua** aukeran proiektua edo data historikoa hautatu daiteke.

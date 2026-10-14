@@ -38,7 +38,7 @@ In **Identitateak berrikusi**, a master explicitly chooses the matching person o
 
 The migration checks foreign keys and that every legacy response has a retained assessment or review entry. Verify record counts and test a restored copy before deployment. SQL schema migration and data backfill are separate transactions: a failed backfill leaves the added schema in place and may be safely rerun after the source problem is resolved. Do not delete or rewrite the migration journal.
 
-Routine archive, withdrawal and enrollment ending preserve history. No automatic purge is implemented; institutional retention and permanent-deletion procedures must be defined before introducing one. Teacher reflections and longitudinal teacher-authored observations are a later increment. Existing private roster notes remain supported.
+Archive is reversible, and withdrawal and enrollment ending preserve history. Master-only permanent project deletion removes the working project and its local rows while retaining independent student history and original source provenance. It does not erase the student record or confirmed assignment history. See the [exact lifecycle and retention boundary](project-lifecycle.md). No automatic student-history purge is implemented. Teacher reflections and longitudinal teacher-authored observations are a later increment. Existing private roster notes remain supported.
 
 Domain terminology is in [CONTEXT.md](../CONTEXT.md); the accepted decisions are in [docs/adr](adr/).
 

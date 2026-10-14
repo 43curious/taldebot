@@ -1,3 +1,4 @@
+import { isArchivedProject } from './projectLifecycle';
 import { createHash, randomBytes } from 'node:crypto';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
@@ -79,7 +80,7 @@ export async function issueUpdateRequest(
             : undefined;
         if (
             !project ||
-            project.archivedAt ||
+            isArchivedProject(project) ||
             !participant ||
             participant.projectId !== project.id ||
             participant.studentRecordId !== person.id ||
@@ -169,7 +170,7 @@ export async function requestContext(db: AppDatabase, token: string) {
             : undefined;
         if (
             !project ||
-            project.archivedAt ||
+            isArchivedProject(project) ||
             !participant ||
             participant.isExcluded ||
             participant.hasCompleted ||

@@ -475,27 +475,57 @@ it('keeps class and dashboard actions available after a real login', async () =>
             { method: 'POST', headers: { cookie, origin: base } },
         );
         expect(noConfirmed.status).toBe(409);
-        const oldAccess = await fetch(`${base}/admin/access`, { headers: { cookie }, redirect: 'manual' });
+        const oldAccess = await fetch(`${base}/admin/access`, {
+            headers: { cookie },
+            redirect: 'manual',
+        });
         expect(oldAccess.status).toBe(303);
         expect(oldAccess.headers.get('location')).toBe('/admin/users');
         const createdTeacher = await fetch(`${base}/admin/users`, {
-            method: 'POST', headers: { cookie, origin: base },
-            body: new URLSearchParams({ action: 'create', username: 'scoped', password: 'scoped-pass', fullName: 'Scoped Teacher', email: '', role: 'admin', classId: '1' }),
+            method: 'POST',
+            headers: { cookie, origin: base },
+            body: new URLSearchParams({
+                action: 'create',
+                username: 'scoped',
+                password: 'scoped-pass',
+                fullName: 'Scoped Teacher',
+                email: '',
+                role: 'admin',
+                classId: '1',
+            }),
         });
         expect(createdTeacher.status).toBe(200);
         const accountsHtml = await createdTeacher.text();
         expect(accountsHtml).toContain('Scoped Teacher');
         expect(accountsHtml).not.toContain('scoped-pass');
-        expect((await db.execute("SELECT role FROM users WHERE username='scoped'")).rows[0].role).toBe('admin');
+        expect(
+            (await db.execute("SELECT role FROM users WHERE username='scoped'"))
+                .rows[0].role,
+        ).toBe('admin');
         const invalidAccount = await fetch(`${base}/admin/users`, {
-            method: 'POST', headers: { cookie, origin: base },
-            body: new URLSearchParams({ action: 'create', username: 'retain-this-name', password: 'never-render-this', fullName: 'Retained Name', email: 'invalid-email', role: 'admin', classId: '1' }),
+            method: 'POST',
+            headers: { cookie, origin: base },
+            body: new URLSearchParams({
+                action: 'create',
+                username: 'retain-this-name',
+                password: 'never-render-this',
+                fullName: 'Retained Name',
+                email: 'invalid-email',
+                role: 'admin',
+                classId: '1',
+            }),
         });
         const invalidHtml = await invalidAccount.text();
         expect(invalidHtml).toContain('value="retain-this-name"');
         expect(invalidHtml).toContain('value="invalid-email"');
         expect(invalidHtml).not.toContain('never-render-this');
-        expect((await db.execute("SELECT id FROM users WHERE username='retain-this-name'")).rows).toHaveLength(0);
+        expect(
+            (
+                await db.execute(
+                    "SELECT id FROM users WHERE username='retain-this-name'",
+                )
+            ).rows,
+        ).toHaveLength(0);
         const scopedLogin = await fetch(`${base}/admin/login`, {
             method: 'POST',
             redirect: 'manual',
@@ -554,15 +584,145 @@ it('keeps class and dashboard actions available after a real login', async () =>
             (await fetch(`${base}/admin/access`, { headers: scopedHeaders }))
                 .status,
         ).toBe(403);
-        expect((await fetch(`${base}/admin/users`, { headers: scopedHeaders })).status).toBe(403);
-        expect((await fetch(`${base}/admin/users`, { method: 'POST', headers: { ...scopedHeaders, origin: base }, body: new URLSearchParams({ action: 'delete', userId: '1' }) })).status).toBe(403);
+        expect(
+            (await fetch(`${base}/admin/users`, { headers: scopedHeaders }))
+                .status,
+        ).toBe(403);
+        expect(
+            (
+                await fetch(`${base}/admin/users`, {
+                    method: 'POST',
+                    headers: { ...scopedHeaders, origin: base },
+                    body: new URLSearchParams({
+                        action: 'delete',
+                        userId: '1',
+                    }),
+                })
+            ).status,
+        ).toBe(403);
         const scopedGraph = await (
             await fetch(`${base}/admin/graph?degree=2&class=2`, {
                 headers: scopedHeaders,
             })
         ).text();
         expect(scopedGraph).not.toContain('Leire');
-        const revoked = await fetch(`${base}/admin/users`, { method: 'POST', headers: { cookie, origin: base }, body: new URLSearchParams({ action: 'update', userId: '2', username: 'scoped', fullName: 'Scoped Teacher', email: '', role: 'admin' }) });
+        const unconfirmedDelete = await fetch(
+            `${base}/api/admin/delete-project`,
+            {
+                method: 'POST',
+                headers: {
+                    cookie,
+                    origin: base,
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify({ projectId: 2 }),
+            },
+        );
+        expect(unconfirmedDelete.status).toBe(400);
+        expect(
+            (await db.execute('SELECT id FROM projects WHERE id=2')).rows,
+        ).toHaveLength(1);
+        const forbiddenDelete = await fetch(
+            `${base}/api/admin/delete-project`,
+            {
+                method: 'POST',
+                headers: {
+                    ...scopedHeaders,
+                    origin: base,
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify({ projectId: 2, confirmed: true }),
+            },
+        );
+        expect(forbiddenDelete.status).toBe(403);
+        const lifecycleProject = (
+            await db.execute(
+                "INSERT INTO projects(name,project_type,status,owner_id) VALUES ('Lifecycle test','balanced','completed',2) RETURNING id",
+            )
+        ).rows[0].id;
+        const lifecycle = async (action) =>
+            fetch(`${base}/api/admin/archive-project`, {
+                method: 'POST',
+                headers: {
+                    ...scopedHeaders,
+                    origin: base,
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify({
+                    projectId: Number(lifecycleProject),
+                    action,
+                }),
+            });
+        expect((await lifecycle('archive')).status).toBe(200);
+        expect(
+            (
+                await db.execute({
+                    sql: 'SELECT status,status_before_archive FROM projects WHERE id=?',
+                    args: [lifecycleProject],
+                })
+            ).rows[0],
+        ).toEqual({ status: 'archived', status_before_archive: 'completed' });
+        const archivedDashboard = await (
+            await fetch(`${base}/admin/dashboard?archived=1`, {
+                headers: scopedHeaders,
+            })
+        ).text();
+        expect(archivedDashboard).toContain('Lifecycle test');
+        expect(archivedDashboard).toContain('data-action="restore"');
+        expect(archivedDashboard).not.toContain('data-action="delete"');
+        expect((await lifecycle('restore')).status).toBe(200);
+        expect(
+            (
+                await db.execute({
+                    sql: 'SELECT status FROM projects WHERE id=?',
+                    args: [lifecycleProject],
+                })
+            ).rows[0].status,
+        ).toBe('completed');
+        const permanentlyDeleted = await fetch(
+            `${base}/api/admin/delete-project`,
+            {
+                method: 'POST',
+                headers: {
+                    cookie,
+                    origin: base,
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify({
+                    projectId: Number(lifecycleProject),
+                    confirmed: true,
+                }),
+            },
+        );
+        expect(permanentlyDeleted.status).toBe(200);
+        expect(
+            (
+                await db.execute({
+                    sql: 'SELECT id FROM projects WHERE id=?',
+                    args: [lifecycleProject],
+                })
+            ).rows,
+        ).toHaveLength(0);
+        expect(
+            (
+                await db.execute({
+                    sql: 'SELECT name FROM deleted_project_sources WHERE id=?',
+                    args: [lifecycleProject],
+                })
+            ).rows[0].name,
+        ).toBe('Lifecycle test');
+        const revoked = await fetch(`${base}/admin/users`, {
+            method: 'POST',
+            headers: { cookie, origin: base },
+            body: new URLSearchParams({
+                action: 'update',
+                userId: '2',
+                username: 'scoped',
+                fullName: 'Scoped Teacher',
+                email: '',
+                role: 'admin',
+            }),
+        });
         expect(revoked.status).toBe(200);
         expect(
             (

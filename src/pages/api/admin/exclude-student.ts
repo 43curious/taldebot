@@ -1,3 +1,4 @@
+import { isArchivedProject } from '../../../lib/projectLifecycle';
 import type { APIRoute } from 'astro';
 import { parseId, routeError, InputError } from '../../../lib/input';
 import { db } from '../../../lib/db';
@@ -18,7 +19,7 @@ export const POST: APIRoute = async ({ request }) => {
         const project = await db.query.projects.findFirst({
             where: eq(projects.id, projectId),
         });
-        if (!project || project.archivedAt)
+        if (!project || isArchivedProject(project))
             throw new InputError('Proiektua ez dago erabilgarri.', 404);
         await db
             .update(students)

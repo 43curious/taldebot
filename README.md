@@ -83,5 +83,6 @@ npm run build
 - [Garapen-irizpideak](AGENTS.md): diseinua eta inplementazioa.
 - [Cleanup neurketak](docs/cleanup-measurements.md).
 - [Karga eta abiarazte neurketak](docs/loading-measurements.md).
+- [Proiektuen artxiboa, leheneratzea eta ezabaketa](docs/project-lifecycle.md).
 
 Etengabeko jarraipenak ikaslearen identitatea, matrikulak, datatutako autoebaluazioak eta hobespenak proiektuetatik bereizten ditu. Taldeen historia berretsitako esleipenetatik bakarrik eraikitzen da. Ikusi [jarraipena, baimenak eta migrazioa](docs/student-tracking.md); eguneratu DB eta esleitu irakasleen egungo gradu/klaseko baimenak master kontuarekin.

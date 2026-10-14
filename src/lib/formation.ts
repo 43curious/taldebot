@@ -1,3 +1,4 @@
+import { isArchivedProject } from './projectLifecycle';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
     projects,
@@ -118,7 +119,7 @@ export async function formationInputs(
     const project = await db.query.projects.findFirst({
         where: eq(projects.id, projectId),
     });
-    if (!project || project.archivedAt)
+    if (!project || isArchivedProject(project))
         throw new InputError('Proiektua ez dago erabilgarri.', 404);
     const participants = await db.query.students.findMany({
         where: eq(students.projectId, projectId),

@@ -1,3 +1,4 @@
+import { isArchivedProject } from './projectLifecycle';
 import { and, eq } from 'drizzle-orm';
 import {
     projects,
@@ -133,7 +134,7 @@ export async function submitSurvey(
         const project = await tx.query.projects.findFirst({
             where: eq(projects.id, data.projectId),
         });
-        if (!project || project.archivedAt || !student.studentRecordId)
+        if (!project || isArchivedProject(project) || !student.studentRecordId)
             throw new InputError(
                 'Proiektua edo ikaslearen identitatea ez dago erabilgarri.',
             );
@@ -198,7 +199,7 @@ export async function resetSurvey(
         const project = await tx.query.projects.findFirst({
             where: eq(projects.id, projectId),
         });
-        if (!project || project.archivedAt)
+        if (!project || isArchivedProject(project))
             throw new InputError('Proiektua ez dago erabilgarri.', 404);
         const scope = and(
             eq(students.id, studentId),
@@ -245,6 +246,11 @@ export async function replaceTeams(
     >[],
 ) {
     await db.transaction(async (tx) => {
+        const project = await tx.query.projects.findFirst({
+            where: eq(projects.id, projectId),
+        });
+        if (!project || isArchivedProject(project))
+            throw new InputError('Proiektua ez dago erabilgarri.', 404);
         await tx
             .delete(teams)
             .where(

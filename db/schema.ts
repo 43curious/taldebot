@@ -117,8 +117,36 @@ export const projects = sqliteTable('projects', {
         .notNull()
         .default('balanced'),
     archivedAt: text('archived_at'),
+    statusBeforeArchive: text('status_before_archive').$type<
+        'setup' | 'active' | 'completed'
+    >(),
     adminEmail: text('admin_email'),
     accessCode: text('access_code').unique(),
+});
+
+// Minimal provenance for retained student history after the working project is deleted.
+export const deletedProjectSources = sqliteTable('deleted_project_sources', {
+    id: integer('id').primaryKey(),
+    name: text('name').notNull(),
+    projectType: text('project_type').notNull(),
+    academicPeriod: text('academic_period'),
+    collectionYear: integer('collection_year'),
+    createdAt: text('created_at'),
+    deletedAt: text('deleted_at').notNull(),
+    deletedBy: integer('deleted_by')
+        .notNull()
+        .references(() => users.id, { onDelete: 'restrict' }),
+    retainedRecords: text('retained_records', { mode: 'json' })
+        .$type<{
+            assessmentIds: number[];
+            preferenceSubmissionIds: number[];
+            requestIds: number[];
+            restrictionIds: number[];
+            draftIds: number[];
+            assignmentIds: number[];
+            reviewIds: number[];
+        }>()
+        .notNull(),
 });
 
 // The legacy SQL name stores project participants, not persistent student identity.
