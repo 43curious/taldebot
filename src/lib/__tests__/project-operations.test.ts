@@ -1,13 +1,8 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { projects, students, responses, teams } from '../../../db/schema';
+import { projects, students, responses } from '../../../db/schema';
 import { projectSchema, submissionSchema, parseId } from '../input';
-import {
-    createProject,
-    submitSurvey,
-    resetSurvey,
-    replaceTeams,
-} from '../projectOperations';
+import { createProject, submitSurvey, resetSurvey } from '../projectOperations';
 import { skillGroups } from '../skills';
 import { studentPath } from '../i18n';
 import { testDatabase } from './testDatabase';
@@ -156,37 +151,4 @@ it('rolls back response submission and reset when the completion update fails', 
     expect((await fixture.db.query.students.findFirst())?.hasCompleted).toBe(
         true,
     );
-});
-
-it('keeps both algorithm allocations when replacement fails and preserves the other version on success', async () => {
-    await createProject(fixture.db, projectSchema.parse(projectInput));
-    const team = {
-        teamNumber: 1,
-        memberIds: [1, 2],
-        justification: 'original',
-    };
-    await replaceTeams(fixture.db, 1, 'v1', [team]);
-    await replaceTeams(fixture.db, 1, 'v2', [team]);
-    await fixture.client.execute(
-        "CREATE TRIGGER fail_teams BEFORE INSERT ON teams BEGIN SELECT RAISE(ABORT, 'fail'); END",
-    );
-    await expect(
-        replaceTeams(fixture.db, 1, 'v2', [{ ...team, justification: 'new' }]),
-    ).rejects.toThrow();
-    expect(
-        (await fixture.db.select().from(teams)).map(
-            (team) => team.justification,
-        ),
-    ).toEqual(['original', 'original']);
-    await fixture.client.execute('DROP TRIGGER fail_teams');
-    await replaceTeams(fixture.db, 1, 'v2', [
-        { ...team, justification: 'new' },
-    ]);
-    const saved = await fixture.db.select().from(teams);
-    expect(
-        saved.find((team) => team.algorithmVersion === 'v1')?.justification,
-    ).toBe('original');
-    expect(
-        saved.find((team) => team.algorithmVersion === 'v2')?.justification,
-    ).toBe('new');
 });

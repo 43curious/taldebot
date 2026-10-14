@@ -6,12 +6,7 @@ import {
     restoreProject,
     deleteProject,
 } from '../projectLifecycle';
-import {
-    createProject,
-    submitSurvey,
-    resetSurvey,
-    replaceTeams,
-} from '../projectOperations';
+import { createProject, submitSurvey, resetSurvey } from '../projectOperations';
 import {
     generateDraft,
     confirmDraft,
@@ -179,7 +174,7 @@ it('archives reversibly, preserves data and never reactivates pending, expired, 
             resetSurvey(s.db, s.project.id, s.participants[0].id),
         ).rejects.toThrow();
         await expect(
-            replaceTeams(s.db, s.project.id, 'v2', []),
+            confirmDraft(s.db, s.access, s.project.id, s.draft.id),
         ).rejects.toThrow();
         await expect(requestContext(s.db, s.pending.token)).rejects.toThrow();
         expect(await restoreProject(s.db, teacherAccess, s.project.id)).toBe(

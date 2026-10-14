@@ -22,7 +22,7 @@ Arbelean **Artxibatu** botoiak proiektua artxibatutako zerrendara eramaten du, d
 
 ## Harremanen mapa
 
-Alboko **Harremanen mapa** sarreran aukeratu gradua eta klasea. Lehenetsitako ikuspegia etengabeko jarraipena da. **Testuingurua** aukeran proiektua edo data historikoa hautatu daiteke.
+Alboko **Harremanen mapa** sarreran aukeratu gradua eta klasea. Lehenetsitako **Azken harreman-erantzunak · Historia** ikuspegiak ikasle bakoitzaren azken bidalketa osoa erakusten du, bere jatorri eta datarekin. **Testuingurua** aukeran egungo ikasturteko hobespenak, proiektua edo data historikoa hautatu daiteke. Aurreko erantzunak ez dira egungo hobespen bihurtzen.
 
 Hasieran nodoak bakarrik agertzen dira; hautatutako ikaslearen loturak bakarrik erakusten dira. Berdeak elkarlana/konfort-zona adierazten du; gorriak ikaslearen saiheste-hobespena edo irakaslearen bereizketa. Txostenean iturria, data eta norabidea bereizten dira. Sarrerako loturak bigarren mailako xehetasuna dira. Nodoak arrastatu, mapa mugitu eta zooma egin daiteke; txostena eskuinean edo mugikorrean behean agertzen da.
 

@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { transform } from 'esbuild';
+import { transpileModule, ScriptTarget, ModuleKind } from 'typescript';
 import { afterEach, expect, it, vi } from 'vitest';
 
 const page = readFileSync(new URL('../../pages/admin/dashboard.astro', import.meta.url), 'utf8');
-const { code } = await transform(page.match(/<script>([\s\S]*?)<\/script>/)[1], { loader: 'ts' });
+const { outputText: code } = transpileModule(page.match(/<script>([\s\S]*?)<\/script>/)[1], {
+    compilerOptions: { target: ScriptTarget.ES2022, module: ModuleKind.ESNext },
+});
 
 afterEach(() => vi.useRealTimers());
 

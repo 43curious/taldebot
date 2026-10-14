@@ -82,6 +82,7 @@ npm run build
 - [Arkitektura](docs/architecture.md): moduluak, datuak, saioak eta migrazioak.
 - [Garapen-irizpideak](AGENTS.md): diseinua eta inplementazioa.
 - [Cleanup neurketak](docs/cleanup-measurements.md).
+- [Gainerako cleanup-aren auditoria](docs/cleanup-audit.md).
 - [Karga eta abiarazte neurketak](docs/loading-measurements.md).
 - [Proiektuen artxiboa, leheneratzea eta ezabaketa](docs/project-lifecycle.md).
 

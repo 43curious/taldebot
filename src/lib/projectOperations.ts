@@ -4,7 +4,6 @@ import {
     projects,
     students,
     responses,
-    teams,
     assessments,
     preferenceSubmissions,
 } from '../../db/schema';
@@ -233,39 +232,5 @@ export async function resetSurvey(
                 ),
             );
         await tx.update(students).set({ hasCompleted: false }).where(scope);
-    });
-}
-
-export async function replaceTeams(
-    db: AppDatabase,
-    projectId: number,
-    algorithmVersion: 'v1' | 'v2',
-    allocation: Pick<
-        typeof teams.$inferInsert,
-        'teamNumber' | 'memberIds' | 'justification'
-    >[],
-) {
-    await db.transaction(async (tx) => {
-        const project = await tx.query.projects.findFirst({
-            where: eq(projects.id, projectId),
-        });
-        if (!project || isArchivedProject(project))
-            throw new InputError('Proiektua ez dago erabilgarri.', 404);
-        await tx
-            .delete(teams)
-            .where(
-                and(
-                    eq(teams.projectId, projectId),
-                    eq(teams.algorithmVersion, algorithmVersion),
-                ),
-            );
-        if (allocation.length)
-            await tx.insert(teams).values(
-                allocation.map((team) => ({
-                    ...team,
-                    projectId,
-                    algorithmVersion,
-                })),
-            );
     });
 }
