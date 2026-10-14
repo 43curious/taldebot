@@ -24,17 +24,20 @@ export const SkillSlider: React.FC<SkillSliderProps> = ({
     const [value, setValue] = useState(defaultValue);
 
     return (
-        <div className="mb-6">
-            <div className="flex justify-between items-center mb-1">
+        <div className="mb-5">
+            <div className="flex justify-between items-start gap-4 mb-1">
                 <label
                     htmlFor={name}
                     className="text-sm font-medium text-slate-700"
                 >
                     {label}
                 </label>
-                <span className="text-teal-600 font-bold text-lg">
+                <output
+                    htmlFor={name}
+                    className="shrink-0 min-w-8 rounded-lg bg-teal-50 px-2 py-1 text-center text-sm font-semibold text-teal-700"
+                >
                     {unknown ? '—' : value}
-                </span>
+                </output>
             </div>
             {description && (
                 <p className="text-xs text-slate-500 mb-2">{description}</p>
@@ -46,9 +49,10 @@ export const SkillSlider: React.FC<SkillSliderProps> = ({
                 name={name}
                 min={min}
                 max={max}
+                step={1}
                 value={value}
                 onChange={(e) => setValue(parseInt(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600"
+                className="skill-range w-full min-h-11 cursor-pointer accent-teal-700"
             />
             {unknownLabel && (
                 <label className="mt-3 flex items-center gap-2 text-xs text-slate-600">
@@ -60,7 +64,7 @@ export const SkillSlider: React.FC<SkillSliderProps> = ({
                     {unknownLabel}
                 </label>
             )}
-            <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+            <div className="flex justify-between text-xs text-slate-500 mt-1">
                 <span>{min}</span>
                 <span>{max}</span>
             </div>

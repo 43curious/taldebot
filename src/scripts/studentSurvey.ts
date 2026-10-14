@@ -4,7 +4,9 @@ import { skillScale } from '../lib/skills';
 const form = document.querySelector<HTMLFormElement>('#student-form');
 if (form) {
     const tr = t(language(form.dataset.lang));
-    const sections = form.querySelectorAll<HTMLElement>('section');
+    const sections = form.querySelectorAll<HTMLElement>(
+        'section[id^="section-"]',
+    );
     const progressBars = form.querySelectorAll<HTMLElement>(
         '#progress-bar > div',
     );
@@ -14,7 +16,7 @@ if (form) {
     const fullEmail = form.querySelector<HTMLInputElement>('#fullEmail')!;
     const terms = form.querySelector<HTMLInputElement>('#terms')!;
     const next = form.querySelector<HTMLButtonElement>('#btn-next-1')!;
-    const modal = form.querySelector<HTMLElement>('#disclaimerModal')!;
+    const modal = form.querySelector<HTMLDialogElement>('#disclaimerModal')!;
     const feedback = form.querySelector<HTMLElement>(
         '[data-submission-error]',
     )!;
@@ -23,6 +25,9 @@ if (form) {
     function validateIdentity() {
         next.disabled =
             !studentSelect.value || !emailPrefix.value.trim() || !terms.checked;
+        if (form!.dataset.mode === 'trial')
+            form!.querySelector<HTMLInputElement>('[name="studentId"]')!.value =
+                studentSelect.value;
         fullEmail.value = `${emailPrefix.value.trim()}@alumni.mondragon.edu`;
         window.dispatchEvent(
             new CustomEvent('student-selected', {
@@ -37,9 +42,18 @@ if (form) {
 
     function showSection(id: string) {
         currentSection = id;
-        sections.forEach((section) =>
-            section.classList.toggle('hidden', section.id !== `section-${id}`),
-        );
+        sections.forEach((section) => {
+            section.hidden = section.id !== `section-${id}`;
+        });
+        form!.querySelector('#progress-bar')!.setAttribute('aria-valuenow', id);
+        form!
+            .querySelector('#progress-bar')!
+            .setAttribute('aria-valuetext', `${id} / 4`);
+        form!.querySelector<HTMLElement>('[data-progress-label]')!.textContent =
+            `${id} / 4 · ${tr.surveyUi.step}`;
+        form!
+            .querySelector<HTMLElement>(`#section-heading-${id}`)
+            ?.focus({ preventScroll: true });
         const description = form!.querySelector<HTMLElement>(
             `#section-description-${id}`,
         );
@@ -109,23 +123,22 @@ if (form) {
     emailPrefix.addEventListener('input', validateIdentity);
     terms.addEventListener('change', validateIdentity);
     form.querySelector('#openDisclaimer')?.addEventListener('click', () =>
-        modal.classList.remove('hidden'),
+        modal.showModal(),
     );
     form.querySelector('#closeDisclaimer')?.addEventListener('click', () =>
-        modal.classList.add('hidden'),
+        modal.close(),
     );
     modal.addEventListener('click', (event) => {
-        if (
-            event.target === modal ||
-            (event.target instanceof Element &&
-                event.target.classList.contains('bg-black/50'))
-        )
-            modal.classList.add('hidden');
+        if (event.target === modal) modal.close();
     });
 
     // Preserve #2: Enter never implicitly submits from an earlier section.
     form.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') event.preventDefault();
+        if (
+            event.key === 'Enter' &&
+            !(event.target instanceof HTMLButtonElement)
+        )
+            event.preventDefault();
     });
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -142,12 +155,24 @@ if (form) {
                 method: 'POST',
                 body: new FormData(form),
             });
+            if (form!.dataset.mode === 'trial') {
+                const result = await response.json();
+                if (!response.ok || !result.success)
+                    throw new Error('Trial validation failed');
+                form!.hidden = true;
+                const completed =
+                    document.querySelector<HTMLElement>('#trial-complete')!;
+                completed.hidden = false;
+                completed.focus();
+                return;
+            }
             if (!response.ok || !response.redirected)
                 throw new Error('Submission failed');
             window.location.assign(response.url);
         } catch {
             feedback.textContent = tr.form.submissionError;
             feedback.hidden = false;
+            feedback.focus();
             button.disabled = false;
             button.textContent = tr.form.submit;
         }

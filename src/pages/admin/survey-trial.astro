@@ -1,0 +1,15 @@
+---
+export const prerender = false;
+import StudentSurvey from '../../components/StudentSurvey.astro';
+import { trialSurvey } from '../../lib/trialSurvey';
+import { language } from '../../lib/i18n';
+const lang = language(Astro.url.searchParams.get('lang') || undefined);
+---
+
+<StudentSurvey
+    {...trialSurvey}
+    lang={lang}
+    initialStudentId={String(trialSurvey.allStudents[0].id)}
+    requestToken=""
+    mode="trial"
+/>

@@ -7,6 +7,7 @@ const links = [
     { href: '/admin/classes', label: 'Klaseak', icon: 'classes' },
     { href: '/admin/graph', label: 'Harremanen mapa', icon: 'graph' },
     { href: '/admin/create-project', label: 'Proiektu Berria', icon: 'plus' },
+    { href: '/admin/survey-trial', label: 'Inkesta probatu', icon: 'preview' },
     ...(Astro.locals.teacher?.role === 'master'
         ? [
               { href: '/admin/users', label: 'Erabiltzaileen kudeaketa', icon: 'users' },
@@ -84,6 +85,11 @@ const isActive = (href: string) =>
                     {link.icon === "plus" && (
                         <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    )}
+                    {link.icon === "preview" && (
+                        <svg aria-hidden="true" class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H6a2 2 0 00-2 2v13a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-3M9 3h6v4H9V3zm-1 9h8m-8 4h5" />
                         </svg>
                     )}
                     {link.icon === "users" && (

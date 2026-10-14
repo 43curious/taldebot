@@ -9,6 +9,26 @@ export function studentPath(lang: Language, path = '/'): string {
 
 export const translations = {
     eu: {
+        surveyUi: {
+            help: 'Atalaren azalpena',
+            progress: 'Inkestaren aurrerapena',
+            step: 'atala',
+            scale: 'Autoebaluazioa · 1–10 · Ez da nota akademikoa.',
+            trialTitle: 'Inkestaren proba',
+            trialNote:
+                'Probako ikasleak dira. Bidaltzean erantzunak baliozkotzen dira, baina ez dira gordetzen eta ez dute ikasleen datuak edo taldeak aldatzen.',
+            trialDone: 'Proba osatu da',
+            trialDoneNote:
+                'Erantzunak baliozkoak dira. Ez da ezer gorde ikasleen erregistroetan.',
+            restart: 'Berriro probatu',
+            admin: 'Administraziora itzuli',
+        },
+        selection: {
+            max: 'Gehienez',
+            search: 'Bilatu ikaslea',
+            none: 'Ez da ikaslerik aurkitu.',
+            remove: 'Kendu',
+        },
         // Landing page
         landing: {
             tagline: 'Taldeak sortzen, denok bat egiteko.',
@@ -193,6 +213,26 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
     },
 
     en: {
+        surveyUi: {
+            help: 'About this section',
+            progress: 'Survey progress',
+            step: 'section',
+            scale: 'Self-assessment · 1–10 · Not an academic grade.',
+            trialTitle: 'Survey trial',
+            trialNote:
+                'These are fictional students. Submission validates your answers without saving them or changing student records or teams.',
+            trialDone: 'Trial completed',
+            trialDoneNote:
+                'Your answers are valid. Nothing was saved to student records.',
+            restart: 'Try again',
+            admin: 'Back to administration',
+        },
+        selection: {
+            max: 'Maximum',
+            search: 'Find a student',
+            none: 'No students found.',
+            remove: 'Remove',
+        },
         // Landing page
         landing: {
             tagline: 'Creating teams, uniting everyone.',

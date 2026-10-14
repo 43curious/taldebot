@@ -136,6 +136,93 @@ it('keeps class and dashboard actions available after a real login', async () =>
         expect(login.status).toBe(302);
         const cookie = login.headers.get('set-cookie')?.split(';')[0];
         expect(cookie).toMatch(/^astro-session=/);
+        // The authenticated trial validates the same answers without changing any application table.
+        const snapshot = async () => {
+            const tables = (
+                await db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+                )
+            ).rows;
+            return Promise.all(
+                tables.map(async ({ name }) => {
+                    expect(name).toMatch(/^\w+$/);
+                    return [
+                        name,
+                        (
+                            await db.execute(
+                                `SELECT * FROM "${name}" ORDER BY rowid`,
+                            )
+                        ).rows,
+                    ];
+                }),
+            );
+        };
+        const beforeTrial = await snapshot();
+        expect(
+            (await fetch(`${base}/admin/survey-trial`, { redirect: 'manual' }))
+                .status,
+        ).toBe(302);
+        expect(
+            (
+                await fetch(`${base}/api/admin/trial-survey`, {
+                    method: 'POST',
+                    headers: { origin: base },
+                    body: new URLSearchParams(),
+                })
+            ).status,
+        ).toBe(401);
+        for (const lang of ['eu', 'en']) {
+            const trial = await fetch(
+                `${base}/admin/survey-trial?lang=${lang}`,
+                { headers: { cookie } },
+            );
+            expect(trial.status).toBe(200);
+            const html = await trial.text();
+            expect(html).toContain('Ane Proba');
+            expect(html).toContain('action="/api/admin/trial-survey"');
+            expect(html).toContain(`data-lang="${lang}"`);
+            const answers = new URLSearchParams({
+                projectId: '9000001',
+                studentId: '9000001',
+                lang,
+                email: 'trial@example.com',
+                terms: 'on',
+                comfort: '[9000002]',
+                preferWith: '[9000003]',
+                preferAvoid: '[]',
+                ...Object.fromEntries(
+                    skillGroups.flatMap((group) =>
+                        group.keys.map((key) => [
+                            `${group.prefix}_${key}`,
+                            '5',
+                        ]),
+                    ),
+                ),
+            });
+            const submit = (body) =>
+                fetch(`${base}/api/admin/trial-survey`, {
+                    method: 'POST',
+                    headers: { cookie, origin: base },
+                    body,
+                });
+            const valid = await submit(answers);
+            expect(valid.status).toBe(200);
+            expect(await valid.json()).toEqual({ success: true });
+            const foreign = new URLSearchParams(answers);
+            foreign.set('comfort', '[1]');
+            expect((await submit(foreign)).status).toBe(400);
+            const realEndpoint = await fetch(
+                `${base}/api/student/submit-form`,
+                {
+                    method: 'POST',
+                    headers: { cookie, origin: base },
+                    body: answers,
+                    redirect: 'manual',
+                },
+            );
+            expect(realEndpoint.ok).toBe(false);
+        }
+        expect(await snapshot()).toEqual(beforeTrial);
         const malformedDeletion = await fetch(
             `${base}/api/admin/delete-project`,
             {
@@ -539,6 +626,13 @@ it('keeps class and dashboard actions available after a real login', async () =>
             .get('set-cookie')
             ?.split(';')[0];
         const scopedHeaders = { cookie: scopedCookie };
+        expect(
+            (
+                await fetch(`${base}/admin/survey-trial`, {
+                    headers: scopedHeaders,
+                })
+            ).status,
+        ).toBe(200);
         expect(
             (
                 await fetch(`${base}/api/admin/export-roster?classId=1`, {

@@ -5,367 +5,399 @@ import { GroupDynamics } from './GroupDynamics';
 import { t, type Language } from '../lib/i18n';
 import { localizedSkillGroups } from '../lib/skills';
 import type { SurveyData } from '../lib/survey';
-
-interface Props extends SurveyData {
+import '../styles/teacher.css';
+import '../styles/survey.css';
+interface Props {
+    project: Pick<SurveyData['project'], 'id' | 'name'>;
+    allStudents: Pick<
+        SurveyData['allStudents'][number],
+        'id' | 'name' | 'studentRecordId' | 'hasCompleted' | 'isExcluded'
+    >[];
     lang: Language;
     initialStudentId: string | null;
     requestToken: string;
+    mode?: 'live' | 'trial';
 }
-const { lang, project, allStudents, initialStudentId, requestToken } =
-    Astro.props;
+const {
+    lang,
+    project,
+    allStudents,
+    initialStudentId,
+    requestToken,
+    mode = 'live',
+} = Astro.props;
+const trial = mode === 'trial';
 const tr = t(lang);
 const groups = localizedSkillGroups(lang);
-const pid = project.id;
 const activeStudents = allStudents.filter((student) => !student.isExcluded);
+const headings = [
+    tr.form.section1Title,
+    tr.form.section2Title,
+    tr.form.section3Title,
+    tr.form.section4Title,
+];
 ---
 
 <Layout lang={lang} title={`${tr.form.title}: ${project.name}`}>
-    <main class="max-w-3xl mx-auto px-4 py-12">
-        <div class="bg-white rounded-2xl shadow-xl">
-            <!-- Header -->
-            <div class="bg-teal-600 px-8 py-10 text-white rounded-t-2xl">
-                <div class="flex items-center gap-2 justify-between">
-                    <p class="px-2 text-3xl font-bold">{project.name}</p>
-                    <h1 class="text-teal-500 text-3xl font-bold mb-2">
-                        TaldeBOT
-                    </h1>
+    <main class="survey-page teacher-page mx-auto max-w-3xl">
+        {trial && (
+            <aside
+                class="survey-trial-banner teacher-panel mb-6 p-4"
+                aria-label={tr.surveyUi.trialTitle}
+            >
+                <p class="text-sm font-semibold text-teal-700">
+                    {tr.surveyUi.trialTitle}
+                </p>
+                <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                    {tr.surveyUi.trialNote}
+                </p>
+                <div class="mt-3 flex flex-wrap items-center gap-4 text-sm">
+                    <a
+                        href="/admin/dashboard"
+                        class="inline-flex min-h-11 items-center text-teal-700"
+                    >
+                        ← {tr.surveyUi.admin}
+                    </a>
+                    <nav
+                        class="teacher-tabs"
+                        aria-label={lang === 'en' ? 'Language' : 'Hizkuntza'}
+                    >
+                        <a
+                            href="/admin/survey-trial?lang=eu"
+                            aria-current={lang === 'eu' ? 'page' : undefined}
+                        >
+                            Euskara
+                        </a>
+                        <a
+                            href="/admin/survey-trial?lang=en"
+                            aria-current={lang === 'en' ? 'page' : undefined}
+                        >
+                            English
+                        </a>
+                    </nav>
+                </div>
+            </aside>
+        )}
+        <header class="mb-6">
+            <p class="mb-2 text-xs text-slate-500">
+                TaldeBOT · {tr.form.title}
+            </p>
+            <h1>{project.name}</h1>
+        </header>
+        <form
+            id="student-form"
+            action={
+                trial ? '/api/admin/trial-survey' : '/api/student/submit-form'
+            }
+            method="POST"
+            class="teacher-panel space-y-5 p-4 sm:p-6"
+            data-lang={lang}
+            data-mode={mode}
+        >
+            <input type="hidden" name="requestToken" value={requestToken} />
+            <input type="hidden" name="studentId" value={initialStudentId} />
+            <input type="hidden" name="projectId" value={project.id} />
+            <input type="hidden" name="lang" value={lang} />
+            <p
+                data-submission-error
+                role="alert"
+                tabindex="-1"
+                class="text-sm text-red-700"
+                hidden
+            ></p>
+            <div>
+                <p data-progress-label class="mb-3 text-xs text-slate-500"></p>
+                <div
+                    id="progress-bar"
+                    class="flex gap-2"
+                    role="progressbar"
+                    aria-label={tr.surveyUi.progress}
+                    aria-valuemin="1"
+                    aria-valuemax="4"
+                    aria-valuenow="1"
+                >
+                    {headings.map((_, index) => (
+                        <div
+                            class:list={[
+                                'h-1 flex-1 rounded-full',
+                                index === 0 ? 'bg-teal-600' : 'bg-slate-200',
+                            ]}
+                        />
+                    ))}
                 </div>
             </div>
-
-            <!-- Form -->
-            <form
-                id="student-form"
-                action="/api/student/submit-form"
-                method="POST"
-                class="p-8 pt-2 space-y-8"
-                data-lang={lang}
-            >
-                <input type="hidden" name="requestToken" value={requestToken} />
-                <input
-                    type="hidden"
-                    name="studentId"
-                    value={initialStudentId}
-                />
-                <input type="hidden" name="projectId" value={pid} />
-                <input type="hidden" name="lang" value={lang} />
-                <p
-                    data-submission-error
-                    role="alert"
-                    class="text-sm text-red-600"
-                    hidden
-                ></p>
-
-                <!-- Progress Indicator -->
-                <div class="flex items-center gap-2 mb-4" id="progress-bar">
-                    <div
-                        class="h-1 flex-1 bg-teal-600 rounded-full transition-all duration-300"
-                        style="width: 25%"
-                    ></div>
-                    <div class="h-1 flex-1 bg-slate-200 rounded-full transition-all duration-300"></div>
-                    <div class="h-1 flex-1 bg-slate-200 rounded-full transition-all duration-300"></div>
-                    <div class="h-1 flex-1 bg-slate-200 rounded-full transition-all duration-300"></div>
-                </div>
-
-                <!-- Section 1: Identification -->
-                <section id="section-1" class="section-active">
-                    <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
-                        <span class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm">
-                            1
-                        </span>
-                        {tr.form.section1Title}
+            {headings.map((heading, index) => (
+                <section
+                    id={`section-${index + 1}`}
+                    hidden={index !== 0}
+                    aria-labelledby={`section-heading-${index + 1}`}
+                >
+                    <h2
+                        id={`section-heading-${index + 1}`}
+                        tabindex="-1"
+                        class="mb-4 text-lg text-slate-900"
+                    >
+                        {heading}
                     </h2>
-                    <p
-                        id="section-description-1"
-                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
-                    ></p>
-                    <div class="space-y-6">
-                        <div>
-                            <label
-                                for="studentSelect"
-                                class="block text-sm font-medium text-gray-700 mb-1"
-                            >
-                                {tr.form.selectName}
-                            </label>
-                            <select
-                                disabled
-                                id="studentSelect"
-                                required
-                                class="w-full border border-slate-300 rounded-md bg-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                            >
-                                <option value="">
-                                    {tr.form.selectPlaceholder}
-                                </option>
-                                {activeStudents
-                                    .filter(
-                                        (s) =>
-                                            String(s.id) === initialStudentId,
-                                    )
-                                    .map((s) => (
-                                        <option
-                                            value={s.id}
-                                            disabled={s.hasCompleted}
-                                            selected={
-                                                initialStudentId ===
-                                                String(s.id)
-                                            }
-                                        >
-                                            {s.name}{' '}
-                                            {s.hasCompleted
-                                                ? tr.form.alreadyCompleted
-                                                : ''}
+                    {index > 1 && (
+                        <p class="mb-4 text-xs text-slate-500">
+                            {tr.surveyUi.scale}
+                        </p>
+                    )}
+                    <details class="mb-5">
+                        <summary class="inline-flex min-h-11 cursor-pointer items-center text-sm text-slate-500">
+                            {tr.surveyUi.help}
+                        </summary>
+                        <p
+                            id={`section-description-${index + 1}`}
+                            class="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600"
+                        >
+                            {
+                                tr.sectionDescriptions[
+                                    String(
+                                        index + 1,
+                                    ) as keyof typeof tr.sectionDescriptions
+                                ]
+                            }
+                        </p>
+                    </details>
+                    {index === 0 && (
+                        <>
+                            <div class="space-y-5">
+                                <label
+                                    class="teacher-label"
+                                    for="studentSelect"
+                                >
+                                    {trial
+                                        ? tr.form.selectName
+                                        : lang === 'en'
+                                          ? 'Your name'
+                                          : 'Zure izena'}
+                                    <select
+                                        id="studentSelect"
+                                        required
+                                        disabled={!trial}
+                                        class="w-full"
+                                    >
+                                        <option value="">
+                                            {tr.form.selectPlaceholder}
                                         </option>
-                                    ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label
-                                for="emailPrefix"
-                                class="block text-sm font-medium text-gray-700 mb-1"
-                            >
-                                {tr.form.academicEmail}
-                            </label>
-                            <div class="flex rounded-md shadow-sm">
-                                <input
-                                    type="text"
-                                    name="emailPrefix"
-                                    id="emailPrefix"
-                                    required
-                                    placeholder={tr.form.emailPlaceholder}
-                                    class="flex-1 border border-r-0 border-slate-300 rounded-l-md px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                                />
-                                <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-slate-300 bg-slate-50 text-slate-500 sm:text-sm">
-                                    @alumni.mondragon.edu
-                                </span>
-                            </div>
-                            <input type="hidden" name="email" id="fullEmail" />
-                        </div>
-
-                        <div class="bg-slate-50/50 p-4 rounded-lg border border-slate-100">
-                            <div class="flex items-start">
-                                <div class="flex items-center h-5">
+                                        {activeStudents
+                                            .filter(
+                                                (student) =>
+                                                    trial ||
+                                                    String(student.id) ===
+                                                        initialStudentId,
+                                            )
+                                            .map((student) => (
+                                                <option
+                                                    value={student.id}
+                                                    disabled={Boolean(
+                                                        student.hasCompleted,
+                                                    )}
+                                                    selected={
+                                                        initialStudentId ===
+                                                        String(student.id)
+                                                    }
+                                                >
+                                                    {student.name}
+                                                </option>
+                                            ))}
+                                    </select>
+                                </label>
+                                <div>
+                                    <label
+                                        for="emailPrefix"
+                                        class="teacher-label mb-2"
+                                    >
+                                        {tr.form.academicEmail}
+                                    </label>
+                                    <div class="survey-email flex items-center rounded-lg border border-slate-200 bg-white">
+                                        <input
+                                            type="text"
+                                            name="emailPrefix"
+                                            id="emailPrefix"
+                                            required
+                                            placeholder={
+                                                tr.form.emailPlaceholder
+                                            }
+                                            class="min-w-0 flex-1"
+                                        />
+                                        <span class="shrink-0 pr-3 text-xs text-slate-500">
+                                            @alumni.mondragon.edu
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="hidden"
+                                        name="email"
+                                        id="fullEmail"
+                                    />
+                                </div>
+                                <label
+                                    class="flex min-h-11 items-start gap-3 text-sm leading-relaxed text-slate-600"
+                                    for="terms"
+                                >
                                     <input
                                         id="terms"
                                         name="terms"
                                         type="checkbox"
                                         required
-                                        class="focus:ring-teal-500 h-4 w-4 text-teal-600 border-slate-300 rounded cursor-pointer"
+                                        class="mt-1 shrink-0"
                                     />
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label
-                                        for="terms"
-                                        class="font-medium text-slate-700 cursor-pointer"
-                                    >
-                                        <button
-                                            type="button"
-                                            id="openDisclaimer"
-                                            class="text-teal-600 hover:underline"
-                                        >
-                                            {tr.form.termsLink}
-                                        </button>
-                                        {tr.form.termsAccept}
-                                    </label>
-                                    <p class="text-slate-500">
-                                        {tr.form.termsDescription}
+                                    <span>{tr.form.termsDescription}</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    id="openDisclaimer"
+                                    class="inline-flex min-h-11 items-center text-sm text-teal-700"
+                                >
+                                    {tr.form.termsLink}
+                                </button>
+                            </div>
+                            <dialog
+                                id="disclaimerModal"
+                                class="w-[calc(100%-2rem)] max-w-lg rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
+                                aria-labelledby="disclaimer-heading"
+                            >
+                                <h3
+                                    id="disclaimer-heading"
+                                    class="mb-4 text-lg font-semibold text-slate-900"
+                                >
+                                    {tr.form.disclaimerTitle}
+                                </h3>
+                                <div class="space-y-3 text-sm leading-relaxed text-slate-600">
+                                    <p>{tr.form.disclaimerP1}</p>
+                                    <p>
+                                        <strong>{tr.form.disclaimerP2}</strong>{' '}
+                                        {tr.form.disclaimerP2Content}
                                     </p>
+                                    <p>{tr.form.disclaimerP3}</p>
                                 </div>
+                                <button
+                                    type="button"
+                                    id="closeDisclaimer"
+                                    class="teacher-button mt-5"
+                                >
+                                    {tr.form.disclaimerClose}
+                                </button>
+                            </dialog>
+                            <div class="mt-6 flex justify-end">
+                                <button
+                                    type="button"
+                                    id="btn-next-1"
+                                    data-next="2"
+                                    class="teacher-button teacher-button-primary"
+                                    disabled
+                                >
+                                    {tr.form.nextSection}
+                                </button>
                             </div>
+                        </>
+                    )}
+                    {index === 1 && (
+                        <GroupDynamics
+                            client:load
+                            options={allStudents
+                                .filter(
+                                    (student) =>
+                                        student.studentRecordId !== null,
+                                )
+                                .map((student) => ({
+                                    id: student.id,
+                                    name: student.name,
+                                }))}
+                            studentId={
+                                initialStudentId
+                                    ? Number(initialStudentId)
+                                    : undefined
+                            }
+                            lang={lang}
+                        />
+                    )}
+                    {index === 2 && (
+                        <div class="space-y-5">
+                            {groups.slice(0, 3).map((group) => (
+                                <div>
+                                    <h3 class="mb-4 border-b border-slate-100 pb-2 text-sm font-semibold text-slate-600">
+                                        {group.label}
+                                    </h3>
+                                    {group.skills.map((skill) => (
+                                        <SkillSlider
+                                            client:load
+                                            label={skill.label}
+                                            name={skill.name}
+                                            description={skill.description}
+                                        />
+                                    ))}
+                                </div>
+                            ))}
                         </div>
-                    </div>
-
-                    <!-- Disclaimer Modal -->
-                    <div id="disclaimerModal" class="fixed inset-0 z-50 hidden">
-                        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-                        <div class="absolute inset-x-4 top-1/2 -translate-y-1/2 md:max-w-lg md:mx-auto bg-white rounded-2xl shadow-2xl p-6 md:p-8">
-                            <h3 class="text-xl font-bold text-gray-900 mb-4">
-                                {tr.form.disclaimerTitle}
-                            </h3>
-                            <div class="prose prose-sm text-gray-600 mb-6 font-medium">
-                                <p>{tr.form.disclaimerP1}</p>
-                                <p>
-                                    <strong>{tr.form.disclaimerP2}</strong>
-                                    {tr.form.disclaimerP2Content}
-                                </p>
-                                <p>{tr.form.disclaimerP3}</p>
-                            </div>
+                    )}
+                    {index === 3 &&
+                        groups[3].skills.map((skill) => (
+                            <SkillSlider
+                                client:load
+                                label={skill.label}
+                                name={skill.name}
+                                description={skill.description}
+                            />
+                        ))}
+                    {index > 0 && (
+                        <div class="mt-6 flex flex-wrap justify-between gap-3">
                             <button
                                 type="button"
-                                id="closeDisclaimer"
-                                class="w-full py-2 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 transition-colors uppercase tracking-widest text-xs"
+                                data-prev={index}
+                                class="teacher-button"
                             >
-                                {tr.form.disclaimerClose}
+                                {tr.form.back}
                             </button>
+                            {index < 3 ? (
+                                <button
+                                    type="button"
+                                    data-next={index + 2}
+                                    class="teacher-button teacher-button-primary"
+                                >
+                                    {tr.form.nextSection}
+                                </button>
+                            ) : (
+                                <button
+                                    type="submit"
+                                    class="teacher-button teacher-button-primary"
+                                >
+                                    {tr.form.submit}
+                                </button>
+                            )}
                         </div>
-                    </div>
-
-                    <div class="flex justify-end">
-                        <button
-                            type="button"
-                            id="btn-next-1"
-                            data-next="2"
-                            class="mt-4 px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled
-                        >
-                            {tr.form.nextSection}
-                        </button>
-                    </div>
+                    )}
                 </section>
-
-                <!-- Section 2: Group Dynamics -->
-                <section id="section-2" class="hidden">
-                    <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
-                        <span class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm">
-                            2
-                        </span>
-                        {tr.form.section2Title}
-                    </h2>
-                    <p
-                        id="section-description-2"
-                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
-                    ></p>
-                    <GroupDynamics
-                        client:load
-                        options={allStudents
-                            .filter((s) => s.studentRecordId !== null)
-                            .map((s) => ({ id: s.id, name: s.name }))}
-                        lang={lang}
-                    />
-                    <div class="flex justify-between mt-8">
-                        <button
-                            type="button"
-                            data-prev="1"
-                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
-                        >
-                            {tr.form.back}
-                        </button>
-                        <button
-                            type="button"
-                            data-next="3"
-                            class="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
-                        >
-                            {tr.form.nextSection}
-                        </button>
-                    </div>
-                </section>
-
-                <!-- Section 3: Professional Skills -->
-                <section id="section-3" class="hidden">
-                    <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
-                        <span class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm">
-                            3
-                        </span>
-                        {tr.form.section3Title}
-                    </h2>
-                    <p
-                        id="section-description-3"
-                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
-                    ></p>
-
-                    <div class="space-y-8">
-                        <div>
-                            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">
-                                {tr.skillCategories.narrative}
-                            </h3>
-                            {groups[0].skills.map((skill) => (
-                                <SkillSlider
-                                    client:load
-                                    label={skill.label}
-                                    name={skill.name}
-                                    description={skill.description}
-                                />
-                            ))}
-                        </div>
-
-                        <div>
-                            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">
-                                {tr.skillCategories.technical}
-                            </h3>
-                            {groups[1].skills.map((skill) => (
-                                <SkillSlider
-                                    client:load
-                                    label={skill.label}
-                                    name={skill.name}
-                                    description={skill.description}
-                                />
-                            ))}
-                        </div>
-
-                        <div>
-                            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">
-                                {tr.skillCategories.management}
-                            </h3>
-                            {groups[2].skills.map((skill) => (
-                                <SkillSlider
-                                    client:load
-                                    label={skill.label}
-                                    name={skill.name}
-                                    description={skill.description}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between mt-8">
-                        <button
-                            type="button"
-                            data-prev="2"
-                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
-                        >
-                            {tr.form.back}
-                        </button>
-                        <button
-                            type="button"
-                            data-next="4"
-                            class="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
-                        >
-                            {tr.form.nextSection}
-                        </button>
-                    </div>
-                </section>
-
-                <!-- Section 4: Personal Skills -->
-                <section id="section-4" class="hidden">
-                    <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
-                        <span class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm">
-                            4
-                        </span>
-                        {tr.form.section4Title}
-                    </h2>
-                    <p
-                        id="section-description-4"
-                        class="bg-teal-50/80 border border-teal-200/60 p-5 rounded-xl text-teal-700 text-sm mb-6 leading-relaxed whitespace-pre-line transition-opacity duration-300"
-                    ></p>
-
-                    {groups[3].skills.map((skill) => (
-                        <SkillSlider
-                            client:load
-                            label={skill.label}
-                            name={skill.name}
-                            description={skill.description}
-                        />
-                    ))}
-
-                    <div class="flex justify-between mt-8">
-                        <button
-                            type="button"
-                            data-prev="3"
-                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
-                        >
-                            {tr.form.back}
-                        </button>
-                        <button
-                            type="submit"
-                            class="px-8 py-3 bg-teal-600 text-white rounded-md font-bold hover:bg-teal-700 transition-all shadow-lg hover:shadow-xl active:scale-95"
-                        >
-                            {tr.form.submit}
-                        </button>
-                    </div>
-                </section>
-            </form>
-        </div>
+            ))}
+        </form>
+        {trial && (
+            <section
+                id="trial-complete"
+                class="teacher-panel p-5 sm:p-6"
+                role="status"
+                tabindex="-1"
+                hidden
+            >
+                <h2 class="text-lg">{tr.surveyUi.trialDone}</h2>
+                <p class="mt-3 text-sm text-slate-600">
+                    {tr.surveyUi.trialDoneNote}
+                </p>
+                <div class="teacher-toolbar mt-5">
+                    <a
+                        href={`/admin/survey-trial?lang=${lang}`}
+                        class="teacher-button teacher-button-primary"
+                    >
+                        {tr.surveyUi.restart}
+                    </a>
+                    <a href="/admin/dashboard" class="teacher-button">
+                        {tr.surveyUi.admin}
+                    </a>
+                </div>
+            </section>
+        )}
     </main>
-
     <script>
         import '../scripts/studentSurvey';
     </script>

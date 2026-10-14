@@ -66,6 +66,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({
     return (
         <div className="space-y-6">
             <MultiSelect
+                lang={lang}
                 options={options}
                 name="comfort"
                 maxSelections={1}
@@ -78,6 +79,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({
             />
 
             <MultiSelect
+                lang={lang}
                 options={options}
                 name="preferWith"
                 maxSelections={3}
@@ -90,6 +92,7 @@ export const GroupDynamics: React.FC<GroupDynamicsProps> = ({
             />
 
             <MultiSelect
+                lang={lang}
                 options={options}
                 name="preferAvoid"
                 maxSelections={3}
