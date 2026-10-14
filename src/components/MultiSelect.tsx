@@ -104,55 +104,57 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
         >
             <label
                 htmlFor={toggleId}
-                className="mb-2 block text-xs font-medium text-slate-600"
+                className="mb-2 block text-sm font-bold text-slate-900"
             >
                 {label}{' '}
-                <span className="font-normal text-slate-500">
+                <span className="text-xs font-normal text-slate-500">
                     · {tr.max} {maxSelections}
                 </span>
             </label>
-            {selectedOptions.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-2">
-                    {selectedOptions.map((item) => (
-                        <span
-                            key={item.id}
-                            className={`inline-flex max-w-full items-center gap-1 rounded-lg pl-3 text-sm ${colors.tag}`}
-                        >
-                            <span className="break-words">{item.name}</span>
-                            <button
-                                type="button"
-                                aria-label={`${tr.remove}: ${item.name}`}
-                                onClick={() =>
-                                    update(
-                                        selectedIds.filter(
-                                            (id) => id !== item.id,
-                                        ),
-                                    )
-                                }
-                                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg"
+            <div className="survey-selection-field rounded-lg border border-slate-200 bg-white">
+                <button
+                    ref={toggleRef}
+                    id={toggleId}
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={listId}
+                    className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-600"
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    <span>{placeholder}</span>
+                    <ChevronDown
+                        size={16}
+                        className="shrink-0"
+                        aria-hidden="true"
+                    />
+                </button>
+                {selectedOptions.length > 0 && (
+                    <div className="flex flex-wrap gap-2 px-3 pb-3">
+                        {selectedOptions.map((item) => (
+                            <span
+                                key={item.id}
+                                className={`inline-flex max-w-full items-center gap-1 rounded-lg pl-3 text-sm ${colors.tag}`}
                             >
-                                <X size={14} aria-hidden="true" />
-                            </button>
-                        </span>
-                    ))}
-                </div>
-            )}
-            <button
-                ref={toggleRef}
-                id={toggleId}
-                type="button"
-                aria-expanded={isOpen}
-                aria-controls={listId}
-                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-600"
-                onClick={() => setIsOpen(!isOpen)}
-            >
-                <span>{placeholder}</span>
-                <ChevronDown
-                    size={16}
-                    className="shrink-0"
-                    aria-hidden="true"
-                />
-            </button>
+                                <span className="break-words">{item.name}</span>
+                                <button
+                                    type="button"
+                                    aria-label={`${tr.remove}: ${item.name}`}
+                                    onClick={() =>
+                                        update(
+                                            selectedIds.filter(
+                                                (id) => id !== item.id,
+                                            ),
+                                        )
+                                    }
+                                    className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg"
+                                >
+                                    <X size={14} aria-hidden="true" />
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
             {isOpen && (
                 <div
                     id={listId}

@@ -1,9 +1,59 @@
 .survey-page {
     padding: 2rem 1rem;
 }
-.survey-page .survey-trial-banner {
-    background: #f0fdfa;
-    border-color: #ccfbf1;
+.survey-trial-note {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    z-index: 40;
+    width: min(20rem, calc(100vw - 2rem));
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: white;
+}
+.survey-skill-group {
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+}
+.survey-skill-heading {
+    padding: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 600;
+}
+.survey-skill-grid {
+    display: grid;
+    gap: 1px;
+    background: #e2e8f0;
+}
+.survey-skill-item {
+    min-width: 0;
+    padding: 1.25rem 1rem;
+    background: white;
+}
+.survey-skill-item .skill-question {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    margin-bottom: 0;
+}
+.survey-skill-item .skill-description {
+    flex: 1;
+}
+.survey-scale-note {
+    padding-left: 0.75rem;
+    border-left: 2px solid #99f6e4;
+}
+.survey-selection-field:focus-within {
+    outline: 2px solid #0d9488;
+    outline-offset: 3px;
+}
+.survey-page .survey-selection-field > button:focus-visible {
+    outline: none;
 }
 .survey-page input[type='checkbox'] {
     width: 1rem;
@@ -31,6 +81,12 @@
 @media (min-width: 640px) {
     .survey-page {
         padding-block: 2.5rem;
+    }
+    .survey-skill-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .survey-skill-item:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
     }
 }
 @media (prefers-reduced-motion: reduce) {

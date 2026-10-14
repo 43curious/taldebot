@@ -10,7 +10,6 @@ export function studentPath(lang: Language, path = '/'): string {
 export const translations = {
     eu: {
         surveyUi: {
-            help: 'Atalaren azalpena',
             progress: 'Inkestaren aurrerapena',
             step: 'atala',
             scale: 'Autoebaluazioa · 1–10 · Ez da nota akademikoa.',
@@ -214,7 +213,6 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
 
     en: {
         surveyUi: {
-            help: 'About this section',
             progress: 'Survey progress',
             step: 'section',
             scale: 'Self-assessment · 1–10 · Not an academic grade.',

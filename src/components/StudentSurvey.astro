@@ -41,42 +41,74 @@ const headings = [
 <Layout lang={lang} title={`${tr.form.title}: ${project.name}`}>
     <main class="survey-page teacher-page mx-auto max-w-3xl">
         {trial && (
-            <aside
-                class="survey-trial-banner teacher-panel mb-6 p-4"
-                aria-label={tr.surveyUi.trialTitle}
-            >
-                <p class="text-sm font-semibold text-teal-700">
-                    {tr.surveyUi.trialTitle}
-                </p>
-                <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                    {tr.surveyUi.trialNote}
-                </p>
-                <div class="mt-3 flex flex-wrap items-center gap-4 text-sm">
-                    <a
-                        href="/admin/dashboard"
-                        class="inline-flex min-h-11 items-center text-teal-700"
+            <div class="mb-6 flex items-center justify-between gap-4">
+                <a
+                    href="/admin/dashboard"
+                    class="inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700"
+                >
+                    ← {tr.surveyUi.admin}
+                </a>
+                <details class="survey-trial-info teacher-menu">
+                    <summary
+                        aria-label={tr.surveyUi.trialTitle}
+                        title={tr.surveyUi.trialTitle}
                     >
-                        ← {tr.surveyUi.admin}
-                    </a>
-                    <nav
-                        class="teacher-tabs"
-                        aria-label={lang === 'en' ? 'Language' : 'Hizkuntza'}
+                        <svg
+                            aria-hidden="true"
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <circle cx="12" cy="12" r="9" />
+                            <path stroke-linecap="round" d="M12 11v6" />
+                            <circle
+                                cx="12"
+                                cy="7"
+                                r=".75"
+                                fill="currentColor"
+                                stroke="none"
+                            />
+                        </svg>
+                    </summary>
+                    <aside
+                        class="survey-trial-note"
+                        aria-label={tr.surveyUi.trialTitle}
                     >
-                        <a
-                            href="/admin/survey-trial?lang=eu"
-                            aria-current={lang === 'eu' ? 'page' : undefined}
+                        <p class="text-sm font-semibold text-slate-900">
+                            {tr.surveyUi.trialTitle}
+                        </p>
+                        <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                            {tr.surveyUi.trialNote}
+                        </p>
+                        <nav
+                            class="teacher-tabs mt-3"
+                            aria-label={
+                                lang === 'en' ? 'Language' : 'Hizkuntza'
+                            }
                         >
-                            Euskara
-                        </a>
-                        <a
-                            href="/admin/survey-trial?lang=en"
-                            aria-current={lang === 'en' ? 'page' : undefined}
-                        >
-                            English
-                        </a>
-                    </nav>
-                </div>
-            </aside>
+                            <a
+                                href="/admin/survey-trial?lang=eu"
+                                aria-current={
+                                    lang === 'eu' ? 'page' : undefined
+                                }
+                            >
+                                Euskara
+                            </a>
+                            <a
+                                href="/admin/survey-trial?lang=en"
+                                aria-current={
+                                    lang === 'en' ? 'page' : undefined
+                                }
+                            >
+                                English
+                            </a>
+                        </nav>
+                    </aside>
+                </details>
+            </div>
         )}
         <header class="mb-6">
             <p class="mb-2 text-xs text-slate-500">
@@ -135,32 +167,27 @@ const headings = [
                     <h2
                         id={`section-heading-${index + 1}`}
                         tabindex="-1"
-                        class="mb-4 text-lg text-slate-900"
+                        class="mb-3 text-xl font-semibold tracking-tight text-slate-900"
                     >
                         {heading}
                     </h2>
+                    <p
+                        id={`section-description-${index + 1}`}
+                        class="mb-6 whitespace-pre-line text-sm leading-relaxed text-slate-600"
+                    >
+                        {
+                            tr.sectionDescriptions[
+                                String(
+                                    index + 1,
+                                ) as keyof typeof tr.sectionDescriptions
+                            ]
+                        }
+                    </p>
                     {index > 1 && (
-                        <p class="mb-4 text-xs text-slate-500">
+                        <p class="survey-scale-note mb-6 text-xs text-slate-500">
                             {tr.surveyUi.scale}
                         </p>
                     )}
-                    <details class="mb-5">
-                        <summary class="inline-flex min-h-11 cursor-pointer items-center text-sm text-slate-500">
-                            {tr.surveyUi.help}
-                        </summary>
-                        <p
-                            id={`section-description-${index + 1}`}
-                            class="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600"
-                        >
-                            {
-                                tr.sectionDescriptions[
-                                    String(
-                                        index + 1,
-                                    ) as keyof typeof tr.sectionDescriptions
-                                ]
-                            }
-                        </p>
-                    </details>
                     {index === 0 && (
                         <>
                             <div class="space-y-5">
@@ -315,35 +342,54 @@ const headings = [
                         />
                     )}
                     {index === 2 && (
-                        <div class="space-y-5">
+                        <div class="space-y-6">
                             {groups.slice(0, 3).map((group) => (
-                                <div>
-                                    <h3 class="mb-4 border-b border-slate-100 pb-2 text-sm font-semibold text-slate-600">
+                                <div
+                                    class="survey-skill-group"
+                                    aria-labelledby={`skills-${group.prefix}`}
+                                >
+                                    <h3
+                                        id={`skills-${group.prefix}`}
+                                        class="survey-skill-heading"
+                                    >
                                         {group.label}
                                     </h3>
-                                    {group.skills.map((skill) => (
+                                    <div class="survey-skill-grid">
+                                        {group.skills.map((skill) => (
+                                            <div class="survey-skill-item">
+                                                <SkillSlider
+                                                    client:load
+                                                    label={skill.label}
+                                                    name={skill.name}
+                                                    description={
+                                                        skill.description
+                                                    }
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {index === 3 && (
+                        <div class="survey-skill-group">
+                            <div class="survey-skill-grid">
+                                {groups[3].skills.map((skill) => (
+                                    <div class="survey-skill-item">
                                         <SkillSlider
                                             client:load
                                             label={skill.label}
                                             name={skill.name}
                                             description={skill.description}
                                         />
-                                    ))}
-                                </div>
-                            ))}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
-                    {index === 3 &&
-                        groups[3].skills.map((skill) => (
-                            <SkillSlider
-                                client:load
-                                label={skill.label}
-                                name={skill.name}
-                                description={skill.description}
-                            />
-                        ))}
                     {index > 0 && (
-                        <div class="mt-6 flex flex-wrap justify-between gap-3">
+                        <div class="mt-8 flex flex-wrap justify-between gap-3 border-t border-slate-100 pt-5">
                             <button
                                 type="button"
                                 data-prev={index}

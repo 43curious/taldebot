@@ -24,11 +24,11 @@ export const SkillSlider: React.FC<SkillSliderProps> = ({
     const [value, setValue] = useState(defaultValue);
 
     return (
-        <div className="mb-5">
+        <div className="skill-question mb-5">
             <div className="flex justify-between items-start gap-4 mb-1">
                 <label
                     htmlFor={name}
-                    className="text-sm font-medium text-slate-700"
+                    className="text-sm font-semibold text-slate-800"
                 >
                     {label}
                 </label>
@@ -40,7 +40,9 @@ export const SkillSlider: React.FC<SkillSliderProps> = ({
                 </output>
             </div>
             {description && (
-                <p className="text-xs text-slate-500 mb-2">{description}</p>
+                <p className="skill-description text-xs leading-relaxed text-slate-500 mb-2">
+                    {description}
+                </p>
             )}
             <input
                 disabled={unknown}
