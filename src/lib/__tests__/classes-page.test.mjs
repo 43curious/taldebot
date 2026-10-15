@@ -125,7 +125,25 @@ it('keeps class and dashboard actions available after a real login', async () =>
                 })
             ).status,
         ).toBe(302);
-        const login = await fetch(`${base}/admin/login`, {
+        const rejectedLogin = await fetch(`${base}/admin/login/submit`, {
+            method: 'POST',
+            redirect: 'manual',
+            headers: {
+                origin: base,
+                'content-type': 'application/x-www-form-urlencoded',
+            },
+            body: 'username=test&password=incorrect',
+        });
+        expect(rejectedLogin.status).toBe(401);
+        expect(rejectedLogin.headers.get('cache-control')).toBe(
+            'private, no-store',
+        );
+        expect(rejectedLogin.headers.get('set-cookie')).toBeNull();
+        const rejectedHtml = await rejectedLogin.text();
+        expect(rejectedHtml).toContain('Erabiltzaile edo pasahitz okerra');
+        expect(rejectedHtml).toMatch(/name="username"[^>]*value="test"/);
+        expect(rejectedHtml).not.toContain('value="incorrect"');
+        const login = await fetch(`${base}/admin/login/submit`, {
             method: 'POST',
             redirect: 'manual',
             headers: {
@@ -664,7 +682,7 @@ it('keeps class and dashboard actions available after a real login', async () =>
                 )
             ).rows,
         ).toHaveLength(0);
-        const scopedLogin = await fetch(`${base}/admin/login`, {
+        const scopedLogin = await fetch(`${base}/admin/login/submit`, {
             method: 'POST',
             redirect: 'manual',
             headers: {
@@ -677,6 +695,23 @@ it('keeps class and dashboard actions available after a real login', async () =>
             .get('set-cookie')
             ?.split(';')[0];
         const scopedHeaders = { cookie: scopedCookie };
+        const teacherGraph = await fetch(
+            `${base}/admin/graph?degree=1&class=1`,
+            {
+                headers: scopedHeaders,
+            },
+        );
+        expect(teacherGraph.status).toBe(200);
+        const teacherGraphHtml = await teacherGraph.text();
+        expect(teacherGraphHtml).toContain('Ane');
+        expect(teacherGraphHtml).not.toContain('Leire');
+        expect(
+            (
+                await fetch(`${base}/admin/surveys?degree=1&class=1`, {
+                    headers: scopedHeaders,
+                })
+            ).status,
+        ).toBe(200);
         expect(
             (
                 await fetch(

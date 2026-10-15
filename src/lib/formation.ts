@@ -73,13 +73,14 @@ export async function confirmedPairHistory(
     excludingProjectId?: number,
 ) {
     const selected = new Set(selectedIds);
-    const memberships = await db.query.assignmentMembers.findMany({
-        where: inArray(assignmentMembers.studentId, selectedIds),
-    });
     const assignments = await db.query.confirmedAssignments.findMany({
-        where: inArray(confirmedAssignments.id, [
-            ...new Set(memberships.map((row) => row.assignmentId)),
-        ]),
+        where: inArray(
+            confirmedAssignments.id,
+            db
+                .select({ id: assignmentMembers.assignmentId })
+                .from(assignmentMembers)
+                .where(inArray(assignmentMembers.studentId, selectedIds)),
+        ),
     });
     const byPair = new Map<
         string,
@@ -120,14 +121,14 @@ export async function formationInputs(
     historyMode?: HistoryMode,
 ) {
     requireProject(access, projectId);
-    const project = await db.query.projects.findFirst({
-        where: eq(projects.id, projectId),
-    });
+    const [project, participants] = await Promise.all([
+        db.query.projects.findFirst({ where: eq(projects.id, projectId) }),
+        db.query.students.findMany({
+            where: eq(students.projectId, projectId),
+        }),
+    ]);
     if (!project || isArchivedProject(project))
         throw new InputError('Proiektua ez dago erabilgarri.', 404);
-    const participants = await db.query.students.findMany({
-        where: eq(students.projectId, projectId),
-    });
     if (
         participants.some(
             (row) =>
@@ -145,10 +146,19 @@ export async function formationInputs(
             'Proiektuan identitate bikoiztuak daude. Berrikusi loturak.',
             409,
         );
-    const profiles = await loadStudentProfiles(db, access, ids, {
-        projectId,
-        academicPeriod: project.academicPeriod || academicPeriod(),
-    });
+    const activeIds = participants
+        .filter((row) => !row.isExcluded)
+        .map((row) => row.studentRecordId!);
+    const [profiles, history, restrictionRows] = await Promise.all([
+        loadStudentProfiles(db, access, ids, {
+            projectId,
+            academicPeriod: project.academicPeriod || academicPeriod(),
+        }),
+        confirmedPairHistory(db, activeIds, projectId),
+        db.query.pairingRestrictions.findMany({
+            where: isNull(pairingRestrictions.withdrawnAt),
+        }),
+    ]);
     if (
         participants.some(
             (row) =>
@@ -160,16 +170,7 @@ export async function formationInputs(
             'Ebatzi identitateen berrikuspena taldeak sortu aurretik.',
             409,
         );
-    const activeIds = participants
-        .filter((row) => !row.isExcluded)
-        .map((row) => row.studentRecordId!);
     const active = new Set(activeIds);
-    const [history, restrictionRows] = await Promise.all([
-        confirmedPairHistory(db, activeIds, projectId),
-        db.query.pairingRestrictions.findMany({
-            where: isNull(pairingRestrictions.withdrawnAt),
-        }),
-    ]);
     const restrictions = restrictionRows.filter(
         (rule) =>
             active.has(rule.student1Id) &&

@@ -9,7 +9,7 @@ interface Metrics {
 }
 const requests = new AsyncLocalStorage<Metrics>();
 export async function timed<T>(
-    name: 'session' | 'user' | 'access' | 'handler',
+    name: 'session' | 'user' | 'password' | 'access' | 'handler',
     run: () => Promise<T>,
 ): Promise<T> {
     const metrics = requests.getStore();

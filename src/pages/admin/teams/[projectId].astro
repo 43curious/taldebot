@@ -28,19 +28,53 @@ const project = await db.query.projects.findFirst({
     where: eq(projects.id, pid),
 });
 if (!project) return Astro.redirect('/admin/dashboard');
-const projectTeams = await db.query.teams.findMany({
-    where: and(
-        eq(teams.projectId, pid),
-        eq(teams.algorithmVersion, selectedVersion),
-    ),
-    orderBy: (teams, { asc }) => [asc(teams.teamNumber)],
-});
-const [participants, records] = await Promise.all([
+const projectTeamsPromise = db.query.teams
+    .findMany({
+        where: and(
+            eq(teams.projectId, pid),
+            eq(teams.algorithmVersion, selectedVersion),
+        ),
+        orderBy: (teams, { asc }) => [asc(teams.teamNumber)],
+    })
+    .execute();
+const archived = isArchivedProject(project);
+let inputError = '';
+const [
+    projectTeams,
+    participants,
+    records,
+    currentDraft,
+    confirmed,
+    inputState,
+] = await Promise.all([
+    projectTeamsPromise,
     db.query.students.findMany({
         where: eq(students.projectId, pid),
         orderBy: (row, { asc }) => [asc(row.id)],
     }),
     db.query.responses.findMany({ where: eq(responses.projectId, pid) }),
+    projectTeamsPromise.then((rows) =>
+        rows[0]?.draftId
+            ? db.query.teamDrafts.findFirst({
+                  where: eq(teamDrafts.id, rows[0].draftId),
+              })
+            : undefined,
+    ),
+    db.query.confirmedAssignments.findFirst({
+        where: eq(confirmedAssignments.projectId, pid),
+        orderBy: (row, { desc }) => [desc(row.revision)],
+    }),
+    archived
+        ? undefined
+        : formationInputs(db, Astro.locals.teacherAccess, pid).catch(
+              (error) => {
+                  inputError =
+                      error instanceof Error
+                          ? error.message
+                          : 'Ezin izan dira sarrerak kargatu.';
+                  return undefined;
+              },
+          ),
 ]);
 const members = teamMembers(participants, records);
 const cards = projectTeams.map((team) => ({
@@ -53,28 +87,6 @@ const cards = projectTeams.map((team) => ({
         .sort((a, b) => a.id - b.id),
 }));
 const currentDraftId = projectTeams[0]?.draftId ?? null;
-const currentDraft = currentDraftId
-    ? await db.query.teamDrafts.findFirst({
-          where: eq(teamDrafts.id, currentDraftId),
-      })
-    : undefined;
-const confirmed = await db.query.confirmedAssignments.findFirst({
-    where: eq(confirmedAssignments.projectId, pid),
-    orderBy: (row, { desc }) => [desc(row.revision)],
-});
-const archived = isArchivedProject(project);
-let inputError = '';
-const inputState = archived
-    ? undefined
-    : await formationInputs(db, Astro.locals.teacherAccess, pid).catch(
-          (error) => {
-              inputError =
-                  error instanceof Error
-                      ? error.message
-                      : 'Ezin izan dira sarrerak kargatu.';
-              return undefined;
-          },
-      );
 const snapshot = inputState?.snapshot;
 const inputs = snapshot?.inputs.filter((input) => !input.excluded) ?? [];
 const snapshotMembers = new Map(

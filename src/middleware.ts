@@ -11,6 +11,7 @@ import { routeError } from './lib/input';
 import { measuredRequest, timed } from './lib/requestMetrics';
 
 export const onRequest = defineMiddleware(async (context, next) => {
+    if (context.isPrerendered) return next();
     const privateRoute =
         context.url.pathname.startsWith('/admin/') ||
         context.url.pathname.startsWith('/api/admin/') ||
@@ -21,7 +22,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const response = await measuredRequest(async () => {
         const path = context.url.pathname;
         if (
-            (path.startsWith('/admin/') && path !== '/admin/login') ||
+            (path.startsWith('/admin/') &&
+                !['/admin/login', '/admin/login/submit'].includes(path)) ||
             path.startsWith('/api/admin/')
         ) {
             if (path !== '/api/admin/logout') {

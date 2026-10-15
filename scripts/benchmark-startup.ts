@@ -8,8 +8,8 @@ if (!existsSync('.netlify/build/entry.mjs'))
 
 // Fresh processes measure application startup, not Netlify container provisioning.
 for (const path of ['/', '/en/', '/admin/login', '/admin/dashboard']) {
-    const staticFile = path === '/' ? 'dist/index.html' : 'dist/en/index.html';
-    if ((path === '/' || path === '/en/') && existsSync(staticFile)) {
+    const staticFile = `dist/${path === '/' ? '' : path.slice(1) + '/'}index.html`;
+    if (existsSync(staticFile)) {
         console.log(
             JSON.stringify({ path, static: true, functionInvocations: 0 }),
         );

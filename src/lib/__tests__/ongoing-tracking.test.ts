@@ -102,6 +102,59 @@ async function setup() {
         project,
     };
 }
+it('loads scoped preferences and confirmed peers within the graph query budget', async () => {
+    const s = await setup();
+    await saveKnowledge(s.db, {
+        studentId: s.people[0].id,
+        preferences: {
+            comfort: [s.people[1].id],
+            preferWith: [],
+            preferAvoid: [],
+        },
+        source: 'independent-update',
+        scope: 'period',
+        academicPeriod: '2026-2027',
+    });
+    const draft = await createManualDraft(
+        s.db,
+        s.access,
+        s.project.id,
+        'v2',
+        2,
+        [
+            {
+                teamNumber: 1,
+                studentIds: s.people.slice(0, 2).map((p) => p.id),
+                justification: 'Test',
+            },
+            {
+                teamNumber: 2,
+                studentIds: s.people.slice(2).map((p) => p.id),
+                justification: 'Test',
+            },
+        ],
+    );
+    await confirmDraft(s.db, s.access, s.project.id, draft.id);
+    const access = await teachingAccess(s.db, s.teacher);
+    fixture.clearQueryCount();
+    const profiles = await loadStudentProfiles(s.db, access, [s.people[0].id], {
+        academicPeriod: '2026-2027',
+        relationshipView: 'latest-recorded',
+    });
+    expect(profiles.get(s.people[0].id)?.relationships).toEqual(
+        expect.arrayContaining([
+            expect.objectContaining({
+                target: s.people[1].id,
+                peerName: 'Iker',
+                kind: 'comfort',
+            }),
+        ]),
+    );
+    expect(profiles.get(s.people[0].id)?.assignments[0].peers).toEqual([
+        { id: s.people[1].id, name: 'Iker' },
+    ]);
+    expect(fixture.queryCount()).toBeLessThanOrEqual(9);
+});
 it('keeps identity and email aliases across class moves while current responsibility controls access', async () => {
     const s = await setup();
     let access = await teachingAccess(s.db, s.teacher);

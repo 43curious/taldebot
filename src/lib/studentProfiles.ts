@@ -1,4 +1,4 @@
-import { eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import {
     assessments,
     projects,
@@ -83,24 +83,35 @@ export async function loadStudentProfiles(
     for (const id of studentIds) requireStudent(access, id);
     if (context.projectId) requireProject(access, context.projectId);
     if (!studentIds.length) return new Map<number, never>();
-    const sourceProject =
-        context.projectId && !context.academicPeriod
-            ? await db.query.projects.findFirst({
-                  where: eq(projects.id, context.projectId),
-              })
-            : undefined;
-    const period =
-        context.academicPeriod ||
-        sourceProject?.academicPeriod ||
-        academicPeriod(context.asOf ? new Date(context.asOf) : new Date());
+    // SQL subqueries keep related reads in the same batch without exposing an
+    // inaccessible respondent's choices or waiting for their IDs in JavaScript.
+    const submissionScope = and(
+        or(
+            inArray(preferenceSubmissions.studentId, studentIds),
+            inArray(
+                preferenceSubmissions.id,
+                db
+                    .select({ id: preferenceChoices.submissionId })
+                    .from(preferenceChoices)
+                    .where(
+                        inArray(preferenceChoices.targetStudentId, studentIds),
+                    ),
+            ),
+        ),
+        isMaster(access)
+            ? undefined
+            : inArray(preferenceSubmissions.studentId, [...access.studentIds]),
+    );
     const [
         people,
         assessmentRows,
         submitted,
         enrollmentRows,
         rules,
-        memberRows,
+        assignmentRows,
         collaborationRows,
+        choices,
+        sourceProject,
     ] = await Promise.all([
         db.query.studentRecords.findMany({
             where: inArray(studentRecords.id, studentIds),
@@ -111,21 +122,7 @@ export async function loadStudentProfiles(
         }),
         db.query.preferenceSubmissions.findMany({
             columns: { rawLegacyData: false },
-            where: or(
-                inArray(preferenceSubmissions.studentId, studentIds),
-                inArray(
-                    preferenceSubmissions.id,
-                    db
-                        .select({ id: preferenceChoices.submissionId })
-                        .from(preferenceChoices)
-                        .where(
-                            inArray(
-                                preferenceChoices.targetStudentId,
-                                studentIds,
-                            ),
-                        ),
-                ),
-            ),
+            where: submissionScope,
         }),
         db
             .select({
@@ -151,8 +148,14 @@ export async function loadStudentProfiles(
                 inArray(pairingRestrictions.student2Id, studentIds),
             ),
         }),
-        db.query.assignmentMembers.findMany({
-            where: inArray(assignmentMembers.studentId, studentIds),
+        db.query.confirmedAssignments.findMany({
+            where: inArray(
+                confirmedAssignments.id,
+                db
+                    .select({ id: assignmentMembers.assignmentId })
+                    .from(assignmentMembers)
+                    .where(inArray(assignmentMembers.studentId, studentIds)),
+            ),
         }),
         db.query.collaborationReports.findMany({
             where: or(
@@ -160,7 +163,25 @@ export async function loadStudentProfiles(
                 inArray(collaborationReports.peerId, studentIds),
             ),
         }),
+        db.query.preferenceChoices.findMany({
+            where: inArray(
+                preferenceChoices.submissionId,
+                db
+                    .select({ id: preferenceSubmissions.id })
+                    .from(preferenceSubmissions)
+                    .where(submissionScope),
+            ),
+        }),
+        context.projectId && !context.academicPeriod
+            ? db.query.projects.findFirst({
+                  where: eq(projects.id, context.projectId),
+              })
+            : undefined,
     ]);
+    const period =
+        context.academicPeriod ||
+        sourceProject?.academicPeriod ||
+        academicPeriod(context.asOf ? new Date(context.asOf) : new Date());
     const visibleSubmissions = submitted.filter((row) =>
         canReadStudent(access, row.studentId),
     );
@@ -171,19 +192,6 @@ export async function loadStudentProfiles(
             activeAt(row.withdrawnAt, context.asOf) &&
             before(row.submittedAt, context.asOf),
     );
-    const [choices, assignmentRows] = await Promise.all([
-        db.query.preferenceChoices.findMany({
-            where: inArray(
-                preferenceChoices.submissionId,
-                visibleSubmissions.map((row) => row.id),
-            ),
-        }),
-        db.query.confirmedAssignments.findMany({
-            where: inArray(confirmedAssignments.id, [
-                ...new Set(memberRows.map((row) => row.assignmentId)),
-            ]),
-        }),
-    ]);
     type Submission = (typeof submissions)[number];
     const kinds = ['comfort', 'preferWith', 'preferAvoid'] as const;
     const pickPreference = (

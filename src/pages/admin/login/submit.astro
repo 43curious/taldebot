@@ -1,0 +1,48 @@
+---
+export const prerender = false;
+import AdminLogin from '../../../components/AdminLogin.astro';
+import { timed } from '../../../lib/requestMetrics';
+
+if (Astro.request.method !== 'POST') return Astro.redirect('/admin/login');
+let error = '';
+let username = '';
+try {
+    const form = await Astro.request.formData();
+    username = form.get('username')?.toString() ?? '';
+    const password = form.get('password')?.toString() ?? '';
+    const [{ db }, { users }, { verifyPassword }, { eq }] = await Promise.all([
+        import('../../../lib/db'),
+        import('../../../../db/schema'),
+        import('../../../lib/auth'),
+        import('drizzle-orm'),
+    ]);
+    const user = await timed('user', () =>
+        db.query.users.findFirst({
+            where: eq(users.username, username),
+        }),
+    );
+    if (
+        user &&
+        (await timed('password', () =>
+            verifyPassword(password, user.hashedPassword),
+        ))
+    ) {
+        const session = Astro.session;
+        if (!session) throw new Error('Session storage unavailable');
+        await timed('session', async () => {
+            await session.regenerate();
+            session.set('adminId', user.id);
+            session.set('adminUser', user.fullName || user.username);
+        });
+        return Astro.redirect('/admin/dashboard');
+    }
+    Astro.response.status = 401;
+    error = 'Erabiltzaile edo pasahitz okerra';
+} catch {
+    Astro.response.status = 503;
+    error = 'Errorea datuak bidaltzean. Saiatu berriro.';
+    console.error('[Login] Authentication unavailable');
+}
+---
+
+<AdminLogin error={error} username={username} />

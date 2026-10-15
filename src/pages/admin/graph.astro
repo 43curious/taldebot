@@ -14,7 +14,17 @@ import {
     surveyResponses,
     confirmedAssignments,
 } from '../../../db/schema';
-import { asc, eq, inArray, and, desc, lte } from 'drizzle-orm';
+import {
+    asc,
+    eq,
+    inArray,
+    and,
+    desc,
+    lte,
+    getTableColumns,
+    count,
+    sql,
+} from 'drizzle-orm';
 import { requireSurvey, surveyVisibility } from '../../lib/surveyCollections';
 import { positiveId, routeError, InputError } from '../../lib/input';
 import type { PreferenceKind } from '../../lib/trackingTypes';
@@ -29,7 +39,19 @@ import { loadStudentProfiles } from '../../lib/studentProfiles';
 import type { GraphStudent } from '../../lib/studentReport';
 import type { Relationship } from '../../lib/tracking';
 const access = Astro.locals.teacherAccess;
-const [allDegrees, allClasses] = await Promise.all([
+const classSizes = db
+    .select({
+        classId: classMembers.classId,
+        studentCount: count().as('student_count'),
+    })
+    .from(classMembers)
+    .innerJoin(
+        studentRecords,
+        eq(studentRecords.id, classMembers.studentRecordId),
+    )
+    .groupBy(classMembers.classId)
+    .as('class_sizes');
+const [allDegrees, allClasses, projects] = await Promise.all([
     db
         .select()
         .from(degrees)
@@ -40,66 +62,63 @@ const [allDegrees, allClasses] = await Promise.all([
         )
         .orderBy(asc(degrees.name)),
     db
-        .select()
+        .select({
+            ...getTableColumns(classes),
+            studentCount: sql<number>`coalesce(${classSizes.studentCount}, 0)`,
+        })
         .from(classes)
+        .leftJoin(classSizes, eq(classSizes.classId, classes.id))
         .where(classFilter(access))
         .orderBy(asc(classes.year), asc(classes.name)),
+    db.query.projects.findMany({
+        where: projectFilter(access),
+        orderBy: (row, { desc }) => [desc(row.createdAt)],
+    }),
 ]);
-const members = await db
-    .select({
-        id: studentRecords.id,
-        classId: classMembers.classId,
-        name: studentRecords.name,
-        email: studentRecords.email,
-        tutor: classMembers.tutor,
-        division: classMembers.division,
-    })
-    .from(classMembers)
-    .innerJoin(
-        studentRecords,
-        eq(studentRecords.id, classMembers.studentRecordId),
-    )
-    .where(
-        inArray(
-            classMembers.classId,
-            allClasses.map((group) => group.id),
+const scope = selectClassScope(allDegrees, allClasses, Astro.url.searchParams);
+const selectedRoster = scope.selectedClass
+    ? eq(classMembers.classId, scope.selectedClass.id)
+    : inArray(classMembers.classId, []);
+const [roster, participants, surveyOptions] = await Promise.all([
+    db
+        .select({
+            id: studentRecords.id,
+            classId: classMembers.classId,
+            name: studentRecords.name,
+            email: studentRecords.email,
+            tutor: classMembers.tutor,
+            division: classMembers.division,
+        })
+        .from(classMembers)
+        .innerJoin(
+            studentRecords,
+            eq(studentRecords.id, classMembers.studentRecordId),
+        )
+        .where(selectedRoster)
+        .orderBy(asc(studentRecords.name)),
+    db.query.students.findMany({
+        where: inArray(
+            students.studentRecordId,
+            db
+                .select({ id: classMembers.studentRecordId })
+                .from(classMembers)
+                .where(selectedRoster),
         ),
-    )
-    .orderBy(asc(studentRecords.name));
-const counts = new Map<number, number>();
-for (const member of members)
-    counts.set(member.classId, (counts.get(member.classId) ?? 0) + 1);
-const scope = selectClassScope(
-    allDegrees,
-    allClasses.map((group) => ({
-        ...group,
-        studentCount: counts.get(group.id) ?? 0,
-    })),
-    Astro.url.searchParams,
-);
-const roster = members.filter(
-    (member) => member.classId === scope.selectedClass?.id,
-);
+    }),
+    db.query.surveyCollections.findMany({
+        where: and(
+            surveyVisibility(db, access),
+            scope.selectedClass
+                ? eq(surveyCollections.classId, scope.selectedClass.id)
+                : inArray(surveyCollections.id, []),
+        ),
+        orderBy: desc(surveyCollections.launchedAt),
+    }),
+]);
 const rosterIds = new Set(roster.map((member) => member.id));
-const projects = await db.query.projects.findMany({
-    where: projectFilter(access),
-    orderBy: (row, { desc }) => [desc(row.createdAt)],
-});
-const participants = await db.query.students.findMany({
-    where: inArray(students.studentRecordId, [...rosterIds]),
-});
 const projectOptions = projects.filter((project) =>
     participants.some((student) => student.projectId === project.id),
 );
-const surveyOptions = await db.query.surveyCollections.findMany({
-    where: and(
-        surveyVisibility(db, access),
-        scope.selectedClass
-            ? eq(surveyCollections.classId, scope.selectedClass.id)
-            : inArray(surveyCollections.id, []),
-    ),
-    orderBy: desc(surveyCollections.launchedAt),
-});
 let sourceSurvey: Awaited<ReturnType<typeof requireSurvey>> | undefined;
 try {
     if (Astro.url.searchParams.get('survey')) {

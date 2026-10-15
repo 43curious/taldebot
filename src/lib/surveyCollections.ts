@@ -1,13 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import {
-    and,
-    eq,
-    inArray,
-    isNull,
-    notExists,
-    notInArray,
-    or,
-} from 'drizzle-orm';
+import { and, eq, inArray, isNull, notInArray, or } from 'drizzle-orm';
 import { z } from 'zod';
 import {
     questionnaires,
@@ -708,20 +700,15 @@ export function surveyVisibility(store: DataSession, access: TeacherAccess) {
                   isNull(surveyCollections.projectId),
                   inArray(surveyCollections.projectId, [...access.projectIds]),
               ),
-              notExists(
+              notInArray(
+                  surveyCollections.id,
                   store
-                      .select({ id: surveyParticipants.id })
+                      .select({ id: surveyParticipants.surveyId })
                       .from(surveyParticipants)
                       .where(
-                          and(
-                              eq(
-                                  surveyParticipants.surveyId,
-                                  surveyCollections.id,
-                              ),
-                              notInArray(surveyParticipants.studentId, [
-                                  ...access.studentIds,
-                              ]),
-                          ),
+                          notInArray(surveyParticipants.studentId, [
+                              ...access.studentIds,
+                          ]),
                       ),
               ),
           );

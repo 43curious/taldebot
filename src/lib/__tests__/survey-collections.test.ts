@@ -15,6 +15,7 @@ import {
     submitCollectionSurvey,
     addSurveyParticipants,
     closeSurvey,
+    surveyVisibility,
 } from '../surveyCollections';
 import { loadStudentProfiles } from '../studentProfiles';
 import { saveKnowledge, issueUpdateRequest } from '../studentUpdates';
@@ -86,6 +87,24 @@ async function setup() {
         definition,
     };
 }
+it('lists teacher-visible collections through the graph query without leaking revoked audience access', async () => {
+    const s = await setup();
+    const access = await teachingAccess(s.db, s.teacher);
+    const id = await launchSurvey(s.db, access, {
+        name: 'Class survey',
+        classId: s.classes[0].id,
+        versionId: s.definition.versionId,
+        groupIds: [],
+        academicPeriod: '2026-2027',
+    });
+    const visible = () =>
+        s.db.query.surveyCollections.findMany({
+            where: surveyVisibility(s.db, access),
+        });
+    expect((await visible()).map((row) => row.id)).toContain(id);
+    access.studentIds.delete(s.people[0].id);
+    expect(await visible()).toEqual([]);
+});
 it('edits unused drafts, freezes launched versions and deduplicates overlapping current groups across simultaneous enrollments', async () => {
     const s = await setup();
     const draft = await saveQuestionnaire(

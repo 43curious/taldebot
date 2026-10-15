@@ -102,3 +102,57 @@ Replace IDs with authorized representative records. The command only GETs page p
 Compare first requests after inactivity and warm medians/p95 under the same remote conditions. Record representative sizes, permissions and the final agreed latency target. **Jon requested that authenticated production verification remain pending until he pushes. #6 stays open for that comparison; these changes do not assert that deployed cold starts are resolved.**
 
 Final local validation on 2026-10-15: all 80 tests pass, Astro/TypeScript reports no errors or warnings, the production build passes, and the isolated browser workflow passes without browser errors. The built application's five-process startup probe measured login at a 250 ms fresh-process median / 1 ms warm and the anonymous dashboard redirect at 325 ms / <1 ms. Both landing pages remain static. These measurements verify local behavior and are not the pending deployment comparison.
+
+## Authenticated investigation and further fixes, 2026-10-15
+
+After deployment of `048395d` and application of migration 0006, Jon authorized temporary master/teacher accounts for production measurements. The teacher received the four current class grants: 178 accessible students and one fully accessible project. The master could see all six projects, so dashboard payloads differ by design. The database contained 230 durable students, 178 roster memberships, 162 project participants, 131 legacy responses/assessments and 1,041 preference choices. The selected year-2 class contained 49 students.
+
+### Deployed baseline
+
+Twenty sequential requests per measured route used the same Node fetch client, manual redirects, private session cookies and complete body consumption. Values below are time to response headers, in milliseconds. They include network and hosting overhead; first requests are not guaranteed cold. Server-Timing separates measured application, session, authorization and database work.
+
+| View | Master median / p95 | Teacher median / p95 |
+| --- | --- | --- |
+| Dashboard | 492 / 511 | 522 / 655 |
+| Selected class roster | 532 / 625 | 585 / 723 |
+| Year-2 graph | 1,195 / 1,701 | HTTP 500; no valid percentile |
+| Individual report | 785 / 888 | 886 / 1,116 |
+| Activity monitoring | 512 / 677 | Not measured in the interrupted run |
+| Activity teams | 1,379 / 1,572 | 1,534 / 1,635 |
+| Fictional trial submission | 356 / 411 | 412 / 511 |
+
+The graph's first measured master request took 2,044 ms; the teams request took 1,743 ms. Typical measured session reads were approximately 25–50 ms; the current-user lookup took approximately 80–90 ms, and ordinary-teacher access added another approximately 84 ms. The teams page issued 22 queries for the master and 23 for the teacher, with roughly 1,000 ms inside its handler even on later requests. These results support reducing dependent database reads rather than introducing an access cache.
+
+A separate anonymous probe measured the first login GET at 2,787 ms with only 6.1 ms of measured application work and zero database queries (five-sample median: 220 ms). Its delay was predominantly outside the middleware measurement boundary. This does not identify Netlify provisioning as the sole cause; it establishes that the empty login form needlessly depends on dynamic rendering.
+
+The first benchmark attempt stopped on a trial-data harness error; its accounts were removed. The corrected run exposed the ordinary-teacher graph failure, removed its accounts, and a final targeted run completed the remaining teacher report/teams/trial measurements. All temporary accounts and grants were removed. The final targeted run compared every non-account application table before and after and found no changes. Passwords and session cookies were generated in memory and were never printed. Only the fictional, validation-only trial endpoint received submissions; these numbers do **not** measure persisted student survey submissions.
+
+### Changes supported by these measurements
+
+- Prerender `/admin/login`. Its unchanged form posts to dynamic `/admin/login/submit`; successful login still regenerates the session, and failed login renders the same form with its username retained and password omitted. No JavaScript is required. The shared login component contains no request/session data when prerendered. Private submission responses remain uncached. This uses [Astro's per-route prerendering](https://docs.astro.build/en/guides/on-demand-rendering/#server-mode).
+- Read applicable preference choices and confirmed assignments using uncorrelated SQL subqueries in the initial profile batch. This removes an ID-only membership query and one dependent round trip. The original privacy checks, dates, unknown values, questionnaire versions and assignment/collaboration meanings remain intact. Source-project metadata is fetched alongside the other independent reads.
+- Fetch class counts without transferring every class member's identity. Fetch names only for the selected class; load its participants and survey options in parallel. Accessible degrees/classes/project options remain scoped to current responsibility.
+- Start independent team-page reads together. Fetch formation participants alongside their project; fetch profiles, restrictions and confirmed pair history together after validating participant identity/access. Pair-history membership IDs stay inside one SQL query.
+- Repair the teacher graph/survey filter discovered by the benchmark: its correlated query referred to the physical `survey_collections` name while Drizzle's relational query used a different outer alias. An uncorrelated exclusion of collections containing inaccessible audience members preserves the same rule and works through the actual relational query. A focused test reproduces the original `no such column: survey_collections.id` failure and checks immediate audience-access revocation; the authenticated HTTP test also covers teacher graph/survey pages.
+- Add password-verification timing to the dynamic login handler, without logging account names or credentials.
+
+### Same-remote-database loader comparison
+
+The loaders at `048395d` and these changes ran against the same live database from the same client, alternating their order over 20 samples. This is read-only database work, without hosting, sessions or HTML rendering. The teacher comparison uses the same scope IDs as the temporary account. Complete graph/report results and formation inputs matched; only the formation snapshot's new capture timestamp was excluded from equality. The graph query-budget test went red at ten queries and passes at nine while retaining preferences and confirmed peers.
+
+| Role / loader | Queries before → after | Median before → after | p95 before → after |
+| --- | --- | --- | --- |
+| Master graph profiles | 10 → 9 | 203 → 131 ms | 243 → 190 ms |
+| Teacher graph profiles | 10 → 9 | 203 → 132 ms | 261 → 166 ms |
+| Master individual profile | 10 → 9 | 164 → 103 ms | 224 → 169 ms |
+| Teacher individual profile | 10 → 9 | 181 → 105 ms | 222 → 159 ms |
+| Master formation inputs | 15 → 13 | 420 → 178 ms | 434 → 223 ms |
+| Teacher formation inputs | 15 → 13 | 421 → 183 ms | 450 → 243 ms |
+
+These are improvements to the actual remote query paths, not deployed page before/after figures. Page-level parallelism and selected-roster scoping require deployment before comparing their HTTP effect. Existing `benchmark:remote` remains available for repeated current-loader measurements; compare the same access and selected data, excluding inaccessible/empty views.
+
+### Validation and remaining deployment step
+
+All 82 tests pass, including real login, failed-password retention, teacher graph/survey access, historical answers, query budgets and immediate permission revocation. Astro/TypeScript reports no errors or warnings (one existing class-page hint); the isolated desktop/mobile browser workflow and production build pass. `benchmark:startup` confirms `/admin/login` is now a built static HTML page with zero SSR invocations. The anonymous dashboard redirect remains dynamic (297 ms fresh-process median locally); no claim is made that all private cold starts have been eliminated.
+
+No new schema migration is required for these performance changes. After Jon pushes this commit, repeat the authenticated HTTP comparison, including teacher monitoring and the repaired teacher graph, first requests after inactivity and a legitimate intended student submission. Agree the final latency target against those results; a proposed working budget is a warm page median below 1,000 ms and p95 below 1,500 ms for this dataset. Netlify initialization/execution logs are still needed to attribute hosting time. **Keep #6 open until that deployed comparison is complete; local/static and remote-loader results do not substitute for it.**
