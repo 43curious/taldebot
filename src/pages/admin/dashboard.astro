@@ -68,9 +68,9 @@ const feedback = new Map([
             </p>
             {projectStats.map((project) => (
                 <article class="teacher-panel grid min-w-0 lg:grid-cols-[minmax(0,1fr)_14rem]">
-                    <div class="project-card-main grid min-w-0 grid-cols-[minmax(0,1fr)_8rem] gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-5 sm:p-5">
+                    <div class="project-card-main grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-4 p-4 sm:gap-5 sm:p-5">
                         <div class="project-info min-w-0">
-                            <h3 class="text-lg font-semibold leading-snug text-slate-900">
+                            <h3 class="text-2xl font-semibold leading-snug text-slate-900">
                                 <a
                                     href={`/admin/monitor/${project.id}`}
                                     class="break-words hover:text-teal-700"
@@ -114,14 +114,14 @@ const feedback = new Map([
                                 </div>
                             </div>
                             {project.accessCode && (
-                                <div class="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                                <div class="mt-4 flex flex-wrap items-center gap-2 text-sm text-teal-700">
                                     <span class="text-xs">Kodea:</span>
-                                    <span class="break-all font-mono font-semibold tracking-wider text-slate-800">
+                                    <span class="break-all font-mono font-semibold tracking-wider">
                                         {project.accessCode}
                                     </span>
                                     <button
                                         type="button"
-                                        class="copy-code-btn inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-teal-50 hover:text-teal-700"
+                                        class="copy-code-btn inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-teal-700 hover:bg-teal-50"
                                         data-access-code={project.accessCode}
                                         aria-label={`Kopiatu ${project.name} proiektuaren kodea: ${project.accessCode}`}
                                         title="Kopiatu kodea"
@@ -181,8 +181,8 @@ const feedback = new Map([
                                 </div>
                             )}
                         </div>
-                        <div class="project-controls flex min-w-0 flex-col items-end justify-between gap-4">
-                            <details class="project-menu teacher-menu">
+                        <div class="project-controls contents min-w-0 flex-col items-end justify-between gap-4 sm:flex">
+                            <details class="project-menu teacher-menu col-start-2 row-start-1 justify-self-end">
                                 <summary
                                     aria-label={`${project.name}: proiektuaren aukerak`}
                                     title="Proiektuaren aukerak"
@@ -228,16 +228,16 @@ const feedback = new Map([
                                     )}
                                 </div>
                             </details>
-                            <div class="grid w-full gap-2">
+                            <div class="col-span-2 flex justify-end gap-2">
                                 <a
                                     href={`/admin/monitor/${project.id}`}
-                                    class="teacher-button teacher-button-primary text-center"
+                                    class="teacher-button teacher-button-primary whitespace-nowrap text-center"
                                 >
                                     Kudeatu
                                 </a>
                                 <a
                                     href={`/admin/teams/${project.id}`}
-                                    class="teacher-button text-center"
+                                    class="teacher-button whitespace-nowrap text-center"
                                 >
                                     Ikusi taldeak
                                 </a>
