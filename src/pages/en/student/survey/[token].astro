@@ -1,0 +1,12 @@
+---
+export const prerender = false;
+import CollectionSurveyPage from '../../../../components/CollectionSurveyPage.astro';
+import { loadCollectionSurvey } from '../../../../lib/survey';
+const token = Astro.params.token ?? '';
+const context = await loadCollectionSurvey(token);
+Astro.response.status = context ? 200 : 410;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+---
+
+<CollectionSurveyPage token={token} context={context} lang="en" />

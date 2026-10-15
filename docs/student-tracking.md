@@ -14,7 +14,7 @@ The master-only **Erabiltzaileen kudeaketa** panel creates accounts and edits ro
 
 Profiles show the latest applicable self-assessment, its date and source, and earlier submissions. Missing scores remain unknown; they are not academic grades. Legacy authorship is unverified and synthetic demo records are labeled. Motivation is displayed only in its source project.
 
-Working preferences have either a project or academic-period scope. An explicit project preference overrides that period's general preference only inside the project. Default class graphs and reports show each student's latest complete recorded relationship submission as explicitly labeled history, with its original source and date. Current-period, project and as-of context are secondary controls. This historical display does not make earlier choices current or applicable to a new team allocation. New projects prompt review of reused period preferences. See the [historical visibility investigation](relationship-visibility.md).
+Working preferences have either a project or academic-period scope. An explicit project preference overrides that period's general preference only inside the project. Default class graphs and reports show each student's latest applicable recorded answer for each asked preference kind as explicitly labeled history, with its original source and date. Current-period, project and as-of context are secondary controls. This historical display does not make earlier choices current or applicable to a new team allocation. New projects prompt review of reused period preferences. See the [historical visibility investigation](relationship-visibility.md).
 
 From a profile, request only skills, only preferences, or both without creating a project. Monitoring issues a personal project survey link. Links are random, stored only as hashes, valid for 30 days and single-use. Reissuing revokes the earlier pending link. Expiry, consumption, archival, class transfer or loss of the issuer's responsibility invalidates access. The project code remains an entry point, but cannot select another student or authorize writing a record.
 
@@ -55,3 +55,5 @@ npm run db:context -- --remote --projects 7,8 --period 2025-2026 --year 1
 ```
 
 Use `--local` for a local installation. The command changes only project/assessment/preference context; answer values, timestamps, source IDs, current enrollments and confirmed input snapshots remain intact. Historical participants absent from the current roster retain standalone identities until their current enrollment is confirmed. Project preferences remain historical and local, rather than becoming current second-year choices automatically.
+
+Versioned class/group surveys and explicit actual-collaboration reports are described in [questionnaires](questionnaires.md). Original questionnaire wording, audience inclusion dates and unasked-versus-empty semantics are retained separately from current roster membership.

@@ -18,6 +18,7 @@
     "benchmark:data": "tsx scripts/benchmark-data.ts",
     "benchmark:remote": "tsx scripts/benchmark-remote.ts",
     "benchmark:startup": "tsx scripts/benchmark-startup.ts",
+    "benchmark:http": "tsx scripts/benchmark-http.ts",
     "db:context": "tsx scripts/project-context.ts"
   },
   "dependencies": {

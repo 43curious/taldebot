@@ -63,3 +63,11 @@ SMTP configuration is optional. Without a host, notifications are simulated; wit
 Prettier with the Astro plugin defines formatting for TypeScript, Astro, CSS, scripts and Markdown. Use `npx prettier --write <changed-files>` for focused changes. `npm run format -- <changed-files>` formats selected files, and `npm run format -- .` / `format:check` cover the whole repository; a bulk formatting pass should be a separate change, not mixed with behavior changes. CI does not currently require a whole-repository formatting pass.
 
 The graph keeps camera and continuous geometry updates outside React state, batches SVG updates with animation frames and stops when idle. Cleanup leaves this rendering loop intact. See [AGENTS.md](../AGENTS.md) for the design constraints.
+
+## Versioned class survey extension
+
+`questionnaires.ts` defines the limited, stable question catalogue and bilingual answer meanings. `surveyCollections.ts` owns definition/version changes, audience capture/additions, scoped invitations and atomic responses. The public `CollectionSurveyPage.astro` / `CollectionSurvey.tsx` render the captured version; `/admin/surveys/:id` renders each response's original version, independently of later edits. `TrialToolbar.astro` is shared by the original trial and saved-questionnaire previews. Both preview endpoints only validate fictional answers.
+
+Normalized preference submissions now carry `askedKinds`; `studentProfiles.ts` selects applicable history per asked kind. Collection context is strict: it does not substitute another survey's answers. Dated collaboration reports are independent of confirmed assignments. `sociogram.ts` owns valid score lookup and incoming-choice/coverage counts; GraphCanvas renders team fill, a blue skill ring and the existing selected-student links without moving animation/camera work into React state. See [the questionnaire ownership and migration guide](questionnaires.md).
+
+`requestMetrics.ts` measures private requests with isolated aggregate timings and a LibSQL proxy. No SQL/parameters/records are logged and no authorization cache is introduced. Invitation validation skips profile reads when a caller does not use prefilled preferences. See [the deployment measurement follow-up](loading-measurements.md).

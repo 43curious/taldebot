@@ -14,12 +14,36 @@ export interface GraphStudent extends TrackedStudent {
         label: string;
         assessmentAt: string | null;
         assessmentSource: string | null;
+        assessmentVersion?: string | null;
+        memberships?: {
+            className: string;
+            year: number | null;
+            academicPeriod: string;
+        }[];
+        preferenceKinds?: import('./trackingTypes').PreferenceKind[];
+        collaborations?: {
+            peerId: number | null;
+            peerName: string;
+            incoming: boolean;
+            answer: 'worked' | 'never';
+            submittedAt: string;
+            surveyName: string;
+            questionnaireVersion: string;
+        }[];
         preferenceAt: string | null;
         needsReview: boolean;
         href: string;
         motivationInContext: boolean;
+        inSurveyAudience?: boolean;
+        assignedPeerIds?: number[];
         relationships: ProfileRelationship[];
-        assignments: { projectName: string; date: string; revision: number }[];
+        assignments: {
+            projectName: string;
+            date: string;
+            revision: number;
+            peers?: string[];
+            peerIds?: number[];
+        }[];
     };
     hasSurvey?: boolean;
     assessment?: SelfAssessment;

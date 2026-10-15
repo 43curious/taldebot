@@ -1031,3 +1031,31 @@ it('adds an explicit concurrent enrollment without ending the first and rejects 
         ).map((row) => row.classId),
     ).toEqual([s.groups[1].id]);
 });
+
+it('validates project invitations without loading unused historical profiles, retaining all authorization checks', async () => {
+    const s = await setup();
+    const participant = await s.db.query.students.findFirst({
+        where: eq(schema.students.studentRecordId, s.people[0].id),
+    });
+    const link = await issueUpdateRequest(s.db, s.access, {
+        studentId: s.people[0].id,
+        projectId: s.project.id,
+        participantId: participant!.id,
+        assessmentAsked: true,
+        preferencesAsked: true,
+    });
+    fixture.clearQueryCount();
+    const context = await requestContext(s.db, link.token, {
+        includePreferences: false,
+    });
+    expect(context.request.studentId).toBe(s.people[0].id);
+    expect(context.peers).toHaveLength(4);
+    expect(fixture.queryCount()).toBeLessThanOrEqual(7);
+    await s.db
+        .update(schema.updateRequests)
+        .set({ revokedAt: new Date().toISOString() })
+        .where(eq(schema.updateRequests.id, link.requestId));
+    await expect(
+        requestContext(s.db, link.token, { includePreferences: false }),
+    ).rejects.toThrow();
+});

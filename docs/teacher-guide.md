@@ -51,3 +51,21 @@ Berrikusi sarreren datak eta iturriak. Balorazio ezezagunak ez dira 5 gisa gorde
 Jakinarazpenek azken esleipen berretsia erabiltzen dute. Testu eta Excel esportazioek zirriborroa edo berrikuspen berretsia etiketatzen dute. Excel-ak hobespen pribatuak ditu: irakaslearen dokumentu gisa gorde. Proiektua artxibatzeak historia mantentzen du eta aldaketa berriak eragozten ditu.
 
 Migrazioa eta datuen mugak: [jarraipenaren dokumentazioa](student-tracking.md).
+
+## Galdera-sortak eta klaseko inkestak
+
+Klasea aukeratu ondoren, **Inkestak** estekan sortu proiekturik gabeko edo proiektu bati lotutako inkesta. **Galdera-sortak kudeatu** atalean aukeratu galderak, ordenatu geziekin eta editatu euskarazko/ingelesezko testuak. Gaitasunen esanahia eta 1–10 eskala mantendu. **Galdera-sorta probatu** aukerak fikziozko ikasleekin baliozkotzen du, daturik gorde gabe.
+
+Inkesta irekitzean bertsioa eta audientzia finkatzen dira. Moduluko hainbat talde hautatuz kideak batu egiten dira, bikoiztu gabe; Sormena/Digitala ere iragazi daiteke. Ondorengo matrikulak ez dira automatikoki gehitzen: **Audientzia eta inkestaren aukerak** atalean gehitu kide berriak esplizituki. Lehendik jasotako bertsioa ez da aldatzen; galdera-sorta editatzeak hurrengo bertsioa sortzen du.
+
+Inkestaren orrian sortu ikasle bakoitzaren esteka pertsonala. **Erantzunak CSV** aukerak jatorrizko galderak, gakoak, erantzunak eta iturriak esportatzen ditu, irakaslearentzako datu pribatu gisa. Erantzunak bertan ikusten dira, jatorrizko bertsioarekin. Inkesta ixteak estekak itxi eta erantzunak mantentzen ditu. Erantzunik eskatzen ez den hobespenak aurreko ezagutza mantentzen du; hautaketa hutsa bidaltzeak eskatutako mota bakarrik garbitzen du bere testuinguruan.
+
+**Benetako elkarlana** galderak kide bakoitzarekin lan egin den edo inoiz ez den lan egin jasotzen du. Erantzun gabeko kidea ez da “inoiz ez” bihurtzen. Ikaslearen adierazpenak eta berretsitako talde-esleipenak beren iturri eta datarekin ageri dira, bat ez badatoz ere.
+
+## Maparen iragazki berriak
+
+**Testuingurua** atalean aukeratu inkesta edo jarduera. **Mapa iragazi** menuan aukeratu gaitasuna eta gutxieneko puntuazioa (hasieran 7/10): eraztun urdinak autoebaluazio hori dutenak nabarmentzen ditu, ez gaitasun objektiboaren sailkapena. Ezezagunak ez dira nabarmentzen.
+
+**Sarrerako aukerak** kontrolak hautatutako motaren kopuruak eta erantzun dutenen estaldura erakusten ditu, egungo klasearen barruan. Ez da etiketa iraunkorrik sortzen; erantzunik eza ez da baztertzea. Proiektu bati lotutako ikuspegian berretsitako taldeek nodoaren kolorea ematen dute; eraztun urdina gaitasunarena da eta lotura berde/gorriak hautatutako ikaslearenak. Zirriborroak ez dira talde berretsi gisa erakusten. Talderik ez badago, egoera esplizitua da.
+
+Txostenak egungo matrikula guztiak, jatorrizko inkesta/bertsioa, adierazitako elkarlana eta esleipenak bereizten ditu. **Elkarrekin esleipen-erregistrorik gabe** zerrendak ez du frogatzen kideek inoiz elkarrekin lan egin ez dutenik.

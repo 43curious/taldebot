@@ -5,6 +5,7 @@ const adminUser = (await Astro.session?.get<string>('adminUser')) || 'Admin';
 const links = [
     { href: '/admin/dashboard', label: 'Arbel Nagusia', icon: 'dashboard' },
     { href: '/admin/classes', label: 'Klaseak', icon: 'classes' },
+    { href: '/admin/surveys', label: 'Inkestak', icon: 'preview' },
     { href: '/admin/graph', label: 'Harremanen mapa', icon: 'graph' },
     { href: '/admin/create-project', label: 'Proiektu Berria', icon: 'plus' },
     { href: '/admin/survey-trial', label: 'Inkesta probatu', icon: 'preview' },
@@ -21,6 +22,7 @@ const links = [
 ];
 const isActive = (href: string) =>
     currentPath === href ||
+    (href === '/admin/surveys' && (currentPath.startsWith('/admin/surveys/') || currentPath === '/admin/questionnaires')) ||
     (href === '/admin/dashboard' &&
         /^\/admin\/(monitor|teams)\//.test(currentPath));
 ---
@@ -53,7 +55,7 @@ const isActive = (href: string) =>
         </button>
     </div>
 
-    <nav data-sidebar-padding="x" class="flex-1 space-y-1 px-3 py-6 transition-[padding] duration-200" aria-label="Menu nagusia">
+    <nav data-sidebar-padding="x" class="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6 transition-[padding] duration-200" aria-label="Menu nagusia">
         {
             links.map((link) => (
                 <a

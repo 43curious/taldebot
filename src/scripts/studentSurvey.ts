@@ -132,24 +132,6 @@ if (form) {
         if (event.target === modal) modal.close();
     });
 
-    const trialInfo =
-        document.querySelector<HTMLDetailsElement>('.survey-trial-info');
-    if (trialInfo) {
-        document.addEventListener('click', (event) => {
-            if (
-                event.target instanceof Node &&
-                !trialInfo.contains(event.target)
-            )
-                trialInfo.open = false;
-        });
-        trialInfo.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && trialInfo.open) {
-                trialInfo.open = false;
-                trialInfo.querySelector('summary')?.focus();
-            }
-        });
-    }
-
     // Preserve #2: Enter never implicitly submits from an earlier section.
     form.addEventListener('keydown', (event) => {
         if (

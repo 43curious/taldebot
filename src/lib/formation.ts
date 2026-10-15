@@ -218,6 +218,25 @@ export async function formationInputs(
                     : null,
                 preferenceDate: profile.preference?.submittedAt ?? null,
                 preferenceSubmissionId: profile.preference?.id ?? null,
+                preferenceSources: Object.fromEntries(
+                    Object.entries(profile.preferenceCoverage).flatMap(
+                        ([kind, source]) =>
+                            source
+                                ? [
+                                      [
+                                          kind,
+                                          {
+                                              submissionId: source.id,
+                                              surveyId: source.surveyId,
+                                              date: source.submittedAt,
+                                              questionnaireVersion:
+                                                  source.questionnaireVersion,
+                                          },
+                                      ],
+                                  ]
+                                : [],
+                    ),
+                ),
                 assessment: profile.values,
                 preferences,
                 location: {

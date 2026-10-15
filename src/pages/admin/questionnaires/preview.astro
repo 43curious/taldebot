@@ -1,0 +1,64 @@
+---
+export const prerender = false;
+import Layout from '../../../layouts/Layout.astro';
+import TrialToolbar from '../../../components/TrialToolbar.astro';
+import CollectionSurvey from '../../../components/CollectionSurvey';
+import { db } from '../../../lib/db';
+import { questionnaireVersions } from '../../../../db/schema';
+import { eq } from 'drizzle-orm';
+import { requireQuestionnaire } from '../../../lib/surveyCollections';
+import { positiveId, routeError, InputError } from '../../../lib/input';
+import { language } from '../../../lib/i18n';
+import { trialSurvey } from '../../../lib/trialSurvey';
+import '../../../styles/teacher.css';
+import '../../../styles/survey.css';
+const lang = language(Astro.url.searchParams.get('lang') || undefined);
+let version: typeof questionnaireVersions.$inferSelect,
+    definition: Awaited<ReturnType<typeof requireQuestionnaire>>;
+try {
+    const id = positiveId.parse(Astro.url.searchParams.get('version'));
+    const row = await db.query.questionnaireVersions.findFirst({
+        where: eq(questionnaireVersions.id, id),
+    });
+    if (!row) throw new InputError('Galdera-sorta ez da existitzen.', 404);
+    version = row;
+    definition = await requireQuestionnaire(
+        db,
+        Astro.locals.teacherAccess,
+        row.questionnaireId,
+    );
+} catch (error) {
+    return routeError(error);
+}
+---
+
+<Layout lang={lang} title={definition.name}>
+    <main class="teacher-page survey-page mx-auto max-w-3xl">
+        <TrialToolbar
+            lang={lang}
+            returnHref={`/admin/questionnaires?id=${definition.id}`}
+            returnLabel={
+                lang === 'en'
+                    ? 'Back to questionnaire'
+                    : 'Galdera-sortara itzuli'
+            }
+            localeHref={`/admin/questionnaires/preview?version=${version.id}`}
+        />
+        <header class="mb-6">
+            <p class="mb-2 text-xs text-slate-500">
+                TaldeBOT · v{version.version}
+            </p>
+            <h1>{definition.name}</h1>
+            <p class="mt-3 text-sm text-slate-600">Ane Proba</p>
+        </header>
+        <CollectionSurvey
+            client:load
+            questions={version.questions}
+            peers={trialSurvey.allStudents}
+            studentId={trialSurvey.allStudents[0].id}
+            token=""
+            lang={lang}
+            trialVersionId={version.id}
+        />
+    </main>
+</Layout>

@@ -27,7 +27,7 @@ export async function loadProjectSurvey(
     try {
         const context = await (
             await import('./studentUpdates')
-        ).requestContext(db, token);
+        ).requestContext(db, token, { includePreferences: false });
         if (
             context.request.scope !== 'project' ||
             context.request.projectId !== data.project.id
@@ -36,5 +36,15 @@ export async function loadProjectSurvey(
         return { data, token, context, invalid: false };
     } catch {
         return { data, token: null, context: undefined, invalid: true };
+    }
+}
+
+export async function loadCollectionSurvey(token: string) {
+    try {
+        return await (
+            await import('./surveyCollections')
+        ).surveyRequestContext(db, token);
+    } catch {
+        return undefined;
     }
 }

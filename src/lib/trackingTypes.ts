@@ -28,6 +28,17 @@ export interface FormationInput {
     assessmentSource: string | null;
     preferenceDate: string | null;
     preferenceSubmissionId: number | null;
+    preferenceSources?: Partial<
+        Record<
+            PreferenceKind,
+            {
+                submissionId: number;
+                surveyId: number | null;
+                date: string | null;
+                questionnaireVersion: string;
+            }
+        >
+    >;
     assessment: AssessmentValues;
     preferences: Record<PreferenceKind, number[]>;
     excluded: boolean;

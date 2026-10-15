@@ -55,3 +55,50 @@ Run the startup benchmark after `npm run build`; the development adapter may cle
 After Jon pushes and the deployment completes, repeat the first request following inactivity and several warm requests for the homepage, login and authenticated teacher pages. Compare Netlify function initialization/execution metrics with session and database timings. Monitoring, team loading and survey submission still need authenticated end-to-end measurements; no real survey was submitted for benchmarking. Agree on a practical target from these results. Keep #6 open until the deployed cold/warm comparison verifies the improvement; local startup and remote loader results are not a production cold-start guarantee.
 
 Validation: all 55 tests pass, including real login/student submission and permission boundaries; the Astro/TypeScript check and production build pass. Existing adapter deprecation messages and the class-page hint are unrelated to these changes.
+
+## Follow-up, 2026-10-15
+
+Public requests to the current deployment still show a slow first login request. A fresh curl request measured `/admin/login` at 2,935 ms to first byte, followed by 501–550 ms; the first homepage request measured 657 ms and the next 373 ms. These are observations after a period without this client's traffic, not proof that a particular hosting container was cold.
+
+The new read-only command was also run against that deployment (five requests per route, one Node fetch client with connection reuse):
+
+| Route | First request | Median | p95 |
+| --- | --- | --- | --- |
+| `/` | 1,013 ms | 39 ms | 1,013 ms |
+| `/admin/login` | 2,494 ms | 243 ms | 2,494 ms |
+| Anonymous `/admin/dashboard` redirect | 715 ms | 257 ms | 715 ms |
+
+These two probes use different connection behavior; do not treat their medians as a before/after comparison. They separate initial HTTP cost from repeated requests but cannot attribute it to hosting, route startup or session storage. No production writes, push or deployment were performed.
+
+### Measured query reduction
+
+Project invitation validation previously loaded a full historical profile just to compute prefilled preferences which the project survey and submission handlers never consumed. A focused real-database query-budget test observed **16 queries** for that path and failed its seven-query budget. Validation-only callers now skip the unused historical-profile load, while keeping issuer, responsibility, identity, expiry, project, participant and attendance checks. Independent update form GETs retain their prefilled preferences; their POST validation skips the unused prefill read. This is a query reduction at the actual authorization seam, not a claim about deployed cold-start latency.
+
+### Post-push measurement
+
+Private dynamic responses now include aggregate `Server-Timing` entries:
+
+- `app`: time inside the request measurement boundary.
+- `session`, `user`, `access`: measured authentication/responsibility phases.
+- `handler`: downstream page/API work, including its database reads and rendering.
+- `db`: sum of measured database operation time; parallel operations may sum to more than wall time.
+- `db_queries`, `db_rows`: aggregate counts, without SQL, parameter values, names, response content or cookies.
+
+The timings do not include hosting provisioning, imports before middleware, browser work or all adapter/session finalization after middleware. They do not replace Netlify initialization/execution logs. Concurrent request metrics are isolated with AsyncLocalStorage; no access/data cache was introduced.
+
+After pushing/deploying, run:
+
+```sh
+npm run benchmark:http -- --samples 20
+# Set TALDEBOT_BENCHMARK_COOKIE privately in the environment for an authenticated session.
+# Repeat separately for a master and a teacher with the selected class/project grants.
+npm run benchmark:http -- --samples 20 \
+  --path /admin/dashboard --path /admin/classes --path /admin/graph \
+  --path /admin/students/1 --path /admin/monitor/1 --path /admin/teams/1
+```
+
+Replace IDs with authorized representative records. The command only GETs page paths, prints no body or cookie, and fails on unexpected HTTP statuses. `--budget-ms <n>` optionally makes it fail when first-byte latency exceeds an agreed target. The first sample is explicitly labeled “first request”, rather than falsely guaranteed cold. For submission timing, inspect `Server-Timing` on a legitimate, intended submission; the benchmark never submits artificial production answers. Synthetic end-to-end tests cover submission correctness separately.
+
+Compare first requests after inactivity and warm medians/p95 under the same remote conditions. Record representative sizes, permissions and the final agreed latency target. **Jon requested that authenticated production verification remain pending until he pushes. #6 stays open for that comparison; these changes do not assert that deployed cold starts are resolved.**
+
+Final local validation on 2026-10-15: all 80 tests pass, Astro/TypeScript reports no errors or warnings, the production build passes, and the isolated browser workflow passes without browser errors. The built application's five-process startup probe measured login at a 250 ms fresh-process median / 1 ms warm and the anonymous dashboard redirect at 325 ms / <1 ms. Both landing pages remain static. These measurements verify local behavior and are not the pending deployment comparison.

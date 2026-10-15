@@ -29,6 +29,16 @@ The students selected for an activity or its survey, retaining the class and mod
 A dated self-assessment with its author, questionnaire version and collection context. It is a student's reported confidence, not an academic grade.
 _Avoid_: Grade, objective ability score
 
+**Questionnaire version**:
+An ordered set of questions with Basque and English wording and stable answer meanings. A launched survey preserves its version; subsequent edits create another version.
+
+**Survey**:
+A dated collection for an explicit class, specialty or module-group audience using one questionnaire version, optionally linked to a project. Later audience additions are recorded explicitly; roster changes do not change its earlier audience or answers.
+
+**Collaboration report**:
+A student's dated account of actually working with a named peer, or explicitly never having worked with that peer. An unanswered question is neither answer, and a recorded team assignment is separate evidence.
+_Avoid_: Inferring collaboration from assignment or silence
+
 **Preference submission**:
 A student's dated, directed comfort, collaboration and avoidance choices for an academic period or a particular project. An explicit empty submission replaces earlier choices in that scope; an unasked section does not.
 _Avoid_: Popularity, permanent avoidance label

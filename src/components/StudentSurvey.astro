@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import TrialToolbar from './TrialToolbar.astro';
 import { SkillSlider } from './SkillSlider';
 import { GroupDynamics } from './GroupDynamics';
 import { t, type Language } from '../lib/i18n';
@@ -40,76 +41,7 @@ const headings = [
 
 <Layout lang={lang} title={`${tr.form.title}: ${project.name}`}>
     <main class="survey-page teacher-page mx-auto max-w-3xl">
-        {trial && (
-            <div class="mb-6 flex items-center justify-between gap-4">
-                <a
-                    href="/admin/dashboard"
-                    class="inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700"
-                >
-                    ← {tr.surveyUi.admin}
-                </a>
-                <details class="survey-trial-info teacher-menu">
-                    <summary
-                        aria-label={tr.surveyUi.trialTitle}
-                        title={tr.surveyUi.trialTitle}
-                    >
-                        <svg
-                            aria-hidden="true"
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-5 w-5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.5"
-                        >
-                            <circle cx="12" cy="12" r="9" />
-                            <path stroke-linecap="round" d="M12 11v6" />
-                            <circle
-                                cx="12"
-                                cy="7"
-                                r=".75"
-                                fill="currentColor"
-                                stroke="none"
-                            />
-                        </svg>
-                    </summary>
-                    <aside
-                        class="survey-trial-note"
-                        aria-label={tr.surveyUi.trialTitle}
-                    >
-                        <p class="text-sm font-semibold text-slate-900">
-                            {tr.surveyUi.trialTitle}
-                        </p>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                            {tr.surveyUi.trialNote}
-                        </p>
-                        <nav
-                            class="teacher-tabs mt-3"
-                            aria-label={
-                                lang === 'en' ? 'Language' : 'Hizkuntza'
-                            }
-                        >
-                            <a
-                                href="/admin/survey-trial?lang=eu"
-                                aria-current={
-                                    lang === 'eu' ? 'page' : undefined
-                                }
-                            >
-                                Euskara
-                            </a>
-                            <a
-                                href="/admin/survey-trial?lang=en"
-                                aria-current={
-                                    lang === 'en' ? 'page' : undefined
-                                }
-                            >
-                                English
-                            </a>
-                        </nav>
-                    </aside>
-                </details>
-            </div>
-        )}
+        {trial && <TrialToolbar lang={lang} />}
         <header class="mb-6">
             <p class="mb-2 text-xs text-slate-500">
                 TaldeBOT · {tr.form.title}

@@ -9,6 +9,7 @@ import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { migrateDatabase } from '../../../scripts/migrations';
 import { skillGroups } from '../skills';
+import { standardQuestions } from '../questionnaires';
 
 it('keeps class and dashboard actions available after a real login', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'taldebot-page-'));
@@ -223,6 +224,57 @@ it('keeps class and dashboard actions available after a real login', async () =>
             expect(realEndpoint.ok).toBe(false);
         }
         expect(await snapshot()).toEqual(beforeTrial);
+        const definitionResponse = await fetch(
+            `${base}/api/admin/questionnaires`,
+            {
+                method: 'POST',
+                headers: {
+                    cookie,
+                    origin: base,
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: 'Trial version',
+                    questions: standardQuestions().filter((q) =>
+                        ['narrative_writing', 'collaboration'].includes(q.key),
+                    ),
+                }),
+            },
+        );
+        expect(definitionResponse.status).toBe(200);
+        const trialDefinition = await definitionResponse.json();
+        const beforeCustomTrial = await snapshot();
+        const customPreview = await fetch(
+            `${base}/admin/questionnaires/preview?version=${trialDefinition.versionId}`,
+            { headers: { cookie } },
+        );
+        expect(customPreview.status).toBe(200);
+        expect(await customPreview.text()).toContain('Ane Proba');
+        const customPayload = {
+            versionId: trialDefinition.versionId,
+            studentId: 9000001,
+            consent: true,
+            answers: {
+                narrative_writing: 8,
+                collaboration: { 9000002: 'never' },
+            },
+        };
+        const customSubmit = async (body, authenticated = true) =>
+            fetch(`${base}/api/admin/trial-questionnaire`, {
+                method: 'POST',
+                headers: {
+                    ...(authenticated ? { cookie } : {}),
+                    origin: base,
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+        expect((await customSubmit(customPayload, false)).status).toBe(401);
+        expect(
+            (await customSubmit({ ...customPayload, studentId: 1 })).status,
+        ).toBe(400);
+        expect((await customSubmit(customPayload)).status).toBe(200);
+        expect(await snapshot()).toEqual(beforeCustomTrial);
         const malformedDeletion = await fetch(
             `${base}/api/admin/delete-project`,
             {
@@ -625,6 +677,14 @@ it('keeps class and dashboard actions available after a real login', async () =>
             .get('set-cookie')
             ?.split(';')[0];
         const scopedHeaders = { cookie: scopedCookie };
+        expect(
+            (
+                await fetch(
+                    `${base}/admin/questionnaires/preview?version=${trialDefinition.versionId}`,
+                    { headers: scopedHeaders },
+                )
+            ).status,
+        ).toBe(403);
         expect(
             (
                 await fetch(`${base}/admin/survey-trial`, {

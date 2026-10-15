@@ -1,0 +1,369 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import ClassSelector from '../../components/ClassSelector.astro';
+import { db } from '../../lib/db';
+import {
+    classes,
+    degrees,
+    classGroups,
+    questionnaires,
+    questionnaireVersions,
+    surveyCollections,
+    surveyParticipants,
+    surveyResponses,
+} from '../../../db/schema';
+import { and, eq, inArray, isNull, asc, desc } from 'drizzle-orm';
+import { classFilter, projectFilter, isMaster } from '../../lib/access';
+import { selectClassScope } from '../../lib/classSelection';
+import { academicPeriod } from '../../lib/studentIdentity';
+import { launchSurvey, surveyVisibility } from '../../lib/surveyCollections';
+const access = Astro.locals.teacherAccess;
+let error = '',
+    submitted: FormData | undefined;
+if (Astro.request.method === 'POST')
+    try {
+        submitted = await Astro.request.formData();
+        const id = await launchSurvey(db, access, {
+            name: String(submitted.get('name') || ''),
+            classId: Number(submitted.get('classId')),
+            versionId: Number(submitted.get('versionId')),
+            groupIds: submitted.getAll('groupIds').map(Number),
+            division: (submitted.get('division') || undefined) as
+                'sormena' | 'digitala' | undefined,
+            projectId: submitted.get('projectId')
+                ? Number(submitted.get('projectId'))
+                : undefined,
+            academicPeriod: String(submitted.get('academicPeriod') || ''),
+        });
+        return Astro.redirect(`/admin/surveys/${id}`);
+    } catch (caught) {
+        error =
+            caught instanceof Error
+                ? caught.message
+                : 'Ezin izan da inkesta sortu.';
+    }
+const [allDegrees, allClasses, versions, projectOptions] = await Promise.all([
+    db.query.degrees.findMany({
+        where: isMaster(access)
+            ? undefined
+            : inArray(degrees.id, [...access.degreeIds]),
+        orderBy: asc(degrees.name),
+    }),
+    db.query.classes.findMany({
+        where: classFilter(access),
+        orderBy: [asc(classes.year), asc(classes.name)],
+    }),
+    db
+        .select({
+            id: questionnaireVersions.id,
+            questionnaireId: questionnaires.id,
+            name: questionnaires.name,
+            version: questionnaireVersions.version,
+        })
+        .from(questionnaireVersions)
+        .innerJoin(
+            questionnaires,
+            eq(questionnaires.id, questionnaireVersions.questionnaireId),
+        )
+        .where(
+            isMaster(access)
+                ? undefined
+                : eq(questionnaires.createdBy, access.actor.id),
+        )
+        .orderBy(desc(questionnaireVersions.version)),
+    db.query.projects.findMany({
+        where: projectFilter(access),
+        columns: { id: true, name: true, archivedAt: true, status: true },
+    }),
+]);
+const scope = selectClassScope(
+    allDegrees,
+    allClasses.map((row) => ({ ...row, studentCount: 0 })),
+    Astro.url.searchParams,
+);
+const groupOptions = scope.selectedClass
+    ? await db.query.classGroups.findMany({
+          where: and(
+              eq(classGroups.classId, scope.selectedClass.id),
+              isNull(classGroups.archivedAt),
+          ),
+      })
+    : [];
+const visibility = surveyVisibility(db, access);
+const surveys = await db.query.surveyCollections.findMany({
+    where: and(
+        visibility,
+        Astro.url.searchParams.has('all')
+            ? undefined
+            : scope.selectedClass
+              ? eq(surveyCollections.classId, scope.selectedClass.id)
+              : inArray(surveyCollections.id, []),
+    ),
+    orderBy: desc(surveyCollections.launchedAt),
+});
+const ids = surveys.map((s) => s.id);
+const [participants, completed] = await Promise.all([
+    db.query.surveyParticipants.findMany({
+        where: inArray(surveyParticipants.surveyId, ids),
+        columns: { surveyId: true },
+    }),
+    db.query.surveyResponses.findMany({
+        where: inArray(surveyResponses.surveyId, ids),
+        columns: { surveyId: true },
+    }),
+]);
+const latest = [
+    ...new Map(
+        [...versions].reverse().map((v) => [v.questionnaireId, v]),
+    ).values(),
+];
+const value = (key: string, fallback = '') =>
+    String(submitted?.get(key) ?? fallback);
+---
+
+<AdminLayout title="Inkestak">
+    <section class="teacher-page">
+        <header class="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h1>Inkestak</h1>
+                <p class="mt-2 text-sm text-slate-500">
+                    Klasearen edo moduluko taldeen galdera-sortak eta
+                    erantzunak.
+                </p>
+            </div>
+            <a href="/admin/questionnaires" class="teacher-button">
+                Galdera-sortak kudeatu
+            </a>
+        </header>
+        <ClassSelector degrees={allDegrees} scope={scope} />
+        <div class="teacher-toolbar mb-5 text-sm text-slate-500">
+            <a
+                href={`/admin/classes?${new URLSearchParams({ degree: scope.degree, class: String(scope.selectedClass?.id ?? '') })}`}
+                class="inline-flex min-h-11 items-center"
+            >
+                ← Klasea
+            </a>
+            <a
+                href="/admin/surveys?all=1"
+                class="inline-flex min-h-11 items-center"
+            >
+                Eskuragarri dauden inkesta guztiak
+            </a>
+        </div>
+        {error && (
+            <p role="alert" class="mb-5 text-sm text-red-700">
+                {error}
+            </p>
+        )}
+        {scope.selectedClass && (
+            <details
+                class="teacher-panel mb-6 p-4 sm:p-5"
+                open={Boolean(error) || !surveys.length}
+            >
+                <summary class="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-slate-800">
+                    Inkesta berria sortu
+                </summary>
+                {latest.length ? (
+                    <form method="POST" class="mt-5 space-y-5">
+                        <input
+                            type="hidden"
+                            name="classId"
+                            value={scope.selectedClass.id}
+                        />
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="teacher-label">
+                                Inkestaren izena
+                                <input
+                                    name="name"
+                                    required
+                                    maxlength="120"
+                                    value={value('name')}
+                                />
+                            </label>
+                            <label class="teacher-label">
+                                Galdera-sorta
+                                <select name="versionId" required>
+                                    {latest.map((version) => (
+                                        <option
+                                            value={version.id}
+                                            selected={
+                                                value('versionId') ===
+                                                String(version.id)
+                                            }
+                                        >
+                                            {version.name} · v{version.version}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="teacher-label">
+                                Espezialitatea
+                                <select name="division">
+                                    <option value="">Guztiak</option>
+                                    <option
+                                        value="sormena"
+                                        selected={
+                                            value('division') === 'sormena'
+                                        }
+                                    >
+                                        Sormena
+                                    </option>
+                                    <option
+                                        value="digitala"
+                                        selected={
+                                            value('division') === 'digitala'
+                                        }
+                                    >
+                                        Digitala
+                                    </option>
+                                </select>
+                            </label>
+                            <label class="teacher-label">
+                                Ikasturtea
+                                <input
+                                    name="academicPeriod"
+                                    pattern="[0-9]{4}-[0-9]{4}"
+                                    required
+                                    value={value(
+                                        'academicPeriod',
+                                        academicPeriod(),
+                                    )}
+                                />
+                            </label>
+                        </div>
+                        {groupOptions.length > 0 && (
+                            <fieldset>
+                                <legend class="mb-2 text-xs font-medium text-slate-600">
+                                    Moduluko taldeak
+                                </legend>
+                                <p class="mb-3 text-xs text-slate-500">
+                                    Hutsik: klase osoa. Hainbat hautatuz, kideak
+                                    batu egiten dira, ikasleak bikoiztu gabe;
+                                    espezialitatearen iragazkia ere aplikatzen
+                                    da.
+                                </p>
+                                <div class="flex flex-wrap gap-4">
+                                    {groupOptions.map((group) => (
+                                        <label class="flex min-h-11 items-center gap-2 text-sm text-slate-700">
+                                            <input
+                                                type="checkbox"
+                                                name="groupIds"
+                                                value={group.id}
+                                                checked={submitted
+                                                    ?.getAll('groupIds')
+                                                    .includes(String(group.id))}
+                                            />
+                                            {group.moduleName} · {group.name}
+                                        </label>
+                                    ))}
+                                </div>
+                            </fieldset>
+                        )}
+                        <details>
+                            <summary class="flex min-h-11 cursor-pointer items-center text-sm text-slate-500">
+                                Proiektu bati lotu (aukerakoa)
+                            </summary>
+                            <label class="teacher-label mt-3">
+                                Proiektua
+                                <select name="projectId">
+                                    <option value="">Proiekturik gabe</option>
+                                    {projectOptions
+                                        .filter(
+                                            (p) =>
+                                                !p.archivedAt &&
+                                                p.status !== 'archived',
+                                        )
+                                        .map((p) => (
+                                            <option
+                                                value={p.id}
+                                                selected={
+                                                    value('projectId') ===
+                                                    String(p.id)
+                                                }
+                                            >
+                                                {p.name}
+                                            </option>
+                                        ))}
+                                </select>
+                            </label>
+                            <p class="mt-2 text-xs text-slate-500">
+                                Audientziako kideek proiektu horretan parte
+                                hartu behar dute. Motibazioaren galderak
+                                proiektua eskatzen du.
+                            </p>
+                        </details>
+                        <p class="text-xs leading-relaxed text-slate-500">
+                            Irekitzean galdera-sortaren bertsioa eta audientzia
+                            finkatuko dira. Geroagoko matrikulek ez dituzte
+                            automatikoki aldatuko.
+                        </p>
+                        <button
+                            type="submit"
+                            class="teacher-button teacher-button-primary"
+                        >
+                            Inkesta sortu eta ireki
+                        </button>
+                    </form>
+                ) : (
+                    <p class="mt-3 text-sm text-slate-500">
+                        Sortu lehenik{' '}
+                        <a
+                            href="/admin/questionnaires?new=1"
+                            class="text-teal-700"
+                        >
+                            galdera-sorta bat
+                        </a>
+                        .
+                    </p>
+                )}
+            </details>
+        )}
+        <div class="teacher-panel divide-y divide-slate-100">
+            {surveys.map((survey) => (
+                <a
+                    href={`/admin/surveys/${survey.id}`}
+                    class="flex min-h-11 flex-wrap items-center justify-between gap-3 px-4 py-4"
+                >
+                    <div>
+                        <h2 class="text-sm text-slate-900">{survey.name}</h2>
+                        <p class="mt-1 text-xs text-slate-500">
+                            {survey.className} · {survey.academicPeriod} ·{' '}
+                            {survey.closedAt ? 'Itxita' : 'Irekita'}
+                        </p>
+                    </div>
+                    <span class="text-sm text-teal-700">
+                        {
+                            completed.filter(
+                                (row) => row.surveyId === survey.id,
+                            ).length
+                        }{' '}
+                        /{' '}
+                        {
+                            participants.filter(
+                                (row) => row.surveyId === survey.id,
+                            ).length
+                        }{' '}
+                        erantzun →
+                    </span>
+                </a>
+            ))}
+            {!surveys.length && (
+                <p class="p-5 text-sm text-slate-500">
+                    Ez dago inkestarik hautatutako ikuspegian.
+                </p>
+            )}
+        </div>
+    </section>
+</AdminLayout>
+<style>
+    .teacher-page input[type='checkbox'] {
+        width: 1rem;
+        height: 1rem;
+        min-height: 1rem;
+        padding: 0;
+        accent-color: #0f766e;
+    }
+</style>

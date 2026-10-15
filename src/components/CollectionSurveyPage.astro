@@ -1,0 +1,71 @@
+---
+import Layout from '../layouts/Layout.astro';
+import StudentAccess from './StudentAccess.astro';
+import CollectionSurvey from './CollectionSurvey';
+import { surveyRequestContext } from '../lib/surveyCollections';
+import { t, type Language } from '../lib/i18n';
+import '../styles/teacher.css';
+import '../styles/survey.css';
+interface Props {
+    token: string;
+    lang: Language;
+    context?: Awaited<ReturnType<typeof surveyRequestContext>>;
+}
+const { token, lang, context } = Astro.props;
+---
+
+{context ? (
+    <Layout title={context.survey.name} lang={lang}>
+        <main class="survey-page teacher-page mx-auto max-w-3xl">
+            <header class="mb-6">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <p class="text-xs text-slate-500">
+                        TaldeBOT · {lang === 'en' ? 'Survey' : 'Inkesta'}
+                    </p>
+                    <nav
+                        class="flex gap-3 text-xs text-slate-500"
+                        aria-label={lang === 'en' ? 'Language' : 'Hizkuntza'}
+                    >
+                        <a
+                            href={`/student/survey/${token}`}
+                            aria-current={lang === 'eu' ? 'page' : undefined}
+                        >
+                            Euskara
+                        </a>
+                        <a
+                            href={`/en/student/survey/${token}`}
+                            aria-current={lang === 'en' ? 'page' : undefined}
+                        >
+                            English
+                        </a>
+                    </nav>
+                </div>
+                <h1>{context.survey.name}</h1>
+                <p class="mt-3 text-sm text-slate-600">
+                    {context.person.studentName}
+                </p>
+                <p class="mt-1 text-xs text-slate-500">
+                    {context.survey.className} · {context.survey.academicPeriod}{' '}
+                    · v{context.version.version}
+                </p>
+            </header>
+            <CollectionSurvey
+                client:load
+                questions={context.version.questions}
+                peers={context.audience.map((person) => ({
+                    id: person.studentId,
+                    name: person.studentName,
+                }))}
+                studentId={context.person.studentId}
+                token={token}
+                lang={lang}
+            />
+        </main>
+    </Layout>
+) : (
+    <StudentAccess
+        lang={lang}
+        title={lang === 'en' ? 'Survey' : 'Inkesta'}
+        message={t(lang).form.personalLinkError}
+    />
+)}

@@ -1,0 +1,125 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import QuestionnaireEditor from '../../components/QuestionnaireEditor';
+import { db } from '../../lib/db';
+import { questionnaires, questionnaireVersions } from '../../../db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { isMaster } from '../../lib/access';
+import { positiveId, routeError } from '../../lib/input';
+import { standardQuestions } from '../../lib/questionnaires';
+import { requireQuestionnaire } from '../../lib/surveyCollections';
+const access = Astro.locals.teacherAccess;
+const definitions = await db.query.questionnaires.findMany({
+    where: isMaster(access)
+        ? undefined
+        : eq(questionnaires.createdBy, access.actor.id),
+    orderBy: (row, { asc }) => [asc(row.name)],
+});
+let selected: (typeof definitions)[number] | undefined,
+    version: typeof questionnaireVersions.$inferSelect | undefined;
+try {
+    if (Astro.url.searchParams.has('id')) {
+        selected = await requireQuestionnaire(
+            db,
+            access,
+            positiveId.parse(Astro.url.searchParams.get('id')),
+        );
+        version = await db.query.questionnaireVersions.findFirst({
+            where: eq(questionnaireVersions.questionnaireId, selected.id),
+            orderBy: desc(questionnaireVersions.version),
+        });
+    }
+} catch (error) {
+    return routeError(error);
+}
+const editing =
+    Boolean(selected) ||
+    Astro.url.searchParams.has('new') ||
+    !definitions.length;
+---
+
+<AdminLayout title="Galdera-sortak">
+    <section class="teacher-page mx-auto max-w-4xl">
+        <a
+            href="/admin/surveys"
+            class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500"
+        >
+            ← Inkestak
+        </a>
+        <header class="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h1>Galdera-sortak</h1>
+                <p class="mt-2 text-sm text-slate-500">
+                    Galderak, ordena eta bertsioak.
+                </p>
+            </div>
+            <a class="teacher-button" href="/admin/questionnaires?new=1">
+                Galdera-sorta berria
+            </a>
+        </header>
+        {Astro.url.searchParams.has('saved') && (
+            <p role="status" class="mb-4 text-sm text-teal-700">
+                Galdera-sorta gorde da. Aurreko inkesten bertsioak mantendu
+                dira.
+            </p>
+        )}
+        {definitions.length > 0 && (
+            <nav
+                class="teacher-panel mb-6 divide-y divide-slate-100"
+                aria-label="Galdera-sortak"
+            >
+                {definitions.map((row) => (
+                    <a
+                        href={`/admin/questionnaires?id=${row.id}`}
+                        aria-current={
+                            selected?.id === row.id ? 'page' : undefined
+                        }
+                        class="flex min-h-11 items-center justify-between gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                        {row.name}
+                        <span class="text-teal-700">Editatu →</span>
+                    </a>
+                ))}
+            </nav>
+        )}
+        {version && (
+            <a
+                href={`/admin/questionnaires/preview?version=${version.id}`}
+                class="teacher-button mb-5"
+            >
+                Galdera-sorta probatu (daturik gorde gabe)
+            </a>
+        )}
+        {editing && (
+            <div class="teacher-panel p-4 sm:p-6">
+                <h2 class="mb-5 text-lg">
+                    {selected
+                        ? `${selected.name} · v${version?.version}`
+                        : 'Galdera-sorta berria'}
+                </h2>
+                <QuestionnaireEditor
+                    client:load
+                    id={selected?.id}
+                    initialName={selected?.name ?? ''}
+                    initialQuestions={
+                        version?.questions ??
+                        standardQuestions().filter(
+                            (q) => q.key !== 'soft_motivation',
+                        )
+                    }
+                />
+            </div>
+        )}
+    </section>
+</AdminLayout>
+
+<style is:global>
+    .teacher-page .questionnaire-editor input[type='checkbox'] {
+        width: 1rem;
+        height: 1rem;
+        min-height: 1rem;
+        padding: 0;
+        accent-color: #0f766e;
+    }
+</style>

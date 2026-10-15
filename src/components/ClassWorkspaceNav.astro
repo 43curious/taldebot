@@ -1,0 +1,38 @@
+---
+interface Props {
+    degree: string;
+    classId: number;
+}
+const { degree, classId } = Astro.props;
+const query = new URLSearchParams({ degree, class: String(classId) });
+---
+
+<nav
+    class="teacher-toolbar mb-5 text-sm text-slate-500"
+    aria-label="Klaseko tresnak"
+>
+    <a
+        href={`/admin/groups?${query}`}
+        class="inline-flex min-h-11 items-center hover:text-teal-700"
+    >
+        Moduluko taldeak kudeatu →
+    </a>
+    <a
+        href={`/admin/surveys?${query}`}
+        class="inline-flex min-h-11 items-center hover:text-teal-700"
+    >
+        Inkestak →
+    </a>
+    <a
+        href={`/admin/graph?${query}`}
+        class="inline-flex min-h-11 items-center hover:text-teal-700"
+    >
+        Harremanen mapa →
+    </a>
+    <a
+        href={`/admin/create-project?${query}`}
+        class="inline-flex min-h-11 items-center hover:text-teal-700"
+    >
+        Jarduera / taldeak sortu →
+    </a>
+</nav>

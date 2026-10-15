@@ -10,7 +10,9 @@ export const POST: APIRoute = async ({ request, redirect }) => {
         const data = submissionSchema.parse(
             Object.fromEntries((await request.formData()).entries()),
         );
-        const context = await requestContext(db, data.requestToken || '');
+        const context = await requestContext(db, data.requestToken || '', {
+            includePreferences: false,
+        });
         if (
             context.request.scope !== 'project' ||
             context.request.projectId !== data.projectId ||

@@ -22,7 +22,7 @@ import {
 
 export type DataSession = Pick<
     AppDatabase,
-    'select' | 'insert' | 'update' | 'delete' | 'query'
+    'select' | 'insert' | 'update' | 'delete' | 'query' | 'all'
 >;
 export function academicPeriod(date = new Date()) {
     const year = date.getUTCFullYear() - (date.getUTCMonth() < 8 ? 1 : 0);

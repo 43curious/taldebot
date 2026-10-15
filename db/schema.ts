@@ -7,6 +7,11 @@ import type {
     ClassGroupAudience,
 } from '../src/lib/trackingTypes';
 import type { Skills } from '../src/lib/skills';
+import type {
+    Question,
+    QuestionAnswers,
+    SurveyAudienceSnapshot,
+} from '../src/lib/questionnaires';
 import {
     sqliteTable,
     text,
@@ -364,7 +369,10 @@ export const updateRequests = sqliteTable('update_requests', {
     classId: integer('class_id').references(() => classes.id, {
         onDelete: 'set null',
     }),
-    scope: text('scope').$type<'project' | 'period'>().notNull(),
+    scope: text('scope').$type<'project' | 'period' | 'survey'>().notNull(),
+    surveyId: integer('survey_id').references(() => surveyCollections.id, {
+        onDelete: 'set null',
+    }),
     academicPeriod: text('academic_period').notNull(),
     assessmentAsked: integer('assessment_asked', { mode: 'boolean' }).notNull(),
     preferencesAsked: integer('preferences_asked', {
@@ -387,6 +395,9 @@ export const assessments = sqliteTable(
         data: text('data', { mode: 'json' })
             .$type<AssessmentValues>()
             .notNull(),
+        surveyId: integer('survey_id').references(() => surveyCollections.id, {
+            onDelete: 'set null',
+        }),
         questionnaireVersion: text('questionnaire_version')
             .notNull()
             .default('skills-v1'),
@@ -396,6 +407,7 @@ export const assessments = sqliteTable(
                 | 'project-survey'
                 | 'independent-update'
                 | 'demo'
+                | 'survey-collection'
             >()
             .notNull(),
         projectId: integer('project_id').references(() => projects.id, {
@@ -423,6 +435,16 @@ export const assessments = sqliteTable(
 export const preferenceSubmissions = sqliteTable(
     'preference_submissions',
     {
+        surveyId: integer('survey_id').references(() => surveyCollections.id, {
+            onDelete: 'set null',
+        }),
+        questionnaireVersion: text('questionnaire_version')
+            .notNull()
+            .default('skills-v1'),
+        askedKinds: text('asked_kinds', { mode: 'json' })
+            .$type<PreferenceKind[]>()
+            .notNull()
+            .default(['comfort', 'preferWith', 'preferAvoid']),
         complete: integer('complete', { mode: 'boolean' })
             .notNull()
             .default(true),
@@ -443,6 +465,7 @@ export const preferenceSubmissions = sqliteTable(
                 | 'project-survey'
                 | 'independent-update'
                 | 'demo'
+                | 'survey-collection'
             >()
             .notNull(),
         requestId: integer('request_id').references(() => updateRequests.id, {
@@ -625,5 +648,148 @@ export const identityReviews = sqliteTable(
             table.sourceType,
             table.sourceId,
         ),
+    ],
+);
+
+export const questionnaires = sqliteTable('questionnaires', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull(),
+    createdBy: integer('created_by').references(() => users.id, {
+        onDelete: 'set null',
+    }),
+    createdAt: text('created_at').notNull(),
+});
+export const questionnaireVersions = sqliteTable(
+    'questionnaire_versions',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        questionnaireId: integer('questionnaire_id')
+            .notNull()
+            .references(() => questionnaires.id, { onDelete: 'restrict' }),
+        version: integer('version').notNull(),
+        questions: text('questions', { mode: 'json' })
+            .$type<Question[]>()
+            .notNull(),
+        createdAt: text('created_at').notNull(),
+        createdBy: integer('created_by').references(() => users.id, {
+            onDelete: 'set null',
+        }),
+    },
+    (table) => [
+        unique('questionnaire_version_unique').on(
+            table.questionnaireId,
+            table.version,
+        ),
+    ],
+);
+export const surveyCollections = sqliteTable('survey_collections', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull(),
+    versionId: integer('version_id')
+        .notNull()
+        .references(() => questionnaireVersions.id, { onDelete: 'restrict' }),
+    classId: integer('class_id').references(() => classes.id, {
+        onDelete: 'set null',
+    }),
+    className: text('class_name').notNull(),
+    collectionYear: integer('collection_year').notNull(),
+    groupIds: text('group_ids', { mode: 'json' }).$type<number[]>().notNull(),
+    division: text('division').$type<'sormena' | 'digitala' | null>(),
+    projectId: integer('project_id').references(() => projects.id, {
+        onDelete: 'set null',
+    }),
+    projectName: text('project_name'),
+    originProjectId: integer('origin_project_id'),
+    academicPeriod: text('academic_period').notNull(),
+    createdBy: integer('created_by').references(() => users.id, {
+        onDelete: 'set null',
+    }),
+    launchedAt: text('launched_at').notNull(),
+    closedAt: text('closed_at'),
+});
+export const surveyParticipants = sqliteTable(
+    'survey_participants',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        surveyId: integer('survey_id')
+            .notNull()
+            .references(() => surveyCollections.id, { onDelete: 'restrict' }),
+        studentId: integer('student_id')
+            .notNull()
+            .references(() => studentRecords.id, { onDelete: 'restrict' }),
+        studentName: text('student_name').notNull(),
+        snapshot: text('snapshot', { mode: 'json' })
+            .$type<SurveyAudienceSnapshot>()
+            .notNull(),
+        addedAt: text('added_at').notNull(),
+        addedBy: integer('added_by').references(() => users.id, {
+            onDelete: 'set null',
+        }),
+    },
+    (table) => [
+        unique('survey_student_unique').on(table.surveyId, table.studentId),
+    ],
+);
+export const surveyResponses = sqliteTable(
+    'survey_responses',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        surveyId: integer('survey_id')
+            .notNull()
+            .references(() => surveyCollections.id, { onDelete: 'restrict' }),
+        studentId: integer('student_id')
+            .notNull()
+            .references(() => studentRecords.id, { onDelete: 'restrict' }),
+        versionId: integer('version_id')
+            .notNull()
+            .references(() => questionnaireVersions.id, {
+                onDelete: 'restrict',
+            }),
+        requestId: integer('request_id').references(() => updateRequests.id, {
+            onDelete: 'set null',
+        }),
+        answers: text('answers', { mode: 'json' })
+            .$type<QuestionAnswers>()
+            .notNull(),
+        submittedAt: text('submitted_at').notNull(),
+    },
+    (table) => [
+        unique('survey_response_student_unique').on(
+            table.surveyId,
+            table.studentId,
+        ),
+    ],
+);
+export const collaborationReports = sqliteTable(
+    'collaboration_reports',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        respondentId: integer('respondent_id')
+            .notNull()
+            .references(() => studentRecords.id, { onDelete: 'restrict' }),
+        peerId: integer('peer_id')
+            .notNull()
+            .references(() => studentRecords.id, { onDelete: 'restrict' }),
+        answer: text('answer').$type<'worked' | 'never'>().notNull(),
+        responseId: integer('response_id')
+            .notNull()
+            .references(() => surveyResponses.id, { onDelete: 'restrict' }),
+        surveyId: integer('survey_id')
+            .notNull()
+            .references(() => surveyCollections.id, { onDelete: 'restrict' }),
+        surveyName: text('survey_name').notNull(),
+        projectId: integer('project_id').references(() => projects.id, {
+            onDelete: 'set null',
+        }),
+        academicPeriod: text('academic_period').notNull(),
+        questionnaireVersion: text('questionnaire_version').notNull(),
+        submittedAt: text('submitted_at').notNull(),
+    },
+    (table) => [
+        index('collaboration_respondent_date').on(
+            table.respondentId,
+            table.submittedAt,
+        ),
+        index('collaboration_peer_date').on(table.peerId, table.submittedAt),
     ],
 );

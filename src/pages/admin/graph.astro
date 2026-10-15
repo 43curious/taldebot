@@ -10,8 +10,15 @@ import {
     degrees,
     studentRecords,
     students,
+    surveyCollections,
+    surveyResponses,
+    confirmedAssignments,
 } from '../../../db/schema';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray, and, desc, lte } from 'drizzle-orm';
+import { requireSurvey, surveyVisibility } from '../../lib/surveyCollections';
+import { positiveId, routeError, InputError } from '../../lib/input';
+import type { PreferenceKind } from '../../lib/trackingTypes';
+import type { GraphAssignment } from '../../lib/sociogram';
 import { selectClassScope } from '../../lib/classSelection';
 import { classFilter, projectFilter, isMaster } from '../../lib/access';
 import {
@@ -84,11 +91,39 @@ const participants = await db.query.students.findMany({
 const projectOptions = projects.filter((project) =>
     participants.some((student) => student.projectId === project.id),
 );
-const source = projectOptions.find(
-    (project) => String(project.id) === Astro.url.searchParams.get('project'),
-);
+const surveyOptions = await db.query.surveyCollections.findMany({
+    where: and(
+        surveyVisibility(db, access),
+        scope.selectedClass
+            ? eq(surveyCollections.classId, scope.selectedClass.id)
+            : inArray(surveyCollections.id, []),
+    ),
+    orderBy: desc(surveyCollections.launchedAt),
+});
+let sourceSurvey: Awaited<ReturnType<typeof requireSurvey>> | undefined;
+try {
+    if (Astro.url.searchParams.get('survey')) {
+        sourceSurvey = await requireSurvey(
+            db,
+            access,
+            positiveId.parse(Astro.url.searchParams.get('survey')),
+        );
+        if (sourceSurvey.survey.classId !== scope.selectedClass?.id)
+            throw new InputError('Inkesta beste klase batekoa da.', 403);
+    }
+} catch (error) {
+    return routeError(error);
+}
+const source = sourceSurvey
+    ? projects.find((project) => project.id === sourceSurvey.survey.projectId)
+    : projectOptions.find(
+          (project) =>
+              String(project.id) === Astro.url.searchParams.get('project'),
+      );
 const historical =
-    !source && Astro.url.searchParams.get('project') !== 'current';
+    !sourceSurvey &&
+    !source &&
+    Astro.url.searchParams.get('project') !== 'current';
 const asOf = Astro.url.searchParams.get('asOf') || undefined;
 if (
     asOf &&
@@ -97,10 +132,25 @@ if (
     return new Response('Invalid date', { status: 400 });
 const profiles = await loadStudentProfiles(db, access, [...rosterIds], {
     projectId: source?.id,
-    academicPeriod: source?.academicPeriod ?? undefined,
+    surveyId: sourceSurvey?.survey.id,
+    academicPeriod:
+        sourceSurvey?.survey.academicPeriod ??
+        source?.academicPeriod ??
+        undefined,
     asOf,
     relationshipView: historical ? 'latest-recorded' : undefined,
 });
+const collectionAnswers = sourceSurvey
+    ? await db.query.surveyResponses.findMany({
+          where: eq(surveyResponses.surveyId, sourceSurvey.survey.id),
+          columns: { studentId: true, submittedAt: true },
+      })
+    : [];
+const completedIds = new Set(
+    collectionAnswers
+        .filter((row) => !asOf || row.submittedAt <= `${asOf}T23:59:59.999Z`)
+        .map((row) => row.studentId),
+);
 const nodes: GraphStudent[] = roster.flatMap((member) => {
     const profile = profiles.get(member.id);
     if (!profile) return [];
@@ -111,21 +161,43 @@ const nodes: GraphStudent[] = roster.flatMap((member) => {
                   row.studentRecordId === member.id,
           )
         : undefined;
-    if (source && participant?.isExcluded) return [];
+    if (!sourceSurvey && source && participant?.isExcluded) return [];
     return [
         {
             ...member,
-            hasSurvey: Boolean(profile.assessment),
-            hasCompleted: participant?.hasCompleted ?? null,
+            hasSurvey: Boolean(
+                profile.assessment ||
+                profile.relationshipPreference ||
+                completedIds.has(member.id),
+            ),
+            hasCompleted: sourceSurvey
+                ? completedIds.has(member.id)
+                : (participant?.hasCompleted ?? null),
             isExcluded: false,
             assessment: profile.assessment ? profile.values : undefined,
             profile: {
-                label: source
-                    ? `${source.name} · ${profile.period}`
-                    : historical
-                      ? 'Azken harreman-erantzunak · Historia'
-                      : `Egungo ikasturteko hobespenak · ${profile.period}`,
+                label: sourceSurvey
+                    ? `${sourceSurvey.survey.name} · v${sourceSurvey.version.version} · ${profile.period}`
+                    : source
+                      ? `${source.name} · ${profile.period}`
+                      : historical
+                        ? 'Azken harreman-erantzunak · Historia'
+                        : `Egungo ikasturteko hobespenak · ${profile.period}`,
                 assessmentAt: profile.assessment?.submittedAt ?? null,
+                assessmentVersion:
+                    profile.assessment?.questionnaireVersion ?? null,
+                memberships: profile.enrollments
+                    .filter((row) => !row.endedAt)
+                    .map((row) => ({
+                        className: row.currentClassName ?? row.className,
+                        year: row.currentYear ?? row.year,
+                        academicPeriod: row.academicPeriod,
+                    })),
+                preferenceKinds: (
+                    Object.keys(profile.preferenceCoverage) as PreferenceKind[]
+                ).filter((kind) => Boolean(profile.preferenceCoverage[kind])),
+                collaborations: profile.collaborations,
+
                 assessmentSource: profile.assessment
                     ? knowledgeSourceLabel(profile.assessment)
                     : null,
@@ -133,13 +205,31 @@ const nodes: GraphStudent[] = roster.flatMap((member) => {
                     profile.relationshipPreference?.submittedAt ?? null,
                 needsReview: profile.needsReview,
                 relationships: profile.relationships,
+                assignedPeerIds: [
+                    ...new Set(
+                        profile.assignments.flatMap((row) =>
+                            row.peers.flatMap((peer) =>
+                                peer.id === null ? [] : [peer.id],
+                            ),
+                        ),
+                    ),
+                ],
                 assignments: profile.assignments.slice(0, 5).map((row) => ({
                     projectName: row.projectName,
                     date: row.confirmedAt,
                     revision: row.revision,
+                    peers: row.peers.map((peer) => peer.name),
+                    peerIds: row.peers.flatMap((peer) =>
+                        peer.id === null ? [] : [peer.id],
+                    ),
                 })),
-                href: `/admin/students/${member.id}?${new URLSearchParams({ project: source ? String(source.id) : historical ? '' : 'current', ...(asOf ? { asOf } : {}) })}`,
+                href: `/admin/students/${member.id}?${new URLSearchParams({ ...(sourceSurvey ? { survey: String(sourceSurvey.survey.id) } : {}), project: source ? String(source.id) : historical ? '' : 'current', ...(asOf ? { asOf } : {}) })}`,
                 motivationInContext: Boolean(source),
+                inSurveyAudience: sourceSurvey
+                    ? sourceSurvey.audience.some(
+                          (row) => row.studentId === member.id,
+                      )
+                    : undefined,
             },
         },
     ];
@@ -166,7 +256,31 @@ const links: Relationship[] = [...profiles.values()].flatMap((profile) =>
             ];
         }),
 );
-const sourceLabel = `${source ? projectSourceLabel(source) : historical ? 'Azken harreman-erantzunak · Historia' : 'Egungo ikasturteko hobespenak'}${asOf ? ` · ${asOf} arte` : ''}`;
+let assignment: GraphAssignment | null = null;
+if (source) {
+    const confirmed = await db.query.confirmedAssignments.findFirst({
+        where: and(
+            eq(confirmedAssignments.projectId, source.id),
+            asOf
+                ? lte(confirmedAssignments.confirmedAt, `${asOf}T23:59:59.999Z`)
+                : undefined,
+        ),
+        orderBy: desc(confirmedAssignments.revision),
+    });
+    if (confirmed)
+        assignment = {
+            projectName: confirmed.projectName,
+            confirmedAt: confirmed.confirmedAt,
+            revision: confirmed.revision,
+            teams: confirmed.allocation
+                .map((team) => ({
+                    teamNumber: team.teamNumber,
+                    studentIds: team.studentIds.filter((id) => visible.has(id)),
+                }))
+                .filter((team) => team.studentIds.length),
+        };
+}
+const sourceLabel = `${sourceSurvey ? `${sourceSurvey.survey.name} · v${sourceSurvey.version.version}` : source ? projectSourceLabel(source) : historical ? 'Azken harreman-erantzunak · Historia' : 'Egungo ikasturteko hobespenak'}${asOf ? ` · ${asOf} arte` : ''}`;
 ---
 
 <AdminLayout title="Harremanen mapa" fullScreen>
@@ -223,6 +337,20 @@ const sourceLabel = `${source ? projectSourceLabel(source) : historical ? 'Azken
                         erantzunak ez dira egungo hobespen bihurtzen. Erantzunik
                         ez izatea ez da baztertzea.
                     </p>
+                    <label for="graph-survey" class="teacher-label mt-3">
+                        Inkesta
+                    </label>
+                    <select id="graph-survey" name="survey" class="mt-2 w-full">
+                        <option value="">Inkesta jakinik gabe</option>
+                        {surveyOptions.map((survey) => (
+                            <option
+                                value={survey.id}
+                                selected={survey.id === sourceSurvey?.survey.id}
+                            >
+                                {survey.name} · {survey.academicPeriod}
+                            </option>
+                        ))}
+                    </select>
                     <label for="graph-as-of" class="teacher-label mt-3">
                         Historia-data
                     </label>
@@ -246,6 +374,8 @@ const sourceLabel = `${source ? projectSourceLabel(source) : historical ? 'Azken
                     relationships={links}
                     sourceLabel={sourceLabel}
                     noSurvey={nodes.every((node) => !node.hasSurvey)}
+                    assignment={assignment}
+                    activitySelected={Boolean(source || sourceSurvey)}
                 />
             ) : (
                 <div class="graph-page-empty">
@@ -346,7 +476,17 @@ const sourceLabel = `${source ? projectSourceLabel(source) : historical ? 'Azken
     const projectForm = document.getElementById(
         'graph-project-form',
     ) as HTMLFormElement | null;
-    projectForm
-        ?.querySelector('select')
-        ?.addEventListener('change', () => projectForm.requestSubmit());
+    projectForm?.querySelectorAll('select').forEach((select) =>
+        select.addEventListener('change', () => {
+            const project =
+                projectForm.querySelector<HTMLSelectElement>(
+                    '[name="project"]',
+                );
+            const survey =
+                projectForm.querySelector<HTMLSelectElement>('[name="survey"]');
+            if (select === project && survey) survey.value = '';
+            if (select === survey && project) project.value = '';
+            projectForm.requestSubmit();
+        }),
+    );
 </script>

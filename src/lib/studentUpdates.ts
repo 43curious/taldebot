@@ -95,7 +95,10 @@ export async function issueUpdateRequest(
     const expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
     const request = await db.transaction(async (tx) => {
         const sameScope = input.projectId
-            ? eq(updateRequests.projectId, input.projectId)
+            ? and(
+                  eq(updateRequests.scope, 'project'),
+                  eq(updateRequests.projectId, input.projectId),
+              )
             : and(
                   eq(updateRequests.scope, 'period'),
                   eq(updateRequests.academicPeriod, period),
@@ -133,12 +136,18 @@ export async function issueUpdateRequest(
     return { requestId: request.id, token, expiresAt };
 }
 
-export async function requestContext(db: AppDatabase, token: string) {
+export async function requestContext(
+    db: AppDatabase,
+    token: string,
+    options: { includePreferences?: boolean } = {},
+) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(token))
         throw new InputError('Esteka pertsonala ez da balioduna.', 401);
     const request = await db.query.updateRequests.findFirst({
         where: eq(updateRequests.tokenHash, digest(token)),
     });
+    if (request?.scope === 'survey')
+        throw new InputError('Erabili inkesta honen esteka pertsonala.', 410);
     if (!request || !pending(request) || request.issuedBy === null)
         throw new InputError(
             'Esteka iraungi, erabili edo baliogabetu da.',
@@ -218,25 +227,27 @@ export async function requestContext(db: AppDatabase, token: string) {
             })
         ).map((row) => ({ id: row.id, name: row.name }));
     }
-    const profile = (
-        await loadStudentProfiles(db, access, [person.id], {
-            projectId: request.projectId ?? undefined,
-            academicPeriod: request.academicPeriod,
-        })
-    ).get(person.id)!;
     const initialPreferences: Preferences = {
         comfort: [],
         preferWith: [],
         preferAvoid: [],
     };
-    const allowed = new Set(peers.map((row) => row.id));
-    for (const link of profile.relationships)
-        if (
-            !link.incoming &&
-            link.kind !== 'restriction' &&
-            allowed.has(link.target)
-        )
-            initialPreferences[link.kind].push(link.target);
+    if (options.includePreferences !== false) {
+        const profile = (
+            await loadStudentProfiles(db, access, [person.id], {
+                projectId: request.projectId ?? undefined,
+                academicPeriod: request.academicPeriod,
+            })
+        ).get(person.id)!;
+        const allowed = new Set(peers.map((row) => row.id));
+        for (const link of profile.relationships)
+            if (
+                !link.incoming &&
+                link.kind !== 'restriction' &&
+                allowed.has(link.target)
+            )
+                initialPreferences[link.kind].push(link.target);
+    }
     return { request, person, peers, initialPreferences };
 }
 
@@ -246,8 +257,15 @@ export async function saveKnowledge(
         studentId: number;
         assessment?: AssessmentValues;
         preferences?: Preferences;
+        askedKinds?: PreferenceKind[];
+        questionnaireVersion?: string;
+        surveyId?: number;
         source:
-            'project-survey' | 'independent-update' | 'legacy-survey' | 'demo';
+            | 'project-survey'
+            | 'independent-update'
+            | 'legacy-survey'
+            | 'demo'
+            | 'survey-collection';
         scope: 'project' | 'period';
         academicPeriod: string;
         projectId?: number;
@@ -261,6 +279,8 @@ export async function saveKnowledge(
     const submittedAt = new Date().toISOString();
     const provenance = {
         studentId: input.studentId,
+        surveyId: input.surveyId ?? null,
+        questionnaireVersion: input.questionnaireVersion ?? 'skills-v1',
         academicPeriod: input.academicPeriod,
         source: input.source,
         projectId: input.projectId ?? null,
@@ -278,7 +298,15 @@ export async function saveKnowledge(
     if (input.preferences !== undefined) {
         const [submission] = await store
             .insert(preferenceSubmissions)
-            .values({ ...provenance, scope: input.scope })
+            .values({
+                ...provenance,
+                scope: input.scope,
+                askedKinds: input.askedKinds ?? [
+                    'comfort',
+                    'preferWith',
+                    'preferAvoid',
+                ],
+            })
             .returning();
         const choices = (
             ['comfort', 'preferWith', 'preferAvoid'] as const
@@ -309,7 +337,9 @@ export async function completeIndependentUpdate(
     token: string,
     data: { assessment?: AssessmentValues; preferences?: Preferences },
 ) {
-    const context = await requestContext(db, token);
+    const context = await requestContext(db, token, {
+        includePreferences: false,
+    });
     const { request } = context;
     if (request.scope !== 'period')
         throw new InputError('Esteka hau proiektuko inkestarako da.');

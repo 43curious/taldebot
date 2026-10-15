@@ -6,6 +6,14 @@ import type { Relationship, RelationshipKind } from '../lib/tracking';
 import type { GraphStudent } from '../lib/studentReport';
 import { assessmentGroups } from '../lib/studentReport';
 import './ClassGraph.css';
+import {
+    graphSkills,
+    graphSkillScore,
+    incomingPreferences,
+    teamPalette,
+    type GraphAssignment,
+} from '../lib/sociogram';
+import type { PreferenceKind } from '../lib/trackingTypes';
 
 interface Props {
     students: GraphStudent[];
@@ -13,6 +21,8 @@ interface Props {
     fullScreen?: boolean;
     sourceLabel?: string;
     noSurvey?: boolean;
+    assignment?: GraphAssignment | null;
+    activitySelected?: boolean;
 }
 const kinds: Record<RelationshipKind, { label: string; color: string }> = {
     comfort: { label: 'Konfort-zona', color: graphColors.positive },
@@ -33,13 +43,61 @@ export default function ClassGraph({
     fullScreen = false,
     sourceLabel,
     noSurvey = false,
+    assignment = null,
+    activitySelected = false,
 }: Props) {
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [kind, setKind] = useState<RelationshipKind | 'positive' | 'all'>(
         'all',
     );
     const [search, setSearch] = useState('');
+    const [collaborationView, setCollaborationView] = useState('all');
     const [toolsOpen, setToolsOpen] = useState(false);
+    const [skill, setSkill] = useState('');
+    const [minimum, setMinimum] = useState(7);
+    const [incomingKind, setIncomingKind] = useState<PreferenceKind | ''>('');
+    const [showTeams, setShowTeams] = useState(Boolean(assignment));
+    const teamColors = useMemo(
+        () =>
+            new Map(
+                assignment?.teams.flatMap((team, index) =>
+                    team.studentIds.map(
+                        (id) =>
+                            [
+                                id,
+                                {
+                                    teamNumber: team.teamNumber,
+                                    color: teamPalette[
+                                        index % teamPalette.length
+                                    ],
+                                },
+                            ] as const,
+                    ),
+                ) ?? [],
+            ),
+        [assignment],
+    );
+    const highlightedIds = useMemo(
+        () =>
+            skill
+                ? new Set(
+                      students
+                          .filter((student) => {
+                              const value = graphSkillScore(student, skill);
+                              return value !== null && value >= minimum;
+                          })
+                          .map((student) => student.id),
+                  )
+                : undefined,
+        [students, skill, minimum],
+    );
+    const incomingSummary = useMemo(
+        () =>
+            incomingKind
+                ? incomingPreferences(students, relationships, incomingKind)
+                : undefined,
+        [students, relationships, incomingKind],
+    );
     const canvasRef = useRef<GraphHandle>(null);
     const controlId = useId().replace(/:/g, '');
     const studentMap = useMemo(
@@ -111,6 +169,9 @@ export default function ClassGraph({
                 edges={edges}
                 selectedId={selectedId}
                 matchingIds={matchingIds}
+                highlightedIds={highlightedIds}
+                teamColors={showTeams ? teamColors : undefined}
+                incomingCounts={incomingSummary?.counts}
                 onSelect={setSelectedId}
             />
             {!students.length && (
@@ -213,6 +274,225 @@ export default function ClassGraph({
                                         </option>
                                     </select>
                                 </div>
+                                <div className="teacher-label">
+                                    <label htmlFor={`${controlId}-skill`}>
+                                        Gaitasunaren autoebaluazioa
+                                    </label>
+                                    <select
+                                        id={`${controlId}-skill`}
+                                        value={skill}
+                                        onChange={(event) =>
+                                            setSkill(event.target.value)
+                                        }
+                                    >
+                                        <option value="">
+                                            Nabarmendu gabe
+                                        </option>
+                                        {graphSkills
+                                            .filter(
+                                                (item) =>
+                                                    item.key !== 'motivation' ||
+                                                    students.some(
+                                                        (student) =>
+                                                            student.profile
+                                                                ?.motivationInContext,
+                                                    ),
+                                            )
+                                            .map((item) => (
+                                                <option
+                                                    key={item.name}
+                                                    value={item.name}
+                                                >
+                                                    {item.label}
+                                                </option>
+                                            ))}
+                                    </select>
+                                </div>
+                                {skill && (
+                                    <div className="teacher-label">
+                                        <label htmlFor={`${controlId}-minimum`}>
+                                            Gutxieneko puntuazioa · 1–10
+                                        </label>
+                                        <input
+                                            id={`${controlId}-minimum`}
+                                            type="number"
+                                            min={1}
+                                            max={10}
+                                            step={1}
+                                            value={minimum}
+                                            onChange={(event) => {
+                                                const value = Number(
+                                                    event.target.value,
+                                                );
+                                                if (
+                                                    Number.isInteger(value) &&
+                                                    value >= 1 &&
+                                                    value <= 10
+                                                )
+                                                    setMinimum(value);
+                                            }}
+                                        />
+                                        <p className="text-xs leading-relaxed text-slate-500">
+                                            {highlightedIds?.size ?? 0} /{' '}
+                                            {students.length} · Urdina:
+                                            ikaslearen autoebaluazioa, ez
+                                            gaitasun objektiboaren sailkapena.
+                                            Erantzunik gabekoak ez dira
+                                            nabarmentzen.
+                                        </p>
+                                    </div>
+                                )}
+                                <div className="teacher-label">
+                                    <label htmlFor={`${controlId}-incoming`}>
+                                        Sarrerako aukerak
+                                    </label>
+                                    <select
+                                        id={`${controlId}-incoming`}
+                                        value={incomingKind}
+                                        onChange={(event) =>
+                                            setIncomingKind(
+                                                event.target.value as
+                                                    PreferenceKind | '',
+                                            )
+                                        }
+                                    >
+                                        <option value="">Kopururik gabe</option>
+                                        <option value="comfort">
+                                            Konfort-zona
+                                        </option>
+                                        <option value="preferWith">
+                                            Elkarlan berriak
+                                        </option>
+                                        <option value="preferAvoid">
+                                            Saiheste-hobespenak
+                                        </option>
+                                    </select>
+                                </div>
+                                {incomingSummary && (
+                                    <div className="text-xs text-slate-600">
+                                        <p>
+                                            {incomingSummary.respondents} /{' '}
+                                            {incomingSummary.total} ikasleren
+                                            erantzunak testuinguru honetan.
+                                            Erantzunik eza ez da baztertzea.
+                                        </p>
+                                        <ul className="mt-3 space-y-2">
+                                            {students
+                                                .slice()
+                                                .sort(
+                                                    (a, b) =>
+                                                        (incomingSummary.counts.get(
+                                                            b.id,
+                                                        ) ?? 0) -
+                                                            (incomingSummary.counts.get(
+                                                                a.id,
+                                                            ) ?? 0) ||
+                                                        a.name.localeCompare(
+                                                            b.name,
+                                                        ),
+                                                )
+                                                .map((student) => (
+                                                    <li
+                                                        key={student.id}
+                                                        className="flex items-center justify-between gap-2"
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            className="min-h-11 text-left"
+                                                            onClick={() => {
+                                                                setSelectedId(
+                                                                    student.id,
+                                                                );
+                                                                setToolsOpen(
+                                                                    false,
+                                                                );
+                                                            }}
+                                                        >
+                                                            {student.name}
+                                                        </button>
+                                                        <span>
+                                                            {incomingSummary.counts.get(
+                                                                student.id,
+                                                            ) ?? 0}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                {activitySelected &&
+                                    (assignment ? (
+                                        <div>
+                                            <label className="flex min-h-11 items-center gap-3 text-sm text-slate-700">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={showTeams}
+                                                    onChange={(event) =>
+                                                        setShowTeams(
+                                                            event.target
+                                                                .checked,
+                                                        )
+                                                    }
+                                                />
+                                                Berretsitako taldeak
+                                            </label>
+                                            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                                                {assignment.projectName} ·{' '}
+                                                {new Date(
+                                                    assignment.confirmedAt,
+                                                ).toLocaleDateString(
+                                                    'eu-ES',
+                                                )}{' '}
+                                                · {assignment.revision}.
+                                                berrikuspena. Kolorea: taldea;
+                                                eraztun urdina: autoebaluazioa;
+                                                lotura berde/gorriak:
+                                                hautatutako ikaslearen
+                                                hobespenak.
+                                            </p>
+                                            {showTeams && (
+                                                <ul className="mt-3 space-y-2 text-xs text-slate-600">
+                                                    {assignment.teams.map(
+                                                        (team, index) => (
+                                                            <li
+                                                                key={
+                                                                    team.teamNumber
+                                                                }
+                                                                className="flex items-center gap-2"
+                                                            >
+                                                                <span
+                                                                    aria-hidden="true"
+                                                                    className="h-2 w-2 rounded-full"
+                                                                    style={{
+                                                                        background:
+                                                                            teamPalette[
+                                                                                index %
+                                                                                    teamPalette.length
+                                                                            ],
+                                                                    }}
+                                                                />
+                                                                {
+                                                                    team.teamNumber
+                                                                }
+                                                                . taldea ·{' '}
+                                                                {
+                                                                    team
+                                                                        .studentIds
+                                                                        .length
+                                                                }{' '}
+                                                                ikasle
+                                                            </li>
+                                                        ),
+                                                    )}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-slate-500">
+                                            Ez dago berretsitako talderik
+                                            hautatutako inkesta / jardueran.
+                                        </p>
+                                    ))}
                                 <p className="text-xs leading-relaxed text-slate-400">
                                     Irakaslearentzako informazio pribatua.
                                 </p>
@@ -253,6 +533,20 @@ export default function ClassGraph({
                             {students.length} ikasle
                             {sourceLabel && ` · ${sourceLabel}`}
                         </p>
+                        {activitySelected && (
+                            <p>
+                                {assignment
+                                    ? `${showTeams ? assignment.teams.length : 0} talde erakutsita · ${assignment.revision}. berrespena · ${assignment.confirmedAt.slice(0, 10)}`
+                                    : 'Ez dago berretsitako talderik hautatutako inkesta / jardueran.'}
+                            </p>
+                        )}
+                        {skill && (
+                            <p>
+                                Urdina: autoebaluazioa ≥ {minimum}/10 · Ez da
+                                gaitasun objektiboaren sailkapena.
+                            </p>
+                        )}
+
                         <p>
                             {noSurvey
                                 ? 'Klase honetako inkesta-daturik ez dago oraindik. Eskatu ikasleei eguneratzea beren jarraipen-fitxatik.'
@@ -321,7 +615,7 @@ export default function ClassGraph({
                                           selected.profile.assessmentAt,
                                       ).toLocaleDateString('eu-ES')
                                     : 'Data ezezaguna'}{' '}
-                                ·{' '}
+                                · {selected.profile.assessmentVersion} ·{' '}
                                 {selected.profile.assessmentSource ||
                                     'Autoebaluaziorik gabe'}
                             </p>
@@ -339,6 +633,11 @@ export default function ClassGraph({
                                     ? 'Inkesta osatuta'
                                     : 'Oraindik ez du inkesta bete.'}
                         </p>
+                        {selected.profile?.inSurveyAudience === false && (
+                            <p className="mt-2 text-xs text-slate-500">
+                                Ez da hautatutako inkestaren audientziakoa.
+                            </p>
+                        )}
                         {(selected.email ||
                             selected.tutor ||
                             selected.division) && (
@@ -366,6 +665,21 @@ export default function ClassGraph({
                                     </>
                                 )}
                             </dl>
+                        )}
+                        {Boolean(selected.profile?.memberships?.length) && (
+                            <div className="mt-4 space-y-1 text-xs text-slate-500">
+                                {selected.profile?.memberships?.map(
+                                    (membership, index) => (
+                                        <p
+                                            key={`${membership.className}-${index}`}
+                                        >
+                                            {membership.className} ·{' '}
+                                            {membership.year}. maila ·{' '}
+                                            {membership.academicPeriod}
+                                        </p>
+                                    ),
+                                )}
+                            </div>
                         )}
                         <div className="graph-report-counts">
                             <div>
@@ -601,6 +915,84 @@ export default function ClassGraph({
                         ))}
                         {selected.profile && (
                             <section className="graph-report-section">
+                                <h3>
+                                    Ikasleek adierazitako benetako elkarlana
+                                </h3>
+                                <p className="text-xs leading-relaxed text-slate-500">
+                                    Ikaslearen adierazpena eta talde-esleipena
+                                    iturri desberdinak dira. Erantzunik eza ez
+                                    da inoiz elkarrekin lan egin ez izana.
+                                </p>
+                                <label
+                                    className="teacher-label mt-3"
+                                    htmlFor={`${controlId}-collaboration`}
+                                >
+                                    Adierazpenak
+                                </label>
+                                <select
+                                    id={`${controlId}-collaboration`}
+                                    className="mt-2 w-full"
+                                    value={collaborationView}
+                                    onChange={(event) =>
+                                        setCollaborationView(event.target.value)
+                                    }
+                                >
+                                    <option value="all">
+                                        Adierazpen guztiak
+                                    </option>
+                                    <option value="worked">
+                                        Benetan elkarrekin lan egin (adierazita)
+                                    </option>
+                                    <option value="never">
+                                        Inoiz ez elkarrekin lan egin
+                                        (adierazita)
+                                    </option>
+                                </select>
+                                <ul>
+                                    {selected.profile.collaborations
+                                        ?.filter(
+                                            (row) =>
+                                                collaborationView === 'all' ||
+                                                row.answer ===
+                                                    collaborationView,
+                                        )
+                                        .slice(0, 12)
+                                        .map((row, index) => (
+                                            <li
+                                                key={index}
+                                                className="py-2 text-xs text-slate-600"
+                                            >
+                                                <p>
+                                                    {row.incoming
+                                                        ? `${row.peerName} → ${selected.name}`
+                                                        : `${selected.name} → ${row.peerName}`}{' '}
+                                                    ·{' '}
+                                                    {row.answer === 'worked'
+                                                        ? 'Elkarrekin lan egin dute (adierazita)'
+                                                        : 'Inoiz ez dute elkarrekin lan egin (adierazita)'}
+                                                </p>
+                                                <p className="mt-1 text-slate-400">
+                                                    {new Date(
+                                                        row.submittedAt,
+                                                    ).toLocaleDateString(
+                                                        'eu-ES',
+                                                    )}{' '}
+                                                    · {row.surveyName} ·{' '}
+                                                    {row.questionnaireVersion}
+                                                </p>
+                                            </li>
+                                        ))}
+                                </ul>
+                                {!selected.profile.collaborations?.length && (
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        Ez dago elkarlan-adierazpenik
+                                        testuinguru honetan.
+                                    </p>
+                                )}
+                            </section>
+                        )}
+                        {selected.profile && (
+                            <section className="graph-report-section">
                                 <h3>Berretsitako esleipenak</h3>
                                 <ul>
                                     {selected.profile.assignments.map((row) => (
@@ -613,9 +1005,51 @@ export default function ClassGraph({
                                                 row.date,
                                             ).toLocaleDateString('eu-ES')}{' '}
                                             · {row.revision}. berrikuspena
+                                            {row.peers?.length ? (
+                                                <p className="mt-1 text-slate-500">
+                                                    {row.peers.join(', ')}
+                                                </p>
+                                            ) : null}
                                         </li>
                                     ))}
                                 </ul>
+                                {!selected.profile.assignments.length && (
+                                    <p className="text-xs text-slate-500">
+                                        Ez dago esleipen-erregistrorik; horrek
+                                        ez du frogatzen inoiz elkarrekin lan
+                                        egin ez dutenik.
+                                    </p>
+                                )}
+                                <details className="mt-3">
+                                    <summary className="min-h-11 cursor-pointer text-xs text-slate-500">
+                                        Elkarrekin esleipen-erregistrorik gabe
+                                    </summary>
+                                    <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                                        Egungo klaseko kide hauekin ez dago
+                                        berretsitako esleipen partekaturik
+                                        aukeratutako historia-datara arte.
+                                        Horrek ez du frogatzen inoiz elkarrekin
+                                        lan egin ez dutenik.
+                                    </p>
+                                    <ul className="mt-2 text-xs text-slate-600">
+                                        {students
+                                            .filter(
+                                                (peer) =>
+                                                    peer.id !== selected.id &&
+                                                    !selected.profile?.assignedPeerIds?.includes(
+                                                        peer.id,
+                                                    ),
+                                            )
+                                            .map((peer) => (
+                                                <li
+                                                    key={peer.id}
+                                                    className="py-1"
+                                                >
+                                                    {peer.name}
+                                                </li>
+                                            ))}
+                                    </ul>
+                                </details>
                                 {selected.profile.needsReview && (
                                     <p className="mt-3 text-xs text-amber-700">
                                         Hobespenak berrikusteko eskatu.

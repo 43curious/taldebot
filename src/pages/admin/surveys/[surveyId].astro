@@ -1,0 +1,335 @@
+---
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import SurveyResponseView from '../../../components/SurveyResponseView.astro';
+import { db } from '../../../lib/db';
+import {
+    surveyResponses,
+    questionnaireVersions,
+    classes,
+} from '../../../../db/schema';
+import { eq, inArray } from 'drizzle-orm';
+import {
+    requireSurvey,
+    currentSurveyAudience,
+    addSurveyParticipants,
+    closeSurvey,
+} from '../../../lib/surveyCollections';
+import { positiveId, routeError, InputError } from '../../../lib/input';
+import { isMaster } from '../../../lib/access';
+const access = Astro.locals.teacherAccess;
+let context: Awaited<ReturnType<typeof requireSurvey>>,
+    error = '';
+let attempted: FormData | undefined;
+const id = positiveId.safeParse(Astro.params.surveyId);
+if (!id.success) return new Response('Not found', { status: 404 });
+try {
+    context = await requireSurvey(db, access, id.data);
+} catch (error) {
+    return routeError(error);
+}
+if (Astro.request.method === 'POST')
+    try {
+        const form = await Astro.request.formData();
+        attempted = form;
+        if (form.get('action') === 'close') {
+            if (form.get('confirmed') !== 'on')
+                throw new InputError('Baieztatu inkesta ixtea.');
+            await closeSurvey(db, access, id.data);
+        } else if (form.get('action') === 'add')
+            await addSurveyParticipants(
+                db,
+                access,
+                id.data,
+                form.getAll('studentIds').map(Number),
+            );
+        else throw new InputError('Ekintza ez da balioduna.');
+        return Astro.redirect(`/admin/surveys/${id.data}?saved=1`);
+    } catch (caught) {
+        error =
+            caught instanceof Error
+                ? caught.message
+                : 'Ezin izan da aldaketa gorde.';
+    }
+const { survey, audience, version } = context;
+const responses = await db.query.surveyResponses.findMany({
+    where: eq(surveyResponses.surveyId, survey.id),
+});
+const versions = await db.query.questionnaireVersions.findMany({
+    where: inArray(questionnaireVersions.id, [
+        ...new Set(responses.map((row) => row.versionId)),
+    ]),
+});
+let additions: Awaited<ReturnType<typeof currentSurveyAudience>>['people'] = [];
+if (!survey.closedAt && survey.classId)
+    try {
+        additions = (
+            await currentSurveyAudience(db, access, {
+                classId: survey.classId,
+                groupIds: survey.groupIds,
+                division: survey.division ?? undefined,
+            })
+        ).people.filter((p) => !audience.some((row) => row.studentId === p.id));
+    } catch {
+        /* The recorded audience remains readable when a group has been archived. */
+    }
+const parent = survey.classId
+    ? await db.query.classes.findFirst({
+          where: eq(classes.id, survey.classId),
+      })
+    : undefined;
+const query = new URLSearchParams({
+    degree: String(parent?.degreeId ?? 'none'),
+    class: String(survey.classId ?? ''),
+    survey: String(survey.id),
+});
+---
+
+<AdminLayout title={survey.name}>
+    <section class="teacher-page mx-auto max-w-4xl">
+        <a
+            href={`/admin/surveys?${query}`}
+            class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500"
+        >
+            ← Inkestak
+        </a>
+        <header class="mb-6">
+            <h1>{survey.name}</h1>
+            <p class="mt-2 text-sm text-slate-500">
+                {survey.className} · {survey.academicPeriod} · v
+                {version.version} · {survey.closedAt ? 'Itxita' : 'Irekita'}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">
+                {responses.length} / {audience.length} erantzun ·{' '}
+                {new Date(survey.launchedAt).toLocaleDateString('eu-ES')}
+            </p>
+        </header>
+        {error && (
+            <p role="alert" class="mb-4 text-sm text-red-700">
+                {error}
+            </p>
+        )}
+        {Astro.url.searchParams.has('saved') && (
+            <p role="status" class="mb-4 text-sm text-teal-700">
+                Aldaketa gorde da. Aurreko erantzunak eta audientziaren historia
+                mantendu dira.
+            </p>
+        )}
+        <div class="teacher-toolbar mb-5">
+            {survey.classId && (
+                <a href={`/admin/graph?${query}`} class="teacher-button">
+                    Harremanen mapa
+                </a>
+            )}
+            {(isMaster(access) || survey.createdBy === access.actor.id) && (
+                <a
+                    href={`/admin/questionnaires?id=${version.questionnaireId}`}
+                    class="teacher-button"
+                >
+                    Galdera-sortaren hurrengo bertsioa editatu
+                </a>
+            )}
+            {responses.length > 0 && (
+                <a
+                    href={`/api/admin/export-survey?surveyId=${survey.id}`}
+                    class="teacher-button"
+                >
+                    Erantzunak CSV
+                </a>
+            )}
+        </div>
+        <p class="mb-5 text-xs leading-relaxed text-slate-500">
+            Inkesta honek v{version.version} mantentzen du. Estekak pertsonalak
+            dira, 30 eguneko balioa dute eta behin erabil daitezke. Beste
+            inkesta baten osatze-egoera ez da aldatzen.
+        </p>
+        <p
+            id="invitation-feedback"
+            role="status"
+            class="mb-4 text-sm text-teal-700"
+        ></p>
+        <div class="teacher-panel divide-y divide-slate-100">
+            {audience.map((person) => {
+                const response = responses.find(
+                        (row) => row.studentId === person.studentId,
+                    ),
+                    answeredVersion = versions.find(
+                        (v) => v.id === response?.versionId,
+                    );
+                return (
+                    <div class="p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <a
+                                    href={`/admin/students/${person.studentId}?survey=${survey.id}`}
+                                    class="text-sm font-medium text-slate-800"
+                                >
+                                    {person.studentName}
+                                </a>
+                                <p class="mt-1 text-xs text-slate-500">
+                                    {response ? 'Osatuta' : 'Erantzuteko'} ·
+                                    Audientzian:{' '}
+                                    {new Date(
+                                        person.addedAt,
+                                    ).toLocaleDateString('eu-ES')}
+                                    {person.snapshot.division
+                                        ? ` · ${person.snapshot.division === 'sormena' ? 'Sormena' : 'Digitala'}`
+                                        : ''}
+                                </p>
+                            </div>
+                            {!survey.closedAt && !response && (
+                                <button
+                                    type="button"
+                                    data-invite={person.studentId}
+                                    class="teacher-button"
+                                >
+                                    Esteka pertsonala sortu
+                                </button>
+                            )}
+                        </div>
+                        {response && answeredVersion && (
+                            <details class="mt-3">
+                                <summary class="flex min-h-11 cursor-pointer items-center text-sm text-teal-700">
+                                    Erantzunak · v{answeredVersion.version} ·{' '}
+                                    {new Date(
+                                        response.submittedAt,
+                                    ).toLocaleDateString('eu-ES')}
+                                </summary>
+                                <div class="mt-3">
+                                    <SurveyResponseView
+                                        questions={answeredVersion.questions}
+                                        answers={response.answers}
+                                        peers={audience.filter(
+                                            (p) =>
+                                                p.studentId !==
+                                                    person.studentId &&
+                                                p.addedAt <=
+                                                    response.submittedAt,
+                                        )}
+                                    />
+                                </div>
+                            </details>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+        <div id="invitation-result" hidden class="teacher-panel mt-5 p-4">
+            <label class="teacher-label" for="invitation-url">
+                Esteka pertsonala
+                <input id="invitation-url" readonly class="w-full" />
+            </label>
+            <button
+                type="button"
+                id="copy-invitation"
+                class="teacher-button mt-3"
+            >
+                Esteka kopiatu
+            </button>
+        </div>
+        {!survey.closedAt && (
+            <details class="teacher-panel mt-6 p-4">
+                <summary class="flex min-h-11 cursor-pointer items-center text-sm text-slate-600">
+                    Audientzia eta inkestaren aukerak
+                </summary>
+                {additions.length > 0 && (
+                    <form method="POST" class="mt-4 space-y-3">
+                        <input type="hidden" name="action" value="add" />
+                        <p class="text-sm text-slate-500">
+                            Egungo kide berriak esplizituki gehitu. Aurreko
+                            erantzunak eta hasierako kideak mantenduko dira.
+                        </p>
+                        {additions.map((person) => (
+                            <label class="flex min-h-11 items-center gap-3 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="studentIds"
+                                    checked={attempted
+                                        ?.getAll('studentIds')
+                                        .includes(String(person.id))}
+                                    value={person.id}
+                                />
+                                {person.name}
+                            </label>
+                        ))}
+                        <button class="teacher-button">
+                            Hautatutako kideak gehitu
+                        </button>
+                    </form>
+                )}
+                <form method="POST" class="mt-5 border-t border-slate-100 pt-5">
+                    <input type="hidden" name="action" value="close" />
+                    <label class="flex min-h-11 items-center gap-3 text-sm text-slate-600">
+                        <input type="checkbox" name="confirmed" required />
+                        Baieztatzen dut: estekak itxi eta erantzunak gorde.
+                    </label>
+                    <button class="teacher-button mt-3">Inkesta itxi</button>
+                </form>
+            </details>
+        )}
+    </section>
+</AdminLayout>
+<style>
+    .teacher-page input[type='checkbox'] {
+        width: 1rem;
+        height: 1rem;
+        min-height: 1rem;
+        padding: 0;
+        accent-color: #0f766e;
+    }
+</style>
+<script define:vars={{ surveyId: survey.id }}>
+    const feedback = document.getElementById('invitation-feedback'),
+        result = document.getElementById('invitation-result'),
+        url = document.getElementById('invitation-url');
+    document.querySelectorAll('[data-invite]').forEach((button) =>
+        button.addEventListener('click', async () => {
+            if (
+                !confirm(
+                    'Esteka berria sortu? Ikasle honen inkesta honetako aurreko esteka erabili gabea baliogabetuko da.',
+                )
+            )
+                return;
+            button.disabled = true;
+            feedback.textContent = 'Esteka sortzen…';
+            try {
+                const response = await fetch('/api/admin/survey-invitations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        surveyId,
+                        studentId: Number(button.dataset.invite),
+                    }),
+                });
+                const data = await response.json();
+                if (!response.ok || !data.links.length)
+                    throw new Error(
+                        data.error || 'Ez dago gonbidapen berririk.',
+                    );
+                url.value = data.links[0].url;
+                result.hidden = false;
+                feedback.textContent = `${data.links[0].name}: esteka prest dago.`;
+                url.focus();
+                url.select();
+            } catch (error) {
+                feedback.textContent =
+                    error.message || 'Ezin izan da esteka sortu.';
+            } finally {
+                button.disabled = false;
+            }
+        }),
+    );
+    document
+        .getElementById('copy-invitation')
+        .addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(url.value);
+                feedback.textContent = 'Esteka kopiatuta.';
+            } catch {
+                feedback.textContent =
+                    'Ezin izan da kopiatu. Hautatu eta kopiatu esteka eskuz.';
+                url.focus();
+                url.select();
+            }
+        });
+</script>

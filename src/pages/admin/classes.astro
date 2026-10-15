@@ -2,6 +2,7 @@
 export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import ClassSelector from '../../components/ClassSelector.astro';
+import ClassWorkspaceNav from '../../components/ClassWorkspaceNav.astro';
 import { selectClassScope } from '../../lib/classSelection';
 import { db } from '../../lib/db';
 import { classMembers, classes, degrees } from '../../../db/schema';
@@ -577,15 +578,8 @@ if (unassignedClasses.length)
             </>
         ) : (
             <>
-                {classScope.selectedClass && (
-                    <a
-                        href={`/admin/groups?${new URLSearchParams({ degree: classScope.degree, class: String(classScope.selectedClass.id) })}`}
-                        class="mb-4 inline-flex min-h-11 items-center text-sm text-slate-500 hover:text-teal-700"
-                    >
-                        Moduluko taldeak kudeatu →
-                    </a>
-                )}
                 <ClassSelector degrees={allDegrees} scope={classScope} />
+                {classScope.selectedClass && <ClassWorkspaceNav degree={classScope.degree} classId={classScope.selectedClass.id} />}
                 {classScope.selectedClass && (
                     <form
                         method="GET"

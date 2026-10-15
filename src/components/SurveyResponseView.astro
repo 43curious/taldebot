@@ -1,0 +1,57 @@
+---
+import type { Question, QuestionAnswers } from '../lib/questionnaires';
+interface Props {
+    questions: Question[];
+    answers: QuestionAnswers;
+    peers: { studentId: number; studentName: string }[];
+}
+const { questions, answers, peers } = Astro.props;
+const name = (id: number) =>
+    peers.find((p) => p.studentId === id)?.studentName ?? 'Ikasle historikoa';
+---
+
+<dl class="space-y-4">
+    {questions.map((question) => {
+        const answer = answers[question.key];
+        return (
+            <div>
+                <dt class="text-sm font-semibold text-slate-800">
+                    {question.label.eu}
+                </dt>
+                <dd class="mt-1 text-sm text-slate-600">
+                    {question.type === 'skill' ? (
+                        typeof answer === 'number' ? (
+                            `${answer} / 10`
+                        ) : (
+                            'Erantzunik gabe'
+                        )
+                    ) : question.type === 'preference' ? (
+                        Array.isArray(answer) && answer.length ? (
+                            answer.map(name).join(', ')
+                        ) : (
+                            'Hautaketa hutsa'
+                        )
+                    ) : answer &&
+                      typeof answer === 'object' &&
+                      !Array.isArray(answer) ? (
+                        <ul class="space-y-1">
+                            {peers.map((peer) => (
+                                <li>
+                                    {peer.studentName} ·{' '}
+                                    {answer[String(peer.studentId)] === 'worked'
+                                        ? 'Elkarrekin lan egin dugu'
+                                        : answer[String(peer.studentId)] ===
+                                            'never'
+                                          ? 'Inoiz ez dugu elkarrekin lan egin'
+                                          : 'Erantzunik gabe'}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        'Erantzunik gabe'
+                    )}
+                </dd>
+            </div>
+        );
+    })}
+</dl>

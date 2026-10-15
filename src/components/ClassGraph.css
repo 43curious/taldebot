@@ -58,3 +58,5 @@
 .graph-skill-track { flex: 1; height: 4px; border-radius: 4px; overflow: hidden; background: #f1f5f9; }
 .graph-skill-track > span { display: block; height: 100%; background: #0f766e; border-radius: inherit; }
 .graph-skill-score { min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.teacher-page .class-graph input[type=checkbox] { width: 1rem; height: 1rem; min-height: 1rem; padding: 0; accent-color: #0f766e; }

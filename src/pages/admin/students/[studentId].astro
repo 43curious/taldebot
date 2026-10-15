@@ -22,6 +22,7 @@ import {
 import { addRestriction, withdrawRestriction } from '../../../lib/pairingRules';
 import { positiveId } from '../../../lib/input';
 import { updateStudentLocation } from '../../../lib/studentLocations';
+import { requireSurvey } from '../../../lib/surveyCollections';
 const id = Number(Astro.params.studentId);
 const access = Astro.locals.teacherAccess;
 requireStudent(access, id);
@@ -104,15 +105,26 @@ if (
 )
     return new Response('Invalid date', { status: 400 });
 const projectParam = Astro.url.searchParams.get('project');
-const projectId =
+let projectId =
     projectParam && projectParam !== 'current'
         ? positiveId.parse(Astro.url.searchParams.get('project'))
         : undefined;
-const historical = !projectId && projectParam !== 'current';
+let selectedSurvey: Awaited<ReturnType<typeof requireSurvey>> | undefined;
+if (Astro.url.searchParams.get('survey')) {
+    selectedSurvey = await requireSurvey(
+        db,
+        access,
+        positiveId.parse(Astro.url.searchParams.get('survey')),
+    );
+    projectId = selectedSurvey.survey.projectId ?? undefined;
+}
+const historical = !selectedSurvey && !projectId && projectParam !== 'current';
 const profile = (
     await loadStudentProfiles(db, access, [id], {
         asOf,
         projectId,
+        surveyId: selectedSurvey?.survey.id,
+        academicPeriod: selectedSurvey?.survey.academicPeriod,
         relationshipView: historical ? 'latest-recorded' : undefined,
     })
 ).get(id);
@@ -366,6 +378,51 @@ const draft = (key: string, fallback: string) =>
             </section>
         </div>
         <section class="teacher-panel mt-5 p-5">
+            <h2 class="text-base">Ikasleek adierazitako benetako elkarlana</h2>
+            <p class="mt-2 text-xs leading-relaxed text-slate-500">
+                Ikaslearen adierazpena da, ez TaldeBOTen esleipena. Erantzunik
+                eza ez da inoiz elkarrekin lan egin ez izana. Kontrako
+                adierazpenak eta esleipenak beren iturri eta datarekin gordetzen
+                dira.
+            </p>
+            {selectedSurvey && (
+                <p class="mt-2 text-xs text-slate-500">
+                    {selectedSurvey.survey.name} · v
+                    {selectedSurvey.version.version} ·{' '}
+                    <a
+                        href={`/admin/surveys/${selectedSurvey.survey.id}`}
+                        class="text-teal-700"
+                    >
+                        Jatorrizko erantzunak ikusi →
+                    </a>
+                </p>
+            )}
+            <ul class="mt-4 divide-y divide-slate-100">
+                {profile.collaborations.map((row) => (
+                    <li class="py-3 text-sm">
+                        <p>
+                            {row.incoming
+                                ? `${row.peerName} → ${profile.person.name}`
+                                : `${profile.person.name} → ${row.peerName}`}{' '}
+                            ·{' '}
+                            {row.answer === 'worked'
+                                ? 'Elkarrekin lan egin dute (adierazita)'
+                                : 'Inoiz ez dute elkarrekin lan egin (adierazita)'}
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            {date(row.submittedAt)} · {row.surveyName} ·{' '}
+                            {row.questionnaireVersion}
+                        </p>
+                    </li>
+                ))}
+            </ul>
+            {!profile.collaborations.length && (
+                <p class="mt-3 text-sm text-slate-500">
+                    Ez dago elkarlan-adierazpenik hautatutako testuinguruan.
+                </p>
+            )}
+        </section>
+        <section class="teacher-panel mt-5 p-5">
             <h2 class="text-base">Berretsitako esleipenak</h2>
             <p class="mt-1 text-xs text-slate-500">
                 Elkarrekin esleituta egotea ez da benetako lankidetzaren froga.
@@ -410,6 +467,14 @@ const draft = (key: string, fallback: string) =>
                                 {date(record.submittedAt)} ·{' '}
                                 {knowledgeSourceLabel(record)} ·{' '}
                                 {record.questionnaireVersion}
+                                {record.surveyId && (
+                                    <a
+                                        href={`/admin/surveys/${record.surveyId}`}
+                                        class="ml-2 text-teal-700"
+                                    >
+                                        Jatorrizko galdera-sorta / erantzuna →
+                                    </a>
+                                )}
                                 {record.withdrawnAt && ' · erretiratua'}
                             </summary>
                             <div class="mt-3 grid gap-4 sm:grid-cols-2">
