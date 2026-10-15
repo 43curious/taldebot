@@ -15,13 +15,13 @@ The first homepage request took 3.53 seconds to its first byte (DNS 0.06 s, TLS 
 
 Both runs used the same database and client location, 20 samples per operation and an already connected client. The dataset contains 178 roster rows across four classes, six projects, 162 participants, 131 responses and 1,041 choices. The selected year-2 roster has 49 members. These timings include authorization and the named data loader; they exclude hosting startup, session reads, HTML rendering and browser work.
 
-| Operation | Queries before → after | Median before → after | p95 before → after |
-| --- | --- | --- | --- |
-| Ordinary-teacher authorization | 6 → 1 | 306 → 51 ms | 371 → 91 ms |
-| Ordinary-teacher dashboard | 8 → 3 | 365 → 109 ms | 402 → 186 ms |
-| Master dashboard | 2 → 2 | 49 → 51 ms | 81 → 109 ms |
-| Master year-2 graph profiles | 9 → 9 | 252 → 194 ms | 310 → 247 ms |
-| Master individual profile | 9 → 9 | 204 → 161 ms | 272 → 218 ms |
+| Operation                      | Queries before → after | Median before → after | p95 before → after |
+| ------------------------------ | ---------------------- | --------------------- | ------------------ |
+| Ordinary-teacher authorization | 6 → 1                  | 306 → 51 ms           | 371 → 91 ms        |
+| Ordinary-teacher dashboard     | 8 → 3                  | 365 → 109 ms          | 402 → 186 ms       |
+| Master dashboard               | 2 → 2                  | 49 → 51 ms            | 81 → 109 ms        |
+| Master year-2 graph profiles   | 9 → 9                  | 252 → 194 ms          | 310 → 247 ms       |
+| Master individual profile      | 9 → 9                  | 204 → 161 ms          | 272 → 218 ms       |
 
 The ordinary teacher has no access to this selected class, so their empty graph/report measurements are intentionally excluded from the comparison. Isolation is tested with synthetic authorized class/degree scenarios, including concurrent enrollment and revocation. Master dashboard timings show normal network variation rather than an improvement.
 
@@ -39,12 +39,12 @@ The command reads `.env`, prints aggregate counts/timings, and does not print na
 
 `npm run benchmark:startup` starts five fresh Node processes per dynamic route against the actual Netlify build. It asserts HTTP 200 for login and 302 for the anonymous dashboard, and measures a subsequent warm request. It does not simulate Netlify container provisioning or an authenticated session.
 
-| Route | Before: fresh-process median | After |
-| --- | --- | --- |
-| `/` | 294 ms | Static HTML; zero SSR invocations |
-| `/en/` | 303 ms | Static HTML; zero SSR invocations |
-| `/admin/login` GET | 308 ms | 239 ms cold / 1 ms warm |
-| `/admin/dashboard` without a session | 304 ms | 321 ms cold / <1 ms warm |
+| Route                                | Before: fresh-process median | After                             |
+| ------------------------------------ | ---------------------------- | --------------------------------- |
+| `/`                                  | 294 ms                       | Static HTML; zero SSR invocations |
+| `/en/`                               | 303 ms                       | Static HTML; zero SSR invocations |
+| `/admin/login` GET                   | 308 ms                       | 239 ms cold / 1 ms warm           |
+| `/admin/dashboard` without a session | 304 ms                       | 321 ms cold / <1 ms warm          |
 
 The dashboard redirect did not improve: Astro loads its route module before middleware, including its own database imports. Do not claim that delaying middleware's import eliminates startup for all teacher routes. Authenticated teacher requests still need SSR and session storage.
 
@@ -62,11 +62,11 @@ Public requests to the current deployment still show a slow first login request.
 
 The new read-only command was also run against that deployment (five requests per route, one Node fetch client with connection reuse):
 
-| Route | First request | Median | p95 |
-| --- | --- | --- | --- |
-| `/` | 1,013 ms | 39 ms | 1,013 ms |
-| `/admin/login` | 2,494 ms | 243 ms | 2,494 ms |
-| Anonymous `/admin/dashboard` redirect | 715 ms | 257 ms | 715 ms |
+| Route                                 | First request | Median | p95      |
+| ------------------------------------- | ------------- | ------ | -------- |
+| `/`                                   | 1,013 ms      | 39 ms  | 1,013 ms |
+| `/admin/login`                        | 2,494 ms      | 243 ms | 2,494 ms |
+| Anonymous `/admin/dashboard` redirect | 715 ms        | 257 ms | 715 ms   |
 
 These two probes use different connection behavior; do not treat their medians as a before/after comparison. They separate initial HTTP cost from repeated requests but cannot attribute it to hosting, route startup or session storage. No production writes, push or deployment were performed.
 
@@ -111,15 +111,15 @@ After deployment of `048395d` and application of migration 0006, Jon authorized 
 
 Twenty sequential requests per measured route used the same Node fetch client, manual redirects, private session cookies and complete body consumption. Values below are time to response headers, in milliseconds. They include network and hosting overhead; first requests are not guaranteed cold. Server-Timing separates measured application, session, authorization and database work.
 
-| View | Master median / p95 | Teacher median / p95 |
-| --- | --- | --- |
-| Dashboard | 492 / 511 | 522 / 655 |
-| Selected class roster | 532 / 625 | 585 / 723 |
-| Year-2 graph | 1,195 / 1,701 | HTTP 500; no valid percentile |
-| Individual report | 785 / 888 | 886 / 1,116 |
-| Activity monitoring | 512 / 677 | Not measured in the interrupted run |
-| Activity teams | 1,379 / 1,572 | 1,534 / 1,635 |
-| Fictional trial submission | 356 / 411 | 412 / 511 |
+| View                       | Master median / p95 | Teacher median / p95                |
+| -------------------------- | ------------------- | ----------------------------------- |
+| Dashboard                  | 492 / 511           | 522 / 655                           |
+| Selected class roster      | 532 / 625           | 585 / 723                           |
+| Year-2 graph               | 1,195 / 1,701       | HTTP 500; no valid percentile       |
+| Individual report          | 785 / 888           | 886 / 1,116                         |
+| Activity monitoring        | 512 / 677           | Not measured in the interrupted run |
+| Activity teams             | 1,379 / 1,572       | 1,534 / 1,635                       |
+| Fictional trial submission | 356 / 411           | 412 / 511                           |
 
 The graph's first measured master request took 2,044 ms; the teams request took 1,743 ms. Typical measured session reads were approximately 25–50 ms; the current-user lookup took approximately 80–90 ms, and ordinary-teacher access added another approximately 84 ms. The teams page issued 22 queries for the master and 23 for the teacher, with roughly 1,000 ms inside its handler even on later requests. These results support reducing dependent database reads rather than introducing an access cache.
 
@@ -140,14 +140,14 @@ The first benchmark attempt stopped on a trial-data harness error; its accounts 
 
 The loaders at `048395d` and these changes ran against the same live database from the same client, alternating their order over 20 samples. This is read-only database work, without hosting, sessions or HTML rendering. The teacher comparison uses the same scope IDs as the temporary account. Complete graph/report results and formation inputs matched; only the formation snapshot's new capture timestamp was excluded from equality. The graph query-budget test went red at ten queries and passes at nine while retaining preferences and confirmed peers.
 
-| Role / loader | Queries before → after | Median before → after | p95 before → after |
-| --- | --- | --- | --- |
-| Master graph profiles | 10 → 9 | 203 → 131 ms | 243 → 190 ms |
-| Teacher graph profiles | 10 → 9 | 203 → 132 ms | 261 → 166 ms |
-| Master individual profile | 10 → 9 | 164 → 103 ms | 224 → 169 ms |
-| Teacher individual profile | 10 → 9 | 181 → 105 ms | 222 → 159 ms |
-| Master formation inputs | 15 → 13 | 420 → 178 ms | 434 → 223 ms |
-| Teacher formation inputs | 15 → 13 | 421 → 183 ms | 450 → 243 ms |
+| Role / loader              | Queries before → after | Median before → after | p95 before → after |
+| -------------------------- | ---------------------- | --------------------- | ------------------ |
+| Master graph profiles      | 10 → 9                 | 203 → 131 ms          | 243 → 190 ms       |
+| Teacher graph profiles     | 10 → 9                 | 203 → 132 ms          | 261 → 166 ms       |
+| Master individual profile  | 10 → 9                 | 164 → 103 ms          | 224 → 169 ms       |
+| Teacher individual profile | 10 → 9                 | 181 → 105 ms          | 222 → 159 ms       |
+| Master formation inputs    | 15 → 13                | 420 → 178 ms          | 434 → 223 ms       |
+| Teacher formation inputs   | 15 → 13                | 421 → 183 ms          | 450 → 243 ms       |
 
 These are improvements to the actual remote query paths, not deployed page before/after figures. Page-level parallelism and selected-roster scoping require deployment before comparing their HTTP effect. Existing `benchmark:remote` remains available for repeated current-loader measurements; compare the same access and selected data, excluding inaccessible/empty views.
 
@@ -156,3 +156,39 @@ These are improvements to the actual remote query paths, not deployed page befor
 All 82 tests pass, including real login, failed-password retention, teacher graph/survey access, historical answers, query budgets and immediate permission revocation. Astro/TypeScript reports no errors or warnings (one existing class-page hint); the isolated desktop/mobile browser workflow and production build pass. `benchmark:startup` confirms `/admin/login` is now a built static HTML page with zero SSR invocations. The anonymous dashboard redirect remains dynamic (297 ms fresh-process median locally); no claim is made that all private cold starts have been eliminated.
 
 No new schema migration is required for these performance changes. After Jon pushes this commit, repeat the authenticated HTTP comparison, including teacher monitoring and the repaired teacher graph, first requests after inactivity and a legitimate intended student submission. Agree the final latency target against those results; a proposed working budget is a warm page median below 1,000 ms and p95 below 1,500 ms for this dataset. Netlify initialization/execution logs are still needed to attribute hosting time. **Keep #6 open until that deployed comparison is complete; local/static and remote-loader results do not substitute for it.**
+
+## Deployed comparison and remaining intermittent failure, 2026-10-15
+
+The deployed `b2ecb67` was verified with the same representative class/project and temporary account scopes. Twenty requests per route and role completed successfully. The benchmark compared every non-account application table before and after: unchanged. Both accounts and their grants were removed. As before, the only POST of survey answers targeted the fictional, zero-write trial endpoint; persisted student submission latency remains unmeasured.
+
+| View                       | Master median / p95 | Teacher median / p95 |
+| -------------------------- | ------------------- | -------------------- |
+| Dashboard                  | 490 / 534 ms        | 513 / 612 ms         |
+| Selected class roster      | 595 / 629 ms        | 605 / 674 ms         |
+| Year-2 graph               | 949 / 1,332 ms      | 995 / 1,151 ms       |
+| Individual report          | 742 / 808 ms        | 818 / 846 ms         |
+| Activity monitoring        | 517 / 607 ms        | 613 / 689 ms         |
+| Activity teams             | 739 / 820 ms        | 803 / 1,023 ms       |
+| Fictional trial submission | 327 / 435 ms        | 472 / 524 ms         |
+
+The biggest page improvement is teams: master median 1,379 → 739 ms; teacher 1,534 → 803 ms. The master graph improved from 1,195 → 949 ms. The earlier deterministic teacher SQL-alias failure no longer prevents the 20-sample run. Dashboard, roster and trial measurements vary; these results do not establish improvements on every route. Private access checks remain uncached. The sampled team pages now issue 20/21 queries for master/teacher versus 22/23 previously.
+
+The static login introduces Netlify's canonical `/admin/login` → `/admin/login/` redirect. The CLI previously rejected its HTTP 301; it now follows only same-origin 301/308 redirects that add/remove a trailing slash, with a bounded chain and unchanged query. Authentication redirects and cross-origin redirects still fail. Tests exercise actual HTTP requests and ensure cookies are not forwarded to another origin. Public five-sample results including that canonical redirect: login first 189 ms, median 197 ms, p95 281 ms, no SSR timing; homepage first 845 ms, median 40 ms; anonymous dashboard redirect first 209 ms, median 244 ms. These first requests are not guaranteed cold starts.
+
+### Browser evidence
+
+An authenticated desktop browser completed master dashboard/graph/trial views without rendering errors, then received **one teacher graph HTTP 500 around 13:02 UTC**. The run removed both accounts in its cleanup. A separate three-visit graph probe for each role completed all six requests, also with no rendering errors and with both accounts removed. That probe nevertheless measured a master first graph TTFB of **5,504 ms**, with graph ready at 6,616 ms; its repeats were about 1,313–1,325 ms TTFB. Teacher graph TTFB was 1,248 ms first and 1,036–1,134 ms repeated. Browser, HTTP client, connection and asset-cache behavior differ; the 20-sample HTTP table does not bound all first visits.
+
+A subsequent 40-visit browser loop (20 per role) passed every graph request with no rendering errors. Master TTFB was 2,484 ms first, median 893 ms, p95 1,303 ms; teacher TTFB was 1,264 ms first, median 894 ms, p95 1,048 ms. Every non-account application table remained unchanged, and both temporary accounts/grants were removed (zero remaining). This failed to reproduce the intermittent error and does not establish its cause or resolution.
+
+Chrome's same-origin encoded-transfer counters measured roughly 100–106 KB on first graph loads, including assets, and 21–23 KB on cached repeat visits. They include response headers and exclude external fonts. HTTP body counts are decompressed and must not be used as billed bandwidth. See [operating-costs.md](operating-costs.md) for provider quotas and the explicit monthly usage model.
+
+### Failure diagnostics for the next deployment
+
+The intermittent 500 cannot be attributed to the database, session store, rendering or hosting from the captured evidence. Netlify function logs were unavailable; Jon confirmed he could not supply them. No automatic database retries, permission caches or speculative infrastructure changes were added.
+
+Private failed requests now retain aggregate Server-Timing even when downstream code throws. They receive a random `X-Taldebot-Error-ID`, a validated database error code in `X-Taldebot-Error` (or `SERVER_ERROR` without a recorded database failure), and, when available, `X-Taldebot-Query`: the first 12 hex characters of SHA-256 over a JSON array of parameterized SQL templates. Bound values never enter the fingerprint. A failed batch fingerprints its templates together; it does not identify an individual failing statement. The fingerprint is a correlation aid, not proof of root cause. A matching `[taldebot-request-failure]` server log contains only those identifiers, status and aggregate timing/counts. SQL, parameters, student identities, URLs, cookies and raw exception messages are omitted. An unhandled exception returns a generic 500; failed responses remain private/no-store. Failures before middleware or after streaming begins remain outside this boundary.
+
+The HTTP CLI prints only validated failure identifiers, never response bodies, so an agent-run probe can capture evidence without access to platform logs. Real missing-table tests cover thrown and already-handled failures, fingerprint stability across different bound values, private caching and omission of private values. These diagnostics require Jon's push/deployment before they can identify another production failure. **#6 stays open:** the intermittent failure and first-request outlier are not claimed fixed, and a legitimate persisted submission still needs timing during normal use.
+
+Follow-up validation: all 84 tests pass, Astro/TypeScript reports zero errors and warnings (one existing class-page hint), and the Netlify production build succeeds. No migration is required. The follow-up is committed locally for Jon to push; production still runs `b2ecb67` during these measurements.

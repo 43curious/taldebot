@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Client } from '@libsql/client';
 interface Metrics {
     startedAt: number;
@@ -6,6 +7,7 @@ interface Metrics {
     databaseMs: number;
     queries: number;
     rows: number;
+    failure?: { code: string; query?: string };
 }
 const requests = new AsyncLocalStorage<Metrics>();
 export async function timed<T>(
@@ -35,7 +37,12 @@ export async function measuredRequest(
         rows: 0,
     };
     return requests.run(metrics, async () => {
-        const original = await run();
+        let original: Response;
+        try {
+            original = await run();
+        } catch {
+            original = new Response('Internal Server Error', { status: 500 });
+        }
         const response = new Response(original.body, {
             status: original.status,
             statusText: original.statusText,
@@ -51,10 +58,25 @@ export async function measuredRequest(
             `db_rows;desc="${metrics.rows}"`,
         ];
         response.headers.set('Server-Timing', timings.join(', '));
+        if (response.status >= 500) {
+            const id = randomUUID();
+            const failure = metrics.failure ?? { code: 'SERVER_ERROR' };
+            response.headers.set('Cache-Control', 'private, no-store');
+            response.headers.set('X-Taldebot-Error-ID', id);
+            response.headers.set('X-Taldebot-Error', failure.code);
+            if (failure.query)
+                response.headers.set('X-Taldebot-Query', failure.query);
+            console.error('[taldebot-request-failure]', {
+                id,
+                status: response.status,
+                ...failure,
+                timing: timings.join(', '),
+            });
+        }
         return response;
     });
 }
-// Only aggregate timing/counts leave the request. SQL, parameters, identities and cookies never do.
+// Diagnostics contain counts, timings, error codes and SQL-template hashes, never SQL or values.
 export function measuredClient(client: Client): Client {
     const wrap = <T extends object>(target: T): T =>
         new Proxy(target, {
@@ -84,6 +106,7 @@ export function measuredClient(client: Client): Client {
                                 : key === 'batch' && Array.isArray(args[0])
                                   ? args[0].length
                                   : 0,
+                            args[0],
                         );
                 return value.bind(object);
             },
@@ -91,6 +114,7 @@ export function measuredClient(client: Client): Client {
     async function operation<T>(
         run: () => Promise<T>,
         queries: number,
+        statement?: unknown,
     ): Promise<T> {
         const metrics = requests.getStore();
         if (!metrics) return run();
@@ -108,10 +132,52 @@ export function measuredClient(client: Client): Client {
                 ? result.reduce((n, value) => n + countRows(value), 0)
                 : countRows(result);
             return result;
+        } catch (error) {
+            metrics.failure ??= {
+                code: databaseErrorCode(error),
+                query: queryFingerprint(statement),
+            };
+            throw error;
         } finally {
             metrics.databaseMs += performance.now() - start;
             metrics.queries += queries;
         }
     }
     return wrap(client);
+}
+
+function databaseErrorCode(error: unknown): string {
+    let current = error;
+    for (let depth = 0; depth < 5; depth++) {
+        if (!current || typeof current !== 'object') break;
+        if (
+            'code' in current &&
+            typeof current.code === 'string' &&
+            /^[A-Z][A-Z0-9_]{0,63}$/.test(current.code)
+        )
+            return current.code;
+        current = 'cause' in current ? current.cause : undefined;
+    }
+    return 'DATABASE_ERROR';
+}
+
+function queryFingerprint(statement: unknown): string | undefined {
+    const sql = (value: unknown): string | undefined =>
+        typeof value === 'string'
+            ? value
+            : value &&
+                typeof value === 'object' &&
+                'sql' in value &&
+                typeof value.sql === 'string'
+              ? value.sql
+              : undefined;
+    const templates = Array.isArray(statement)
+        ? statement.map(sql)
+        : [sql(statement)];
+    if (!templates.length || templates.some((value) => value === undefined))
+        return undefined;
+    return createHash('sha256')
+        .update(JSON.stringify(templates))
+        .digest('hex')
+        .slice(0, 12);
 }
