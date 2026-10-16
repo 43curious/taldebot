@@ -10,8 +10,9 @@ import {
     graphSkills,
     graphSkillScore,
     incomingPreferences,
+    graphTeamResultLabel,
     teamPalette,
-    type GraphAssignment,
+    type GraphTeamResult,
 } from '../lib/sociogram';
 import type { PreferenceKind } from '../lib/trackingTypes';
 
@@ -21,7 +22,7 @@ interface Props {
     fullScreen?: boolean;
     sourceLabel?: string;
     noSurvey?: boolean;
-    assignment?: GraphAssignment | null;
+    teamResults?: GraphTeamResult[];
     activitySelected?: boolean;
 }
 const kinds: Record<RelationshipKind, { label: string; color: string }> = {
@@ -43,7 +44,7 @@ export default function ClassGraph({
     fullScreen = false,
     sourceLabel,
     noSurvey = false,
-    assignment = null,
+    teamResults = [],
     activitySelected = false,
 }: Props) {
     const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -56,11 +57,15 @@ export default function ClassGraph({
     const [skill, setSkill] = useState('');
     const [minimum, setMinimum] = useState(7);
     const [incomingKind, setIncomingKind] = useState<PreferenceKind | ''>('');
-    const [showTeams, setShowTeams] = useState(Boolean(assignment));
+    const [teamResultId, setTeamResultId] = useState(
+        () =>
+            teamResults.find((result) => result.kind === 'confirmed')?.id ?? '',
+    );
+    const teamResult = teamResults.find((result) => result.id === teamResultId);
     const teamColors = useMemo(
         () =>
             new Map(
-                assignment?.teams.flatMap((team, index) =>
+                teamResult?.teams.flatMap((team, index) =>
                     team.studentIds.map(
                         (id) =>
                             [
@@ -75,7 +80,7 @@ export default function ClassGraph({
                     ),
                 ) ?? [],
             ),
-        [assignment],
+        [teamResult],
     );
     const highlightedIds = useMemo(
         () =>
@@ -170,7 +175,7 @@ export default function ClassGraph({
                 selectedId={selectedId}
                 matchingIds={matchingIds}
                 highlightedIds={highlightedIds}
-                teamColors={showTeams ? teamColors : undefined}
+                teamColors={teamResult ? teamColors : undefined}
                 incomingCounts={incomingSummary?.counts}
                 onSelect={setSelectedId}
             />
@@ -421,75 +426,101 @@ export default function ClassGraph({
                                     </div>
                                 )}
                                 {activitySelected &&
-                                    (assignment ? (
-                                        <div>
-                                            <label className="flex min-h-11 items-center gap-3 text-sm text-slate-700">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={showTeams}
-                                                    onChange={(event) =>
-                                                        setShowTeams(
-                                                            event.target
-                                                                .checked,
-                                                        )
-                                                    }
-                                                />
-                                                Berretsitako taldeak
+                                    (teamResults.length ? (
+                                        <div className="teacher-label">
+                                            <label
+                                                htmlFor={`${controlId}-teams`}
+                                            >
+                                                Taldeen emaitza
                                             </label>
-                                            <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                                                {assignment.projectName} ·{' '}
-                                                {new Date(
-                                                    assignment.confirmedAt,
-                                                ).toLocaleDateString(
-                                                    'eu-ES',
-                                                )}{' '}
-                                                · {assignment.revision}.
-                                                berrikuspena. Kolorea: taldea;
-                                                eraztun urdina: autoebaluazioa;
-                                                lotura berde/gorriak:
-                                                hautatutako ikaslearen
-                                                hobespenak.
-                                            </p>
-                                            {showTeams && (
-                                                <ul className="mt-3 space-y-2 text-xs text-slate-600">
-                                                    {assignment.teams.map(
-                                                        (team, index) => (
-                                                            <li
-                                                                key={
-                                                                    team.teamNumber
-                                                                }
-                                                                className="flex items-center gap-2"
-                                                            >
-                                                                <span
-                                                                    aria-hidden="true"
-                                                                    className="h-2 w-2 rounded-full"
-                                                                    style={{
-                                                                        background:
-                                                                            teamPalette[
-                                                                                index %
-                                                                                    teamPalette.length
-                                                                            ],
-                                                                    }}
-                                                                />
-                                                                {
-                                                                    team.teamNumber
-                                                                }
-                                                                . taldea ·{' '}
-                                                                {
-                                                                    team
-                                                                        .studentIds
-                                                                        .length
-                                                                }{' '}
-                                                                ikasle
-                                                            </li>
-                                                        ),
-                                                    )}
-                                                </ul>
+                                            <select
+                                                id={`${controlId}-teams`}
+                                                value={teamResultId}
+                                                onChange={(event) =>
+                                                    setTeamResultId(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            >
+                                                <option value="">
+                                                    Talde-kolorerik gabe
+                                                </option>
+                                                {teamResults.map((result) => (
+                                                    <option
+                                                        key={result.id}
+                                                        value={result.id}
+                                                    >
+                                                        {graphTeamResultLabel(
+                                                            result,
+                                                        )}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {teamResult && (
+                                                <>
+                                                    <p className="text-xs leading-relaxed text-slate-500">
+                                                        {teamResult.projectName}{' '}
+                                                        ·{' '}
+                                                        {new Date(
+                                                            teamResult.kind ===
+                                                                'confirmed'
+                                                                ? teamResult.confirmedAt
+                                                                : teamResult.createdAt,
+                                                        ).toLocaleDateString(
+                                                            'eu-ES',
+                                                        )}
+                                                        {teamResult.kind ===
+                                                            'draft' &&
+                                                            ' · Gordetako zirriborroa; ez da berretsitako esleipena.'}
+                                                    </p>
+                                                    <ul className="mt-2 space-y-2 text-xs text-slate-600">
+                                                        {teamResult.teams.map(
+                                                            (team, index) => (
+                                                                <li
+                                                                    key={
+                                                                        team.teamNumber
+                                                                    }
+                                                                    className="flex items-center gap-2"
+                                                                >
+                                                                    <span
+                                                                        aria-hidden="true"
+                                                                        className="h-2 w-2 rounded-full"
+                                                                        style={{
+                                                                            background:
+                                                                                teamPalette[
+                                                                                    index %
+                                                                                        teamPalette.length
+                                                                                ],
+                                                                        }}
+                                                                    />
+                                                                    {
+                                                                        team.teamNumber
+                                                                    }
+                                                                    . taldea ·{' '}
+                                                                    {
+                                                                        team
+                                                                            .studentIds
+                                                                            .length
+                                                                    }{' '}
+                                                                    ikasle
+                                                                </li>
+                                                            ),
+                                                        )}
+                                                    </ul>
+                                                    <p className="text-xs leading-relaxed text-slate-500">
+                                                        Kolorea: taldea. Urdina:
+                                                        hautatutako
+                                                        autoebaluazioa. Lotura
+                                                        berde/gorriak:
+                                                        hautatutako ikaslearen
+                                                        hobespenak.
+                                                    </p>
+                                                </>
                                             )}
                                         </div>
                                     ) : (
                                         <p className="text-xs text-slate-500">
-                                            Ez dago berretsitako talderik
+                                            Ez dago gordetako taldeen emaitzarik
                                             hautatutako inkesta / jardueran.
                                         </p>
                                     ))}
@@ -535,9 +566,11 @@ export default function ClassGraph({
                         </p>
                         {activitySelected && (
                             <p>
-                                {assignment
-                                    ? `${showTeams ? assignment.teams.length : 0} talde erakutsita · ${assignment.revision}. berrespena · ${assignment.confirmedAt.slice(0, 10)}`
-                                    : 'Ez dago berretsitako talderik hautatutako inkesta / jardueran.'}
+                                {teamResult
+                                    ? `${teamResult.teams.length} talde erakutsita · ${graphTeamResultLabel(teamResult)}`
+                                    : teamResults.length
+                                      ? 'Taldeen emaitzak: aukeratu maparen iragazkietan.'
+                                      : 'Ez dago gordetako taldeen emaitzarik hautatutako inkesta / jardueran.'}
                             </p>
                         )}
                         {skill && (

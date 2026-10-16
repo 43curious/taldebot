@@ -64,8 +64,10 @@ Inkestaren orrian sortu ikasle bakoitzaren esteka pertsonala. **Erantzunak CSV**
 
 ## Maparen iragazki berriak
 
-**Testuingurua** atalean aukeratu inkesta edo jarduera. **Mapa iragazi** menuan aukeratu gaitasuna eta gutxieneko puntuazioa (hasieran 7/10): eraztun urdinak autoebaluazio hori dutenak nabarmentzen ditu, ez gaitasun objektiboaren sailkapena. Ezezagunak ez dira nabarmentzen.
+**Testuingurua** atalean aukeratu inkesta edo jarduera. **Mapa iragazi** menuan aukeratu gaitasuna eta gutxieneko puntuazioa (hasieran 7/10): burbuila urdinak autoebaluazio hori dutenak nabarmentzen ditu, ez gaitasun objektiboaren sailkapena. Ezezagunak ez dira nabarmentzen.
 
-**Sarrerako aukerak** kontrolak hautatutako motaren kopuruak eta erantzun dutenen estaldura erakusten ditu, egungo klasearen barruan. Ez da etiketa iraunkorrik sortzen; erantzunik eza ez da baztertzea. Proiektu bati lotutako ikuspegian berretsitako taldeek nodoaren kolorea ematen dute; eraztun urdina gaitasunarena da eta lotura berde/gorriak hautatutako ikaslearenak. Zirriborroak ez dira talde berretsi gisa erakusten. Talderik ez badago, egoera esplizitua da.
+**Sarrerako aukerak** kontrolak hautatutako motaren kopuruak eta erantzun dutenen estaldura erakusten ditu, egungo klasearen barruan. Ez da etiketa iraunkorrik sortzen; erantzunik eza ez da baztertzea. Gaitasun-iragazkian gutxieneko puntuazioa betetzen duten ikasleen burbuila urdina da. Iragazkia kentzean taldearen edo egoeraren kolorea berreskuratzen da. Lotura berde/gorriak hautatutako ikaslearen hobespenak dira.
+
+**Testuingurua** atalean proiektua aukeratu, eta **Mapa iragazi → Taldeen emaitza** kontrolak berretsitako taldeak eta **Gordetako emaitza · v1 / v2** aukerak eskaintzen ditu, daudenean. Algoritmo bakoitzaren azken emaitza erakusten da, hautatutako datara artekoa data-iragazkia badago. Koloreak taldeko kideak alderatzeko dira; emaitza aldatzeak ez du algoritmoa berriz exekutatzen. Berretsitako esleipena lehenesten da; zirriborroak esplizituki hautatu behar dira eta ez dira esleipen-historia edo benetako elkarlan bihurtzen. **Talde-kolorerik gabe** aukerak koloreak kentzen ditu. Jatorrizko v1/v2 taldeak inportatutako zirriborro gisa gordeta daude.
 
 Txostenak egungo matrikula guztiak, jatorrizko inkesta/bertsioa, adierazitako elkarlana eta esleipenak bereizten ditu. **Elkarrekin esleipen-erregistrorik gabe** zerrendak ez du frogatzen kideek inoiz elkarrekin lan egin ez dutenik.

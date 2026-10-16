@@ -68,3 +68,18 @@ export interface GraphAssignment {
     revision: number;
     teams: { teamNumber: number; studentIds: number[] }[];
 }
+export type GraphTeamResult =
+    | ({ id: string; kind: 'confirmed' } & GraphAssignment)
+    | {
+          id: string;
+          kind: 'draft';
+          projectName: string;
+          algorithmVersion: 'v1' | 'v2';
+          createdAt: string;
+          teams: GraphAssignment['teams'];
+      };
+export function graphTeamResultLabel(result: GraphTeamResult): string {
+    return result.kind === 'confirmed'
+        ? `Berretsitako taldeak · ${result.revision}. berrikuspena`
+        : `Gordetako emaitza · ${result.algorithmVersion}`;
+}

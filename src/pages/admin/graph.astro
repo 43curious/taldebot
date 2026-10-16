@@ -12,7 +12,6 @@ import {
     students,
     surveyCollections,
     surveyResponses,
-    confirmedAssignments,
 } from '../../../db/schema';
 import {
     asc,
@@ -20,7 +19,6 @@ import {
     inArray,
     and,
     desc,
-    lte,
     getTableColumns,
     count,
     sql,
@@ -28,7 +26,7 @@ import {
 import { requireSurvey, surveyVisibility } from '../../lib/surveyCollections';
 import { positiveId, routeError, InputError } from '../../lib/input';
 import type { PreferenceKind } from '../../lib/trackingTypes';
-import type { GraphAssignment } from '../../lib/sociogram';
+import { graphTeamResults } from '../../lib/graphTeamResults';
 import { selectClassScope } from '../../lib/classSelection';
 import { classFilter, projectFilter, isMaster } from '../../lib/access';
 import {
@@ -275,30 +273,9 @@ const links: Relationship[] = [...profiles.values()].flatMap((profile) =>
             ];
         }),
 );
-let assignment: GraphAssignment | null = null;
-if (source) {
-    const confirmed = await db.query.confirmedAssignments.findFirst({
-        where: and(
-            eq(confirmedAssignments.projectId, source.id),
-            asOf
-                ? lte(confirmedAssignments.confirmedAt, `${asOf}T23:59:59.999Z`)
-                : undefined,
-        ),
-        orderBy: desc(confirmedAssignments.revision),
-    });
-    if (confirmed)
-        assignment = {
-            projectName: confirmed.projectName,
-            confirmedAt: confirmed.confirmedAt,
-            revision: confirmed.revision,
-            teams: confirmed.allocation
-                .map((team) => ({
-                    teamNumber: team.teamNumber,
-                    studentIds: team.studentIds.filter((id) => visible.has(id)),
-                }))
-                .filter((team) => team.studentIds.length),
-        };
-}
+const teamResults = source
+    ? await graphTeamResults(db, access, source.id, visible, asOf)
+    : [];
 const sourceLabel = `${sourceSurvey ? `${sourceSurvey.survey.name} · v${sourceSurvey.version.version}` : source ? projectSourceLabel(source) : historical ? 'Azken harreman-erantzunak · Historia' : 'Egungo ikasturteko hobespenak'}${asOf ? ` · ${asOf} arte` : ''}`;
 ---
 
@@ -393,7 +370,7 @@ const sourceLabel = `${sourceSurvey ? `${sourceSurvey.survey.name} · v${sourceS
                     relationships={links}
                     sourceLabel={sourceLabel}
                     noSurvey={nodes.every((node) => !node.hasSurvey)}
-                    assignment={assignment}
+                    teamResults={teamResults}
                     activitySelected={Boolean(source || sourceSurvey)}
                 />
             ) : (

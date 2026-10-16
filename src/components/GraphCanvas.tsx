@@ -509,26 +509,27 @@ const GraphCanvas = forwardRef<GraphHandle, Props>(function GraphCanvas(
                                     strokeWidth="1.5"
                                     opacity={selected ? 1 : 0}
                                 />
-                                {highlighted && (
-                                    <circle
-                                        r="20"
-                                        fill="none"
-                                        stroke="#2563eb"
-                                        strokeWidth="2.5"
-                                    />
-                                )}
                                 <circle r="22" fill="transparent" />
                                 <circle
+                                    className="graph-node-dot"
                                     r={selected ? 9 : 7}
                                     fill={
-                                        team?.color ??
-                                        (selected
-                                            ? '#0f766e'
-                                            : student.hasCompleted
-                                              ? '#64748b'
-                                              : '#f8fafc')
+                                        highlighted
+                                            ? '#2563eb'
+                                            : (team?.color ??
+                                              (selected
+                                                  ? '#0f766e'
+                                                  : student.hasCompleted
+                                                    ? '#64748b'
+                                                    : '#f8fafc'))
                                     }
-                                    stroke={selected ? '#0f766e' : '#94a3b8'}
+                                    stroke={
+                                        highlighted
+                                            ? '#2563eb'
+                                            : selected
+                                              ? '#0f766e'
+                                              : '#94a3b8'
+                                    }
                                     strokeWidth="1.5"
                                 />
                                 {incomingCounts && (
