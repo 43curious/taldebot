@@ -33,6 +33,10 @@ export const translations = {
             tagline: 'Taldeak sortzen, denok bat egiteko.',
             adminAccess: 'Admin Sarbidea',
             start: 'Hasi',
+            codeLabel: 'Proiektuaren kodea',
+            codeHint: '4 zenbaki eta letra bat. Adibidez: 1234-A.',
+            digitLabel: 'Kodearen zenbakia',
+            letterLabel: 'Kodearen letra',
             codeError: 'Kode hau ez da existitzen',
         },
 
@@ -236,6 +240,10 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
             tagline: 'Creating teams, uniting everyone.',
             adminAccess: 'Admin Access',
             start: 'Start',
+            codeLabel: 'Project code',
+            codeHint: '4 digits and one letter. For example: 1234-A.',
+            digitLabel: 'Code digit',
+            letterLabel: 'Code letter',
             codeError: "This code doesn't exist",
         },
 
