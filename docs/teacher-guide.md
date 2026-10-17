@@ -8,7 +8,7 @@ Masterrak **Erabiltzaileen kudeaketa** orrian esleitzen ditu irakasleen gradu ed
 
 **Klaseak kudeatu** atalean datuak editatu edo CSV inportatu. Ikaslearen aukeretan **Beste matrikula gehitu** hautatzeak beste klaseko matrikula gehitzen du, oraingoa eta beste matrikulak mantenduz. **Oraingoa amaitu eta lekuz aldatu** hautatzeak une horretako klaseko matrikula bakarrik amaitzen du eta helmugakoa gehitzen du. Matrikula amaitzeak egungo zerrenda horretatik kentzen du, beste matrikulak eta jarraipena gordeaz. Sarbidea egungo arduraren arabera aldatzen da. Ohar pribatuak egileak eta masterrak ikusten dituzte.
 
-Profiletik autoebaluazioa, hobespenak edo biak eguneratzeko esteka pertsonala sortu daiteke, proiekturik gabe. Ikasturtea aukeratu eta esteka ikasle horrekin bakarrik partekatu. 30 eguneko balioa du, behin erabil daiteke eta beste bat sortzeak aurrekoa baliogabetzen du. Hautaketa hutsak testuinguru horretako aurreko hobespenak erretiratzen ditu; eskatu gabeko atalak mantentzen dira. Erantzun zaharrak historian geratzen dira.
+Profileko **Bete inkesta ikaslearen partez** atalean aukeratu ikasturtea eta autoebaluazioa, hobespenak edo biak. Inprimakia zuzenean irekitzen da, estekarik sortu edo kopiatu gabe. Erantzunak ikaslearen partez sartzen dituen irakaslearen izena eta data gordetzen dira. Hautaketa hutsak testuinguru horretako aurreko hobespenak erretiratzen ditu; eskatu gabeko atalak mantentzen dira. Erantzun zaharrak historian geratzen dira.
 
 ## Moduluko taldeak
 
@@ -22,13 +22,13 @@ Ausazko taldeak modulurako gordetzeko, prestatu eta berretsi klaseko jarduera ba
 
 Proiektu berrian aukeratu gradua, klasea eta dagoen zerrendako parte-hartzaileak. Eskuzko eta CSV sarrerak ere badaude; izen anbiguoak ez dira automatikoki lotzen. Masterrak **Identitateak berrikusi** orrian ebazten ditu aurretiko lotura zalantzagarriak.
 
-Proiektu-kodea sarrera orokorra da. **Kudeatu** orriko ikaslearen aukeretan sortu eta kopiatu esteka pertsonala; kodeak bakarrik ez du beste ikasle baten izenean erantzuteko baimenik ematen. Euskaraz eta ingelesez bete daiteke. Gaitasunak 1–10 eskalan baloratzen dira; proiektuarekiko motibazioa eta proiektuko aukerak proiektu horretan mantentzen dira. Hobespen orokorrak proiektu edo ikasturte berrian berrikusteko eskatu.
+**Kudeatu** orriko ikaslearen aukeretan hautatu **Bete inkesta ikaslearen partez**. Berrikusi ikaslearen izena eta proiektua, bete erantzunak eta berretsi ikaslearen partez sartzen ari zarela. Euskaraz eta ingelesez bete daiteke. Gaitasunak 1–10 eskalan baloratzen dira; proiektuarekiko motibazioa eta proiektuko aukerak proiektu horretan mantentzen dira. Irakasleak sartutako erantzuna eta ikasleak sartutakoa bereizita etiketatzen dira. Aurreko esteka pertsonal baliodunek lanean jarraitzen dute.
 
 Enter teklak ez du automatikoki bidaltzen. Huts egitean sartutako datuak mantentzen dira. Absentzia proiektu horretarako bakarrik da: ikaslea talde-sorkuntzatik eta inkestaren bete-mailatik kanpo uzten du. Erantzuna berrabiarazteak uneko erantzuna erretiratzen du eta inkesta berriz irekitzen du, baieztapenaren ondoren; datatutako historia gordetzen da.
 
 Alboko **Inkesta probatu** sarrerak irakasleentzako proba irekitzen du. Fikziozko ikasle bat aukeratu eta inkestaren lau atalak bete euskaraz edo ingelesez. Bidalketak benetako inkestaren baliozkotzea erabiltzen du, baina ez du datu-basean ezer gordetzen: ez erantzunik, ez jarraipenik, ez talderik. Proba berriz hasi daiteke amaieran; ez da proiektu edo gonbidapen errealik sortzen.
 
-Arbelean **Artxibatu** botoiak proiektua artxibatutako zerrendara eramaten du, datuak mantenduz. **Leheneratu** botoiak aurreko egoerara itzultzen du; egoera zaharra ezezaguna bada, prestaketara. Esteka zaharrak ez dira berriz aktibatzen: sortu esteka pertsonal berriak. **Ezabatu betiko** masterrentzat bakarrik da eta ezin da desegin. Proiektua, parte-hartzaileak, jatorrizko proiektuko erantzunak eta uneko taldeak ezabatzen ditu; ikasleen datatutako historia, berretsitako esleipenak eta jatorriaren datuak mantentzen ditu. Identitate zalantzagarriak edo inportatu gabeko historia badago, ebatzi lehenago edo artxibatu proiektua.
+Arbelean **Artxibatu** botoiak proiektua artxibatutako zerrendara eramaten du, datuak mantenduz. **Leheneratu** botoiak aurreko egoerara itzultzen du; egoera zaharra ezezaguna bada, prestaketara. Esteka zaharrak ez dira berriz aktibatzen; irakasleak zuzenean bete dezake berriro eskuragarri dagoen inkesta. **Ezabatu betiko** masterrentzat bakarrik da eta ezin da desegin. Proiektua, parte-hartzaileak, jatorrizko proiektuko erantzunak eta uneko taldeak ezabatzen ditu; ikasleen datatutako historia, berretsitako esleipenak eta jatorriaren datuak mantentzen ditu. Identitate zalantzagarriak edo inportatu gabeko historia badago, ebatzi lehenago edo artxibatu proiektua.
 
 ## Harremanen mapa
 
@@ -58,7 +58,7 @@ Klasea aukeratu ondoren, **Inkestak** estekan sortu proiekturik gabeko edo proie
 
 Inkesta irekitzean bertsioa eta audientzia finkatzen dira. Moduluko hainbat talde hautatuz kideak batu egiten dira, bikoiztu gabe; Sormena/Digitala ere iragazi daiteke. Ondorengo matrikulak ez dira automatikoki gehitzen: **Audientzia eta inkestaren aukerak** atalean gehitu kide berriak esplizituki. Lehendik jasotako bertsioa ez da aldatzen; galdera-sorta editatzeak hurrengo bertsioa sortzen du.
 
-Inkestaren orrian sortu ikasle bakoitzaren esteka pertsonala. **Erantzunak CSV** aukerak jatorrizko galderak, gakoak, erantzunak eta iturriak esportatzen ditu, irakaslearentzako datu pribatu gisa. Erantzunak bertan ikusten dira, jatorrizko bertsioarekin. Inkesta ixteak estekak itxi eta erantzunak mantentzen ditu. Erantzunik eskatzen ez den hobespenak aurreko ezagutza mantentzen du; hautaketa hutsa bidaltzeak eskatutako mota bakarrik garbitzen du bere testuinguruan.
+Inkestaren orrian hautatu ikaslearen **Bete inkesta ikaslearen partez** ekintza. **Erantzunak CSV** aukerak jatorrizko galderak, gakoak, erantzunak eta iturriak esportatzen ditu, irakaslearentzako datu pribatu gisa. Erantzunak bertan ikusten dira, jatorrizko bertsioarekin eta sartu dituen irakaslearen izenarekin. Inkesta ixteak estekak itxi eta erantzunak mantentzen ditu. Erantzunik eskatzen ez den hobespenak aurreko ezagutza mantentzen du; hautaketa hutsa bidaltzeak eskatutako mota bakarrik garbitzen du bere testuinguruan.
 
 **Benetako elkarlana** galderak kide bakoitzarekin lan egin den edo inoiz ez den lan egin jasotzen du. Erantzun gabeko kidea ez da “inoiz ez” bihurtzen. Ikaslearen adierazpenak eta berretsitako talde-esleipenak beren iturri eta datarekin ageri dira, bat ez badatoz ere.
 

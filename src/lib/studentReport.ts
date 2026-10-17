@@ -2,6 +2,7 @@ import type { responses } from '../../db/schema';
 import { localizedSkillGroups, skillScale, type SkillCategory } from './skills';
 import type { ProfileRelationship } from './studentProfiles';
 import type { TrackedStudent } from './tracking';
+import type { EntryProvenance } from './trackingTypes';
 
 type SurveyResponse = typeof responses.$inferSelect;
 export type SelfAssessment = {
@@ -22,6 +23,7 @@ export interface GraphStudent extends TrackedStudent {
         }[];
         preferenceKinds?: import('./trackingTypes').PreferenceKind[];
         collaborations?: {
+            entryProvenance?: EntryProvenance | null;
             peerId: number | null;
             peerName: string;
             incoming: boolean;

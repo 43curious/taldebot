@@ -31,7 +31,156 @@ import { migrateDatabase } from '../../../scripts/migrations';
 import { updateStudentLocation } from '../studentLocations';
 import { setProjectCollectionContext } from '../../../scripts/project-context';
 import { knowledgeSourceLabel } from '../knowledgeContext';
+import { teacherSurveyContext, submitTeacherSurvey } from '../teacherSurvey';
+import type { TeacherSurveyTarget } from '../teacherSurveyTarget';
 let fixture: Awaited<ReturnType<typeof testDatabase>>;
+
+it('saves a project survey directly as the teacher, preserving student/teacher attribution and one-response completion', async () => {
+    const s = await setup();
+    const access = await teachingAccess(s.db, s.teacher);
+    const participants = await s.db.query.students.findMany({
+        where: eq(schema.students.projectId, s.project.id),
+    });
+    const target: TeacherSurveyTarget = {
+        kind: 'project',
+        projectId: s.project.id,
+        participantId: participants[0].id,
+    };
+    const context = await teacherSurveyContext(s.db, access, target);
+    expect(await s.db.query.updateRequests.findMany()).toHaveLength(0);
+    const answers = {
+        ...Object.fromEntries(
+            context.questions
+                .filter((q) => q.type === 'skill')
+                .map((q) => [q.key, 7]),
+        ),
+        comfort: [participants[1].id],
+        preferWith: [],
+        preferAvoid: [],
+    };
+    await expect(
+        submitTeacherSurvey(
+            s.db,
+            access,
+            target,
+            answers,
+            false,
+            'ane@example.com',
+        ),
+    ).rejects.toThrow();
+    await expect(
+        submitTeacherSurvey(
+            s.db,
+            access,
+            target,
+            { ...answers, comfort: [999] },
+            true,
+            'ane@example.com',
+        ),
+    ).rejects.toThrow();
+    expect(await s.db.query.responses.findMany()).toHaveLength(0);
+    await submitTeacherSurvey(
+        s.db,
+        access,
+        target,
+        answers,
+        true,
+        'ane@example.com',
+    );
+    const entry = {
+        kind: 'teacher',
+        teacherId: s.teacher.id,
+        teacherName: s.teacher.username,
+    };
+    expect((await s.db.query.responses.findFirst())?.entryProvenance).toEqual(
+        entry,
+    );
+    expect((await s.db.query.assessments.findFirst())?.entryProvenance).toEqual(
+        entry,
+    );
+    expect(
+        (await s.db.query.preferenceSubmissions.findFirst())?.entryProvenance,
+    ).toEqual(entry);
+    expect(
+        (
+            await s.db.query.students.findFirst({
+                where: eq(schema.students.id, participants[0].id),
+            })
+        )?.hasCompleted,
+    ).toBe(true);
+    await expect(
+        submitTeacherSurvey(
+            s.db,
+            access,
+            target,
+            answers,
+            true,
+            'ane@example.com',
+        ),
+    ).rejects.toThrow();
+    expect(await s.db.query.responses.findMany()).toHaveLength(1);
+    expect(await s.db.query.updateRequests.findMany()).toHaveLength(0);
+});
+
+it('retains unrequested period preferences and unknown skills, and rechecks revoked teacher access before writing', async () => {
+    const s = await setup();
+    const access = await teachingAccess(s.db, s.teacher);
+    await saveKnowledge(s.db, {
+        studentId: s.people[0].id,
+        preferences: {
+            comfort: [s.people[1].id],
+            preferWith: [],
+            preferAvoid: [],
+        },
+        source: 'independent-update',
+        scope: 'period',
+        academicPeriod: '2026-2027',
+    });
+    const target: TeacherSurveyTarget = {
+        kind: 'period',
+        studentId: s.people[0].id,
+        academicPeriod: '2026-2027',
+        assessmentAsked: true,
+        preferencesAsked: false,
+    };
+    const prefilled = await teacherSurveyContext(s.db, access, {
+        ...target,
+        preferencesAsked: true,
+    });
+    expect(prefilled.initialPreferences?.comfort).toEqual([s.people[1].id]);
+    const context = await teacherSurveyContext(s.db, access, target);
+    const answers = Object.fromEntries(
+        context.questions.map((q) => [
+            q.key,
+            q.key === 'narrative_writing' ? null : 6,
+        ]),
+    );
+    await expect(
+        submitTeacherSurvey(
+            s.db,
+            access,
+            target,
+            { ...answers, soft_motivation: 8 },
+            true,
+        ),
+    ).rejects.toThrow();
+    await submitTeacherSurvey(s.db, access, target, answers, true);
+    const saved = await s.db.query.assessments.findFirst();
+    expect(saved?.data.skillsNarrative.writing).toBeUndefined();
+    expect(saved?.data.skillsTechnical.camera).toBe(6);
+    expect(saved?.entryProvenance).toMatchObject({
+        kind: 'teacher',
+        teacherId: s.teacher.id,
+    });
+    expect(await s.db.query.preferenceSubmissions.findMany()).toHaveLength(1);
+    await s.db
+        .delete(schema.teacherResponsibilities)
+        .where(eq(schema.teacherResponsibilities.userId, s.teacher.id));
+    await expect(
+        submitTeacherSurvey(s.db, access, target, answers, true),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(await s.db.query.assessments.findMany()).toHaveLength(1);
+});
 beforeEach(async () => {
     fixture = await testDatabase();
 });
@@ -291,7 +440,8 @@ it('shows dated historical relationships from the current roster without making 
             target: peer.id,
             kind: 'comfort',
             scope: 'project',
-            sourceLabel: 'Film · 2025-2026 · 1. mailan jasoa',
+            sourceLabel:
+                'Film · 2025-2026 · 1. mailan jasoa · Egiletza egiaztatu gabe',
             submittedAt: '2026-02-20 11:30:59',
             incoming: false,
         },
@@ -654,7 +804,7 @@ it('ports surname-first surveys to current students without moving their enrollm
     expect(assessment!.academicPeriod).toBe('2025-2026');
     expect(assessment!.collectionYear).toBe(1);
     expect(knowledgeSourceLabel(assessment!)).toBe(
-        'Film Language A · 2025-2026 · 1. mailan jasoa',
+        'Film Language A · 2025-2026 · 1. mailan jasoa · Egiletza egiaztatu gabe',
     );
     expect(
         (await db.query.preferenceSubmissions.findFirst())!.collectionYear,

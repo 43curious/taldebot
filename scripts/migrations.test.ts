@@ -7,6 +7,54 @@ import { migrateDatabase } from './migrations';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { fileURLToPath } from 'node:url';
 
+it('adds teacher provenance to an existing installation without inventing authorship or rewriting old answers', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'taldebot-provenance-migration-'));
+    const client = createClient({ url: `file:${join(dir, 'test.db')}` });
+    try {
+        const migrations = readMigrationFiles({
+            migrationsFolder: fileURLToPath(
+                new URL('../db/migrations', import.meta.url),
+            ),
+        });
+        await client.execute(
+            'CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at NUMERIC)',
+        );
+        for (const migration of migrations.slice(0, 7)) {
+            for (const statement of migration.sql)
+                await client.execute(statement);
+            await client.execute({
+                sql: 'INSERT INTO __drizzle_migrations(hash,created_at) VALUES (?,?)',
+                args: [migration.hash, migration.folderMillis],
+            });
+        }
+        await client.execute(
+            "INSERT INTO student_records(id,name) VALUES (1,'Historical student')",
+        );
+        await client.execute(
+            "INSERT INTO assessments(student_id,data,source,academic_period,submitted_at) VALUES (1,'{\"skillsNarrative\":{\"writing\":8}}','legacy-survey','2025-2026','2026-02-01')",
+        );
+        await migrateDatabase(client);
+        await migrateDatabase(client);
+        const record = (
+            await client.execute(
+                'SELECT data,source,submitted_at,entry_provenance FROM assessments',
+            )
+        ).rows[0];
+        expect(record).toEqual({
+            data: '{"skillsNarrative":{"writing":8}}',
+            source: 'legacy-survey',
+            submitted_at: '2026-02-01',
+            entry_provenance: null,
+        });
+        expect(
+            (await client.execute('PRAGMA foreign_key_check')).rows,
+        ).toHaveLength(0);
+    } finally {
+        client.close();
+        await rm(dir, { recursive: true, force: true });
+    }
+});
+
 it('initializes every table, preserves existing rows and v2 labels, and records the baseline once', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'taldebot-migrations-'));
     const client = createClient({ url: `file:${join(dir, 'test.db')}` });
@@ -29,7 +77,7 @@ it('initializes every table, preserves existing rows and v2 labels, and records 
         ).toMatchObject([{ algorithm_version: 'v2', justification: 'keep' }]);
         expect(
             (await client.execute('SELECT * FROM __drizzle_migrations')).rows,
-        ).toHaveLength(7);
+        ).toHaveLength(8);
         expect(
             (await client.execute('PRAGMA foreign_key_check')).rows,
         ).toHaveLength(0);

@@ -1,5 +1,6 @@
 import type {
     AssessmentValues,
+    EntryProvenance,
     Allocation,
     FormationSnapshot,
     HistoryMode,
@@ -238,6 +239,9 @@ export const students = sqliteTable('students', {
 });
 
 export const responses = sqliteTable('responses', {
+    entryProvenance: text('entry_provenance', {
+        mode: 'json',
+    }).$type<EntryProvenance>(),
     id: integer('id').primaryKey({ autoIncrement: true }),
     studentId: integer('student_id').references(() => students.id, {
         onDelete: 'cascade',
@@ -388,6 +392,9 @@ export const updateRequests = sqliteTable('update_requests', {
 export const assessments = sqliteTable(
     'assessments',
     {
+        entryProvenance: text('entry_provenance', {
+            mode: 'json',
+        }).$type<EntryProvenance>(),
         id: integer('id').primaryKey({ autoIncrement: true }),
         studentId: integer('student_id')
             .notNull()
@@ -435,6 +442,9 @@ export const assessments = sqliteTable(
 export const preferenceSubmissions = sqliteTable(
     'preference_submissions',
     {
+        entryProvenance: text('entry_provenance', {
+            mode: 'json',
+        }).$type<EntryProvenance>(),
         surveyId: integer('survey_id').references(() => surveyCollections.id, {
             onDelete: 'set null',
         }),
@@ -733,6 +743,9 @@ export const surveyParticipants = sqliteTable(
 export const surveyResponses = sqliteTable(
     'survey_responses',
     {
+        entryProvenance: text('entry_provenance', {
+            mode: 'json',
+        }).$type<EntryProvenance>(),
         id: integer('id').primaryKey({ autoIncrement: true }),
         surveyId: integer('survey_id')
             .notNull()
@@ -763,6 +776,9 @@ export const surveyResponses = sqliteTable(
 export const collaborationReports = sqliteTable(
     'collaboration_reports',
     {
+        entryProvenance: text('entry_provenance', {
+            mode: 'json',
+        }).$type<EntryProvenance>(),
         id: integer('id').primaryKey({ autoIncrement: true }),
         respondentId: integer('respondent_id')
             .notNull()

@@ -40,7 +40,7 @@ export const translations = {
         form: {
             title: 'Inkesta',
             personalLinkError:
-                'Esteka iraungi, erabili edo baliogabetu da, edo beste inkesta bati dagokio. Eskatu irakasleari esteka berri bat.',
+                'Esteka iraungi, erabili edo baliogabetu da, edo beste inkesta bati dagokio. Eskatu irakasleari inkesta betetzeko laguntza.',
             submissionError:
                 'Ezin izan da inkesta bidali. Egiaztatu datuak eta saiatu berriro.',
             submitting: 'Bidaltzen…',
@@ -243,7 +243,7 @@ Agintzea baino, entzutea nahiago duen pertsona bazara, edo gogoak jaisten direne
         form: {
             title: 'Form',
             personalLinkError:
-                'This link has expired, been used, been revoked, or belongs to another survey. Ask your teacher for a new link.',
+                'This link has expired, been used, been revoked, or belongs to another survey. Ask your teacher to help you complete the survey.',
             submissionError:
                 'Unable to submit. Check your answers and try again.',
             submitting: 'Sending…',

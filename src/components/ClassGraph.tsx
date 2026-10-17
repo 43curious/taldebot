@@ -15,6 +15,7 @@ import {
     type GraphTeamResult,
 } from '../lib/sociogram';
 import type { PreferenceKind } from '../lib/trackingTypes';
+import { entryLabel } from '../lib/entryProvenance';
 
 interface Props {
     students: GraphStudent[];
@@ -1012,6 +1013,10 @@ export default function ClassGraph({
                                                     )}{' '}
                                                     · {row.surveyName} ·{' '}
                                                     {row.questionnaireVersion}
+                                                    {' · '}
+                                                    {entryLabel(
+                                                        row.entryProvenance,
+                                                    )}
                                                 </p>
                                             </li>
                                         ))}

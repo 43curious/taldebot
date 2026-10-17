@@ -9,7 +9,7 @@ const assessment: Pick<typeof responses.$inferSelect, 'skillsNarrative' | 'skill
     skillsSoft: { leadership: 7, listening: 9, proactivity: 6, teamwork: 8, motivation: 10, conflict: 5 },
 };
 const response = (id: number, projectId: number, studentId: number | null) => ({
-    ...assessment, id, projectId, studentId, preferWith: [], preferAvoid: [], comfort: [], completedAt: '2026-10-10 10:00:00',
+    ...assessment, entryProvenance: null, id, projectId, studentId, preferWith: [], preferAvoid: [], comfort: [], completedAt: '2026-10-10 10:00:00',
 });
 
 describe('student graph reports', () => {

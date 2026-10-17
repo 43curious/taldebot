@@ -1,5 +1,6 @@
-import { inArray, sql } from 'drizzle-orm';
-import { classes, studentRecords, projects } from '../../db/schema';
+import { eq, inArray, sql } from 'drizzle-orm';
+import { classes, studentRecords, projects, users } from '../../db/schema';
+import type { EntryProvenance } from './trackingTypes';
 import type { AppDatabase } from './db';
 import { InputError } from './input';
 
@@ -13,6 +14,25 @@ export interface TeacherAccess {
     degreeIds: Set<number>;
     studentIds: Set<number>;
     projectIds: Set<number>;
+}
+
+// Recheck the account/role and current grants inside teacher submission transactions.
+export async function currentTeacher(
+    store: Pick<AppDatabase, 'query' | 'all'>,
+    actor: TeacherActor,
+) {
+    const user = await store.query.users.findFirst({
+        where: eq(users.id, actor.id),
+    });
+    if (!user)
+        throw new InputError('Irakaslearen kontua ez dago erabilgarri.', 403);
+    const access = await teachingAccess(store, user);
+    const entry: EntryProvenance = {
+        kind: 'teacher',
+        teacherId: user.id,
+        teacherName: user.fullName || user.username,
+    };
+    return { access, entry };
 }
 
 export async function teachingAccess(

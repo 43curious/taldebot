@@ -4,12 +4,14 @@ import {
     projects,
     students,
     responses,
+    studentRecords,
     assessments,
     preferenceSubmissions,
 } from '../../db/schema';
 import type { AppDatabase } from './db';
 import { resolveStudent, academicPeriod } from './studentIdentity';
 import { saveKnowledge, consumeRequest } from './studentUpdates';
+import { currentTeacher, requireProject, requireStudent } from './access';
 import type { TeacherAccess } from './access';
 import { InputError, type ProjectInput, type Submission } from './input';
 import { teachingAccess } from './access';
@@ -108,14 +110,36 @@ export async function submitSurvey(
     db: AppDatabase,
     data: Submission,
     requestId?: number,
+    teacher?: TeacherAccess,
 ) {
     await db.transaction(async (tx) => {
+        const actor = teacher
+            ? await currentTeacher(tx, teacher.actor)
+            : undefined;
+        if (actor) requireProject(actor.access, data.projectId);
         const participants = await tx.query.students.findMany({
             where: eq(students.projectId, data.projectId),
         });
         const student = participants.find((row) => row.id === data.studentId);
         if (!student || student.hasCompleted || student.isExcluded)
             throw new InputError('Student unavailable or already completed');
+        if (actor) {
+            if (!student.studentRecordId)
+                throw new InputError(
+                    'Ikaslearen identitatea berrikusi behar da.',
+                );
+            requireStudent(actor.access, student.studentRecordId);
+            const person = await tx.query.studentRecords.findFirst({
+                where: eq(studentRecords.id, student.studentRecordId),
+            });
+            if (!person || person.needsReview)
+                throw new InputError(
+                    'Ikaslearen identitatea berrikusi behar da.',
+                );
+        }
+        const entryProvenance =
+            actor?.entry ??
+            (requestId ? { kind: 'student' as const } : undefined);
         const ids = new Set(participants.map((row) => row.id));
         if (
             [...data.comfort, ...data.preferWith, ...data.preferAvoid].some(
@@ -127,6 +151,7 @@ export async function submitSurvey(
         const [saved] = await tx
             .insert(responses)
             .values({
+                entryProvenance,
                 projectId: data.projectId,
                 studentId: data.studentId,
                 skillsNarrative: {
@@ -194,7 +219,7 @@ export async function submitSurvey(
                 preferWith: remap(data.preferWith),
                 preferAvoid: remap(data.preferAvoid),
             },
-            source: requestId ? 'project-survey' : 'legacy-survey',
+            source: requestId || actor ? 'project-survey' : 'legacy-survey',
             scope: 'project',
             academicPeriod: project.academicPeriod || academicPeriod(),
             projectId: project.id,
@@ -203,6 +228,7 @@ export async function submitSurvey(
             requestId,
             legacyResponseId: saved.id,
             legacyParticipantId: student.id,
+            entryProvenance,
         });
         await tx
             .update(students)

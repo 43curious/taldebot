@@ -1,7 +1,10 @@
+import { entryLabel } from './entryProvenance';
+import type { EntryProvenance } from './trackingTypes';
 interface KnowledgeContext {
     projectName: string | null;
     academicPeriod: string;
     collectionYear?: number | null;
+    entryProvenance?: EntryProvenance | null;
 }
 // A survey's collection year stays historical when the current enrollment moves.
 export function knowledgeSourceLabel(record: KnowledgeContext) {
@@ -11,6 +14,7 @@ export function knowledgeSourceLabel(record: KnowledgeContext) {
             ? 'Ikasturte ezezaguna'
             : record.academicPeriod,
         record.collectionYear ? `${record.collectionYear}. mailan jasoa` : null,
+        'entryProvenance' in record ? entryLabel(record.entryProvenance) : null,
     ]
         .filter(Boolean)
         .join(' · ');

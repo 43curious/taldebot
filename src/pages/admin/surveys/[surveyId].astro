@@ -2,6 +2,8 @@
 export const prerender = false;
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import SurveyResponseView from '../../../components/SurveyResponseView.astro';
+import { teacherSurveyHref } from '../../../lib/teacherSurveyTarget';
+import { entryLabel } from '../../../lib/entryProvenance';
 import { db } from '../../../lib/db';
 import {
     surveyResponses,
@@ -139,15 +141,10 @@ const query = new URLSearchParams({
             )}
         </div>
         <p class="mb-5 text-xs leading-relaxed text-slate-500">
-            Inkesta honek v{version.version} mantentzen du. Estekak pertsonalak
-            dira, 30 eguneko balioa dute eta behin erabil daitezke. Beste
+            Inkesta honek v{version.version} mantentzen du. Erantzunak
+            ikaslearen partez sartzean irakaslea erregistratzen da. Beste
             inkesta baten osatze-egoera ez da aldatzen.
         </p>
-        <p
-            id="invitation-feedback"
-            role="status"
-            class="mb-4 text-sm text-teal-700"
-        ></p>
         <div class="teacher-panel divide-y divide-slate-100">
             {audience.map((person) => {
                 const response = responses.find(
@@ -178,13 +175,16 @@ const query = new URLSearchParams({
                                 </p>
                             </div>
                             {!survey.closedAt && !response && (
-                                <button
-                                    type="button"
-                                    data-invite={person.studentId}
+                                <a
                                     class="teacher-button"
+                                    href={teacherSurveyHref({
+                                        kind: 'survey',
+                                        surveyId: survey.id,
+                                        studentId: person.studentId,
+                                    })}
                                 >
-                                    Esteka pertsonala sortu
-                                </button>
+                                    Bete inkesta ikaslearen partez
+                                </a>
                             )}
                         </div>
                         {response && answeredVersion && (
@@ -196,6 +196,9 @@ const query = new URLSearchParams({
                                     ).toLocaleDateString('eu-ES')}
                                 </summary>
                                 <div class="mt-3">
+                                    <p class="mb-3 text-xs text-slate-500">
+                                        {entryLabel(response.entryProvenance)}
+                                    </p>
                                     <SurveyResponseView
                                         questions={answeredVersion.questions}
                                         answers={response.answers}
@@ -213,19 +216,6 @@ const query = new URLSearchParams({
                     </div>
                 );
             })}
-        </div>
-        <div id="invitation-result" hidden class="teacher-panel mt-5 p-4">
-            <label class="teacher-label" for="invitation-url">
-                Esteka pertsonala
-                <input id="invitation-url" readonly class="w-full" />
-            </label>
-            <button
-                type="button"
-                id="copy-invitation"
-                class="teacher-button mt-3"
-            >
-                Esteka kopiatu
-            </button>
         </div>
         {!survey.closedAt && (
             <details class="teacher-panel mt-6 p-4">
@@ -278,58 +268,3 @@ const query = new URLSearchParams({
         accent-color: #0f766e;
     }
 </style>
-<script define:vars={{ surveyId: survey.id }}>
-    const feedback = document.getElementById('invitation-feedback'),
-        result = document.getElementById('invitation-result'),
-        url = document.getElementById('invitation-url');
-    document.querySelectorAll('[data-invite]').forEach((button) =>
-        button.addEventListener('click', async () => {
-            if (
-                !confirm(
-                    'Esteka berria sortu? Ikasle honen inkesta honetako aurreko esteka erabili gabea baliogabetuko da.',
-                )
-            )
-                return;
-            button.disabled = true;
-            feedback.textContent = 'Esteka sortzen…';
-            try {
-                const response = await fetch('/api/admin/survey-invitations', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        surveyId,
-                        studentId: Number(button.dataset.invite),
-                    }),
-                });
-                const data = await response.json();
-                if (!response.ok || !data.links.length)
-                    throw new Error(
-                        data.error || 'Ez dago gonbidapen berririk.',
-                    );
-                url.value = data.links[0].url;
-                result.hidden = false;
-                feedback.textContent = `${data.links[0].name}: esteka prest dago.`;
-                url.focus();
-                url.select();
-            } catch (error) {
-                feedback.textContent =
-                    error.message || 'Ezin izan da esteka sortu.';
-            } finally {
-                button.disabled = false;
-            }
-        }),
-    );
-    document
-        .getElementById('copy-invitation')
-        .addEventListener('click', async () => {
-            try {
-                await navigator.clipboard.writeText(url.value);
-                feedback.textContent = 'Esteka kopiatuta.';
-            } catch {
-                feedback.textContent =
-                    'Ezin izan da kopiatu. Hautatu eta kopiatu esteka eskuz.';
-                url.focus();
-                url.select();
-            }
-        });
-</script>

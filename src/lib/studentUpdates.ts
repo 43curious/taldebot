@@ -22,7 +22,11 @@ import {
     canReadStudent,
     type TeacherAccess,
 } from './access';
-import type { AssessmentValues, PreferenceKind } from './trackingTypes';
+import type {
+    AssessmentValues,
+    PreferenceKind,
+    EntryProvenance,
+} from './trackingTypes';
 import { InputError } from './input';
 import { loadStudentProfiles } from './studentProfiles';
 
@@ -274,10 +278,12 @@ export async function saveKnowledge(
         requestId?: number;
         legacyResponseId?: number;
         legacyParticipantId?: number;
+        entryProvenance?: EntryProvenance;
     },
 ) {
     const submittedAt = new Date().toISOString();
     const provenance = {
+        entryProvenance: input.entryProvenance,
         studentId: input.studentId,
         surveyId: input.surveyId ?? null,
         questionnaireVersion: input.questionnaireVersion ?? 'skills-v1',
@@ -366,6 +372,7 @@ export async function completeIndependentUpdate(
             scope: 'period',
             academicPeriod: request.academicPeriod,
             requestId: request.id,
+            entryProvenance: { kind: 'student' },
         });
     });
 }

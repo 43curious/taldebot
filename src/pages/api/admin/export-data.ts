@@ -12,6 +12,7 @@ import {
 import { eq, and } from 'drizzle-orm';
 import { scoredSkills } from '../../../lib/skills';
 import * as XLSX from 'xlsx';
+import { entryLabel } from '../../../lib/entryProvenance';
 
 export const GET: APIRoute = async ({ request }) => {
     const url = new URL(request.url);
@@ -103,6 +104,13 @@ export const GET: APIRoute = async ({ request }) => {
                 Ikaslea: student.name,
                 Email: student.email || '---',
                 Egoera: student.hasCompleted ? 'Osatuta' : 'Zain',
+                'Erantzunaren jatorria': resp
+                    ? entryLabel(resp.entryProvenance)
+                    : '',
+                'Sartu duen irakaslea':
+                    resp?.entryProvenance?.kind === 'teacher'
+                        ? resp.entryProvenance.teacherName
+                        : '',
                 Absent: student.isExcluded ? 'BAI' : 'EZ',
                 Taldea: team?.teamNumber || 'Esleitu gabe',
                 Gustukoak: resp

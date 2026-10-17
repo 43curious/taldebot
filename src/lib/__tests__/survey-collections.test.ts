@@ -19,6 +19,7 @@ import {
 } from '../surveyCollections';
 import { loadStudentProfiles } from '../studentProfiles';
 import { saveKnowledge, issueUpdateRequest } from '../studentUpdates';
+import { submitTeacherSurvey, teacherSurveyContext } from '../teacherSurvey';
 import {
     archiveProject,
     restoreProject,
@@ -26,6 +27,78 @@ import {
 } from '../projectLifecycle';
 
 let f: Awaited<ReturnType<typeof testDatabase>>;
+
+it('records direct teacher answers against the frozen version/audience and rejects duplicates, closure and revoked access', async () => {
+    const s = await setup();
+    const access = await teachingAccess(s.db, s.teacher);
+    const id = await launchSurvey(s.db, access, {
+        name: 'Teacher entry',
+        classId: s.classes[0].id,
+        versionId: s.definition.versionId,
+    });
+    await saveQuestionnaire(
+        s.db,
+        access,
+        { name: 'Next version', questions: s.questions.slice(0, 1) },
+        s.definition.questionnaireId,
+    );
+    const target = {
+        kind: 'survey' as const,
+        surveyId: id,
+        studentId: s.people[0].id,
+    };
+    const context = await teacherSurveyContext(s.db, access, target);
+    expect(context.questions).toEqual(s.questions);
+    const answers = {
+        narrative_writing: 8,
+        comfort: [s.people[1].id],
+        collaboration: { [s.people[1].id]: 'never' },
+    };
+    await expect(
+        submitTeacherSurvey(
+            s.db,
+            access,
+            target,
+            { ...answers, comfort: [999] },
+            true,
+        ),
+    ).rejects.toThrow();
+    expect(await s.db.query.surveyResponses.findMany()).toHaveLength(0);
+    await submitTeacherSurvey(s.db, access, target, answers, true);
+    expect(
+        (await s.db.query.surveyResponses.findFirst())?.entryProvenance,
+    ).toMatchObject({ kind: 'teacher', teacherId: s.teacher.id });
+    expect(
+        (await s.db.query.collaborationReports.findFirst())?.entryProvenance,
+    ).toMatchObject({ kind: 'teacher', teacherId: s.teacher.id });
+    await expect(
+        submitTeacherSurvey(s.db, access, target, answers, true),
+    ).rejects.toThrow();
+    await s.db
+        .delete(schema.teacherResponsibilities)
+        .where(eq(schema.teacherResponsibilities.userId, s.teacher.id));
+    await expect(
+        submitTeacherSurvey(
+            s.db,
+            access,
+            { ...target, studentId: s.people[1].id },
+            { narrative_writing: 8, comfort: [], collaboration: {} },
+            true,
+        ),
+    ).rejects.toMatchObject({ status: 403 });
+    await closeSurvey(s.db, s.access, id);
+    await expect(
+        submitTeacherSurvey(
+            s.db,
+            s.access,
+            { ...target, studentId: s.people[1].id },
+            { narrative_writing: 8, comfort: [], collaboration: {} },
+            true,
+        ),
+    ).rejects.toMatchObject({ status: 410 });
+    expect(await s.db.query.surveyResponses.findMany()).toHaveLength(1);
+    expect(await s.db.query.updateRequests.findMany()).toHaveLength(0);
+});
 beforeEach(async () => {
     f = await testDatabase();
 });
@@ -210,6 +283,7 @@ it('validates against the invitation/version, consumes once, and keeps explicit 
     ).rejects.toThrow();
     const reports = await s.db.query.collaborationReports.findMany();
     expect(reports).toHaveLength(1);
+    expect(reports[0].entryProvenance).toEqual({ kind: 'student' });
     expect(reports[0]).toMatchObject({
         respondentId: s.people[0].id,
         peerId: s.people[1].id,

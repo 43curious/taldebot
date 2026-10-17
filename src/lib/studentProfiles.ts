@@ -355,10 +355,7 @@ export async function loadStudentProfiles(
                     incoming,
                     kind: choice.kind,
                     submittedAt: source.submittedAt,
-                    sourceLabel:
-                        source.scope === 'project'
-                            ? knowledgeSourceLabel(source)
-                            : source.academicPeriod,
+                    sourceLabel: knowledgeSourceLabel(source),
                     scope: source.scope,
                 });
             }

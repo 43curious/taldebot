@@ -24,6 +24,7 @@ import {
     requireStudent,
     teachingAccess,
     isMaster,
+    currentTeacher,
     type TeacherAccess,
 } from './access';
 import type { AppDatabase } from './db';
@@ -562,16 +563,49 @@ export function validateSurveyAnswers(
     }
     return answers;
 }
+export async function teacherCollectionContext(
+    store: DataSession,
+    access: TeacherAccess,
+    surveyId: number,
+    studentId: number,
+) {
+    const actor = await currentTeacher(store, access.actor);
+    const context = await requireSurvey(store, actor.access, surveyId);
+    await requireOpenSurvey(store, context.survey);
+    const person = context.audience.find((row) => row.studentId === studentId);
+    const identity = await store.query.studentRecords.findFirst({
+        where: eq(studentRecords.id, studentId),
+    });
+    if (!person || !identity || identity.needsReview)
+        throw new InputError(
+            'Ikaslea ez dago inkestaren audientzian edo identitatea berrikusi behar da.',
+            403,
+        );
+    return { ...context, person, entry: actor.entry };
+}
+
 export async function submitCollectionSurvey(
     db: AppDatabase,
-    token: string,
+    token:
+        string | { access: TeacherAccess; surveyId: number; studentId: number },
     input: unknown,
     consent: boolean,
 ) {
     if (!consent) throw new InputError('Onartu datuen erabilera.');
     return db.transaction(async (tx) => {
-        const { survey, audience, version, request, person } =
-            await surveyRequestContext(tx, token);
+        const context =
+            typeof token === 'string'
+                ? await surveyRequestContext(tx, token)
+                : await teacherCollectionContext(
+                      tx,
+                      token.access,
+                      token.surveyId,
+                      token.studentId,
+                  );
+        const { survey, audience, version, person } = context;
+        const request = 'request' in context ? context.request : undefined;
+        const entryProvenance =
+            'entry' in context ? context.entry : { kind: 'student' as const };
         if (
             await tx.query.surveyResponses.findFirst({
                 where: and(
@@ -587,7 +621,7 @@ export async function submitCollectionSurvey(
             person.studentId,
             audience.map((p) => p.studentId),
         );
-        await consumeRequest(tx, request.id);
+        if (request) await consumeRequest(tx, request.id);
         const now = new Date().toISOString();
         const [response] = await tx
             .insert(surveyResponses)
@@ -595,7 +629,8 @@ export async function submitCollectionSurvey(
                 surveyId: survey.id,
                 studentId: person.studentId,
                 versionId: version.id,
-                requestId: request.id,
+                requestId: request?.id,
+                entryProvenance,
                 answers,
                 submittedAt: now,
             })
@@ -644,7 +679,8 @@ export async function submitCollectionSurvey(
                 .filter(Boolean)
                 .join(' · '),
             collectionYear: survey.collectionYear,
-            requestId: request.id,
+            requestId: request?.id,
+            entryProvenance,
         });
         const collaboration = answers.collaboration;
         if (
@@ -664,6 +700,7 @@ export async function submitCollectionSurvey(
                     academicPeriod: survey.academicPeriod,
                     questionnaireVersion,
                     submittedAt: now,
+                    entryProvenance,
                 }),
             );
             if (reports.length)

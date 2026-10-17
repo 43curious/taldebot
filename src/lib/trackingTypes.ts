@@ -1,5 +1,9 @@
 import type { Skills } from './skills';
 
+export type EntryProvenance =
+    | { kind: 'student' }
+    | { kind: 'teacher'; teacherId: number; teacherName: string };
+
 export type AssessmentValues = { [Key in keyof Skills]: Partial<Skills[Key]> };
 export type PreferenceKind = 'comfort' | 'preferWith' | 'preferAvoid';
 export type HistoryMode = 'variety' | 'balanced' | 'familiar';

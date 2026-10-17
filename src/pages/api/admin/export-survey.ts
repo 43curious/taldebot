@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { inArray, eq } from 'drizzle-orm';
 import Papa from 'papaparse';
+import { entryLabel } from '../../../lib/entryProvenance';
 import { db } from '../../../lib/db';
 import { surveyResponses, questionnaireVersions } from '../../../../db/schema';
 import { requireSurvey } from '../../../lib/surveyCollections';
@@ -58,6 +59,13 @@ export const GET: APIRoute = async ({ url, locals }) => {
                     Ikasturtea: survey.academicPeriod,
                     'Galdera-sorta': `questionnaire-${version.questionnaireId}/v${version.version}`,
                     'Jasotze-data': response.submittedAt,
+                    'Erantzunaren jatorria': entryLabel(
+                        response.entryProvenance,
+                    ),
+                    'Sartu duen irakaslea':
+                        response.entryProvenance?.kind === 'teacher'
+                            ? response.entryProvenance.teacherName
+                            : '',
                     'Galdera gakoa': question.key,
                     'Galdera mota': question.type,
                     'Galdera EU': question.label.eu,

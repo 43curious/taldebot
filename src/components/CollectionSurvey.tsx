@@ -8,6 +8,7 @@ import {
 } from '../lib/questionnaires';
 import type { Language } from '../lib/i18n';
 import type { PreferenceKind } from '../lib/trackingTypes';
+import type { TeacherSurveyTarget } from '../lib/teacherSurveyTarget';
 interface Props {
     questions: Question[];
     peers: { id: number; name: string }[];
@@ -15,6 +16,10 @@ interface Props {
     token: string;
     lang: Language;
     trialVersionId?: number;
+    teacherTarget?: TeacherSurveyTarget;
+    teacherReturn?: string;
+    initialEmail?: string;
+    initialPreferences?: Record<PreferenceKind, number[]>;
 }
 export default function CollectionSurvey({
     questions,
@@ -23,11 +28,15 @@ export default function CollectionSurvey({
     token,
     lang,
     trialVersionId,
+    teacherTarget,
+    teacherReturn,
+    initialEmail,
+    initialPreferences,
 }: Props) {
     const formRef = useRef<HTMLFormElement>(null);
     const [preferences, setPreferences] = useState<
         Record<PreferenceKind, number[]>
-    >({ comfort: [], preferWith: [], preferAvoid: [] });
+    >(initialPreferences ?? { comfort: [], preferWith: [], preferAvoid: [] });
     const [saving, setSaving] = useState(false),
         [error, setError] = useState(''),
         [done, setDone] = useState(false);
@@ -60,14 +69,21 @@ export default function CollectionSurvey({
         }
         try {
             const response = await fetch(
-                trialVersionId
-                    ? '/api/admin/trial-questionnaire'
-                    : '/api/student/submit-survey',
+                teacherTarget
+                    ? '/api/admin/submit-survey'
+                    : trialVersionId
+                      ? '/api/admin/trial-questionnaire'
+                      : '/api/student/submit-survey',
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         token,
+                        target: teacherTarget,
+                        email:
+                            teacherTarget?.kind === 'project'
+                                ? form.get('email')
+                                : undefined,
                         versionId: trialVersionId,
                         studentId,
                         answers,
@@ -86,19 +102,37 @@ export default function CollectionSurvey({
         return (
             <section className="teacher-panel p-5 sm:p-6" role="status">
                 <h2 className="text-xl">
-                    {trialVersionId
+                    {teacherTarget
                         ? lang === 'en'
-                            ? 'Trial completed'
-                            : 'Proba osatu da'
-                        : tr.done}
+                            ? 'Answers saved on the student’s behalf'
+                            : 'Erantzunak ikaslearen partez gorde dira'
+                        : trialVersionId
+                          ? lang === 'en'
+                              ? 'Trial completed'
+                              : 'Proba osatu da'
+                          : tr.done}
                 </h2>
                 <p className="mt-3 text-sm text-slate-600">
-                    {trialVersionId
+                    {teacherTarget
                         ? lang === 'en'
-                            ? 'Your answers are valid. Nothing was saved.'
-                            : 'Erantzunak baliozkoak dira. Ez da ezer gorde.'
-                        : tr.doneNote}
+                            ? 'Your name was recorded with these answers.'
+                            : 'Zure izena erantzunekin batera gorde da.'
+                        : trialVersionId
+                          ? lang === 'en'
+                              ? 'Your answers are valid. Nothing was saved.'
+                              : 'Erantzunak baliozkoak dira. Ez da ezer gorde.'
+                          : tr.doneNote}
                 </p>
+                {teacherReturn && (
+                    <a
+                        href={`${teacherReturn}?saved=teacher-entry`}
+                        className="teacher-button mt-5"
+                    >
+                        {lang === 'en'
+                            ? 'Return to follow-up'
+                            : 'Jarraipenera itzuli'}
+                    </a>
+                )}
             </section>
         );
     return (
@@ -114,6 +148,18 @@ export default function CollectionSurvey({
             onSubmit={submit}
             className="teacher-panel space-y-6 p-4 sm:p-6"
         >
+            {teacherTarget?.kind === 'project' && (
+                <label className="teacher-label">
+                    {lang === 'en' ? 'Student email' : 'Ikaslearen emaila'}
+                    <input
+                        type="email"
+                        name="email"
+                        defaultValue={initialEmail}
+                        required
+                        autoComplete="off"
+                    />
+                </label>
+            )}
             {questions.map((question) => (
                 <div key={question.key}>
                     {question.type === 'skill' ? (
@@ -123,7 +169,15 @@ export default function CollectionSurvey({
                                     label={question.label[lang]}
                                     name={question.key}
                                     description={question.explanation[lang]}
-                                    unknownLabel={tr.unknown}
+                                    unknownLabel={
+                                        teacherTarget?.kind === 'project'
+                                            ? undefined
+                                            : teacherTarget
+                                              ? lang === 'en'
+                                                  ? 'Student’s assessment unavailable'
+                                                  : 'Ez dago ikaslearen baloraziorik'
+                                              : tr.unknown
+                                    }
                                 />
                             </div>
                         </div>
@@ -198,7 +252,11 @@ export default function CollectionSurvey({
                 <p className="text-xs text-slate-500">{tr.scale}</p>
             )}
             <p className="text-xs leading-relaxed text-slate-500">
-                {tr.privacy}
+                {teacherTarget
+                    ? lang === 'en'
+                        ? 'The student’s currently responsible teachers and master administrators can see these answers.'
+                        : 'Ikaslearen egungo irakasle arduradunek eta master administratzaileek ikus ditzakete erantzun hauek.'
+                    : tr.privacy}
             </p>
             <label className="flex min-h-11 items-start gap-3 text-sm leading-relaxed text-slate-600">
                 <input
@@ -207,7 +265,13 @@ export default function CollectionSurvey({
                     required
                     className="mt-1 shrink-0"
                 />
-                <span>{tr.consent}</span>
+                <span>
+                    {teacherTarget
+                        ? lang === 'en'
+                            ? 'I confirm I am entering these answers on the student’s behalf.'
+                            : 'Erantzun hauek ikaslearen partez sartzen ari naizela baieztatzen dut.'
+                        : tr.consent}
+                </span>
             </label>
             {error && (
                 <p role="alert" className="text-sm text-red-700">

@@ -2,6 +2,8 @@
 export const prerender = false;
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import ClassGraph from '../../../components/ClassGraph';
+import { teacherSurveyHref } from '../../../lib/teacherSurveyTarget';
+import { entryLabel } from '../../../lib/entryProvenance';
 import { db } from '../../../lib/db';
 import { projects, students, responses } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
@@ -56,6 +58,19 @@ const missingEmails = allStudents.filter(
 const preferences = mapView
     ? await db.query.responses.findMany({ where: eq(responses.projectId, pid) })
     : [];
+const responseEntries = mapView
+    ? preferences
+    : await db
+          .select({
+              studentId: responses.studentId,
+              entryProvenance: responses.entryProvenance,
+              completedAt: responses.completedAt,
+          })
+          .from(responses)
+          .where(eq(responses.projectId, pid));
+const entryByParticipant = new Map(
+    responseEntries.map((row) => [row.studentId, row]),
+);
 const assessments = projectAssessments(preferences, pid);
 const graphStudents = allStudents
     .filter((student) => !student.isExcluded)
@@ -295,13 +310,14 @@ const filterUrl = (nextStatus: string) =>
                 {missingEmails > 0 && (
                     <p class="mb-4 text-xs text-slate-500">
                         {missingEmails} erantzun gabeko ikaslek ez dute emailik.
-                        Sortu esteka pertsonala ikasle bakoitzarentzat.
+                        Inkesta betetzean gehitu ikaslearen emaila.
                     </p>
                 )}
                 <div class="teacher-panel">
                     <ul class="divide-y divide-slate-100">
                         {filtered.map((student) => {
                             const state = studentStatus(student);
+                            const entry = entryByParticipant.get(student.id);
                             return (
                                 <li class="flex items-center gap-3 px-4 py-3 sm:px-5">
                                     <div class="min-w-0 flex-1 basis-36">
@@ -312,6 +328,18 @@ const filterUrl = (nextStatus: string) =>
                                                 {student.name}
                                             </a>
                                         </p>
+                                        {entry && (
+                                            <p class="mt-1 text-xs text-slate-500">
+                                                {entryLabel(
+                                                    entry.entryProvenance,
+                                                )}{' '}
+                                                ·{' '}
+                                                {entry.completedAt?.slice(
+                                                    0,
+                                                    10,
+                                                )}
+                                            </p>
+                                        )}
                                         <p class="mt-0.5 break-all text-xs text-slate-500">
                                             {student.email || 'Emailik gabe'}
                                         </p>
@@ -352,19 +380,19 @@ const filterUrl = (nextStatus: string) =>
                                             {state === 'pending' &&
                                                 !project.archivedAt &&
                                                 student.studentRecordId && (
-                                                    <button
-                                                        type="button"
-                                                        data-personal-link
-                                                        data-record-id={
-                                                            student.studentRecordId
-                                                        }
-                                                        data-participant-id={
-                                                            student.id
-                                                        }
+                                                    <a
+                                                        href={teacherSurveyHref(
+                                                            {
+                                                                kind: 'project',
+                                                                projectId: pid,
+                                                                participantId:
+                                                                    student.id,
+                                                            },
+                                                        )}
                                                     >
-                                                        Esteka pertsonala sortu
-                                                        eta kopiatu
-                                                    </button>
+                                                        Bete inkesta ikaslearen
+                                                        partez
+                                                    </a>
                                                 )}
                                             <button
                                                 type="button"
@@ -456,58 +484,6 @@ const filterUrl = (nextStatus: string) =>
                         feedback.textContent =
                             'Ezin izan da kopiatu. Saiatu berriro.';
                     }
-                } finally {
-                    button.disabled = false;
-                }
-            });
-        },
-    );
-    page?.querySelectorAll<HTMLButtonElement>('[data-personal-link]').forEach(
-        (button) => {
-            button.addEventListener('click', async () => {
-                if (
-                    !confirm(
-                        'Esteka pertsonal berria sortu? Aurreko esteka baliogabetuko da.',
-                    )
-                )
-                    return;
-                button.disabled = true;
-                try {
-                    const response = await fetch(
-                        '/api/admin/student-update-request',
-                        {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                studentId: Number(button.dataset.recordId),
-                                participantId: Number(
-                                    button.dataset.participantId,
-                                ),
-                                projectId: Number(page.dataset.projectId),
-                                assessmentAsked: true,
-                                preferencesAsked: true,
-                            }),
-                        },
-                    );
-                    const result = await response.json();
-                    if (!response.ok)
-                        throw new Error(
-                            result.error || 'Ezin izan da esteka sortu.',
-                        );
-                    try {
-                        await navigator.clipboard.writeText(result.url);
-                    } catch {
-                        window.prompt('Kopiatu esteka pertsonala:', result.url);
-                    }
-                    if (feedback)
-                        feedback.textContent =
-                            'Esteka pertsonala prest. Partekatu ikasle honekin bakarrik; 30 eguneko balioa du.';
-                } catch (error) {
-                    if (feedback)
-                        feedback.textContent =
-                            error instanceof Error
-                                ? error.message
-                                : 'Ezin izan da esteka sortu.';
                 } finally {
                     button.disabled = false;
                 }

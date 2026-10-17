@@ -1,6 +1,7 @@
 ---
 export const prerender = false;
 import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { entryLabel } from '../../../lib/entryProvenance';
 import { db } from '../../../lib/db';
 import { z } from 'zod';
 import { loadStudentProfiles } from '../../../lib/studentProfiles';
@@ -256,7 +257,7 @@ const draft = (key: string, fallback: string) =>
                 </p>
                 <p class="mt-2 text-xs text-slate-500">
                     {profile.assessment
-                        ? `${date(profile.assessment.submittedAt)} · ${knowledgeSourceLabel(profile.assessment)} · ${profile.assessment.source === 'demo' ? 'Demo datu sintetikoak' : profile.assessment.source === 'legacy-survey' ? 'Aurretiko inkesta; egiletza egiaztatu gabe' : 'Esteka pertsonaleko erantzuna'}`
+                        ? `${date(profile.assessment.submittedAt)} · ${knowledgeSourceLabel(profile.assessment)}${profile.assessment.source === 'demo' ? ' · Demo datu sintetikoak' : ''}`
                         : 'Ez dago autoebaluaziorik.'}
                 </p>
                 {assessmentGroups(profile.values).map((group) => (
@@ -412,6 +413,8 @@ const draft = (key: string, fallback: string) =>
                         <p class="mt-1 text-xs text-slate-500">
                             {date(row.submittedAt)} · {row.surveyName} ·{' '}
                             {row.questionnaireVersion}
+                            {' · '}
+                            {entryLabel(row.entryProvenance)}
                         </p>
                     </li>
                 ))}
@@ -545,14 +548,20 @@ const draft = (key: string, fallback: string) =>
         </details>
         <details class="teacher-panel mt-5" open={!profile.assessment}>
             <summary class="cursor-pointer p-5 text-sm text-slate-600">
-                Eguneratzea eskatu
+                Bete inkesta ikaslearen partez
             </summary>
             <div class="border-t border-slate-100 p-5">
                 <p class="text-xs text-slate-500">
-                    Esteka pertsonala ikasle honi bakarrik eman. 30 eguneko epea
-                    du; esteka berriak aurreko eskaera baliogabetzen du.
+                    Aukeratu bete beharreko atalak. Erantzunek ikaslea, zure
+                    izena eta jasotze-data gordeko dituzte.
                 </p>
-                <form id="request-update" class="teacher-toolbar mt-4">
+                <form
+                    action="/admin/survey-entry"
+                    method="GET"
+                    class="teacher-toolbar mt-4"
+                >
+                    <input type="hidden" name="kind" value="period" />
+                    <input type="hidden" name="studentId" value={id} />
                     <label class="teacher-label">
                         Ikasturtea
                         <input
@@ -563,12 +572,18 @@ const draft = (key: string, fallback: string) =>
                         />
                     </label>
                     <label class="flex min-h-11 items-center gap-2 text-sm">
-                        <input name="assessmentAsked" type="checkbox" checked />
+                        <input
+                            name="assessmentAsked"
+                            value="1"
+                            type="checkbox"
+                            checked
+                        />
                         Autoebaluazioa
                     </label>
                     <label class="flex min-h-11 items-center gap-2 text-sm">
                         <input
                             name="preferencesAsked"
+                            value="1"
                             type="checkbox"
                             checked
                         />
@@ -578,31 +593,9 @@ const draft = (key: string, fallback: string) =>
                         class="teacher-button teacher-button-primary"
                         disabled={profile.person.needsReview}
                     >
-                        Esteka pertsonala sortu
+                        Bete inkesta ikaslearen partez
                     </button>
                 </form>
-                <p
-                    id="request-feedback"
-                    role="status"
-                    class="mt-3 text-sm text-slate-600"
-                ></p>
-                <div id="request-result" hidden class="mt-4">
-                    <label class="teacher-label">
-                        Ikaslearen esteka pertsonala
-                        <input
-                            id="request-url"
-                            readonly
-                            class="mt-1 w-full font-mono text-xs"
-                        />
-                    </label>
-                    <button
-                        id="copy-request"
-                        type="button"
-                        class="teacher-button mt-3"
-                    >
-                        Esteka kopiatu
-                    </button>
-                </div>
             </div>
         </details>
         <details class="teacher-panel mt-5">
@@ -756,54 +749,3 @@ const draft = (key: string, fallback: string) =>
         </details>
     </section>
 </AdminLayout>
-<script>
-    const page = document.querySelector<HTMLElement>('[data-student-id]')!;
-    const form = document.querySelector<HTMLFormElement>('#request-update')!;
-    const feedback = document.querySelector<HTMLElement>('#request-feedback')!;
-    const url = document.querySelector<HTMLInputElement>('#request-url')!;
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const button = form.querySelector<HTMLButtonElement>('button')!;
-        button.disabled = true;
-        try {
-            const data = new FormData(form);
-            const response = await fetch('/api/admin/student-update-request', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    studentId: Number(page.dataset.studentId),
-                    assessmentAsked: data.has('assessmentAsked'),
-                    preferencesAsked: data.has('preferencesAsked'),
-                    academicPeriod: data.get('academicPeriod'),
-                }),
-            });
-            const result = await response.json();
-            if (!response.ok)
-                throw new Error(result.error || 'Ezin izan da esteka sortu.');
-            url.value = result.url;
-            document.querySelector<HTMLElement>('#request-result')!.hidden =
-                false;
-            feedback.textContent =
-                'Esteka sortu da. Ikasle honi bakarrik partekatu.';
-        } catch (error) {
-            feedback.textContent =
-                error instanceof Error
-                    ? error.message
-                    : 'Ezin izan da esteka sortu.';
-        } finally {
-            button.disabled = false;
-        }
-    });
-    document
-        .querySelector('#copy-request')
-        ?.addEventListener('click', async () => {
-            try {
-                await navigator.clipboard.writeText(url.value);
-                feedback.textContent = 'Esteka kopiatuta.';
-            } catch {
-                feedback.textContent =
-                    'Ezin izan da kopiatu. Hautatu eta kopiatu esteka.';
-                url.select();
-            }
-        });
-</script>
