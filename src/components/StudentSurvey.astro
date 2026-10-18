@@ -17,6 +17,7 @@ interface Props {
     lang: Language;
     initialStudentId: string | null;
     requestToken: string;
+    accessCode?: string;
     mode?: 'live' | 'trial';
 }
 const {
@@ -25,9 +26,11 @@ const {
     allStudents,
     initialStudentId,
     requestToken,
+    accessCode = '',
     mode = 'live',
 } = Astro.props;
 const trial = mode === 'trial';
+const chooseStudent = trial || Boolean(accessCode);
 const tr = t(lang);
 const groups = localizedSkillGroups(lang);
 const activeStudents = allStudents.filter((student) => !student.isExcluded);
@@ -59,6 +62,9 @@ const headings = [
             data-mode={mode}
         >
             <input type="hidden" name="requestToken" value={requestToken} />
+            {accessCode && (
+                <input type="hidden" name="accessCode" value={accessCode} />
+            )}
             <input type="hidden" name="studentId" value={initialStudentId} />
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="lang" value={lang} />
@@ -135,7 +141,7 @@ const headings = [
                                     <select
                                         id="studentSelect"
                                         required
-                                        disabled={!trial}
+                                        disabled={!chooseStudent}
                                         class="w-full"
                                     >
                                         <option value="">
@@ -144,7 +150,7 @@ const headings = [
                                         {activeStudents
                                             .filter(
                                                 (student) =>
-                                                    trial ||
+                                                    chooseStudent ||
                                                     String(student.id) ===
                                                         initialStudentId,
                                             )
@@ -256,7 +262,7 @@ const headings = [
                     {index === 1 && (
                         <GroupDynamics
                             client:load
-                            options={allStudents
+                            options={activeStudents
                                 .filter(
                                     (student) =>
                                         student.studentRecordId !== null,

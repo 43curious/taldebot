@@ -50,6 +50,10 @@ export const submissionSchema = z
         projectId: positiveId,
         studentId: positiveId,
         requestToken: z.string().optional(),
+        accessCode: z
+            .string()
+            .regex(/^\d{4}[A-Z]$/)
+            .optional(),
         lang: z.enum(['eu', 'en']).default('eu'),
         comfort: selections.pipe(z.array(participantId).max(1)),
         preferWith: selections.pipe(z.array(participantId).max(3)),

@@ -10,7 +10,13 @@ export const POST: APIRoute = async ({ request, redirect }) => {
         const data = submissionSchema.parse(
             Object.fromEntries((await request.formData()).entries()),
         );
-        const context = await requestContext(db, data.requestToken || '', {
+        if (!data.requestToken) {
+            if (!data.accessCode)
+                throw new InputError('Proiektuaren kodea behar da.', 401);
+            await submitSurvey(db, data);
+            return redirect(studentPath(data.lang, '/student/confirmation'));
+        }
+        const context = await requestContext(db, data.requestToken, {
             includePreferences: false,
         });
         if (

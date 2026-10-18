@@ -14,12 +14,17 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 Astro.response.headers.set('Referrer-Policy', 'no-referrer');
 ---
 
-{result.context && result.token ? (
+{!result.invalid ? (
     <StudentSurvey
         {...result.data}
         lang={lang}
-        initialStudentId={String(result.context.request.participantId)}
-        requestToken={result.token}
+        initialStudentId={
+            result.context ? String(result.context.request.participantId) : null
+        }
+        requestToken={result.token || ''}
+        accessCode={
+            result.context ? undefined : result.data.project.accessCode!
+        }
     />
 ) : (
     <StudentAccess

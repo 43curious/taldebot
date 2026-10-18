@@ -385,6 +385,22 @@ it('keeps class and dashboard actions available after a real login', async () =>
         // Both public locales render the shared survey and use the same validated route.
         for (const lang of ['eu', 'en']) {
             const prefix = lang === 'en' ? '/en' : '';
+            const publicSurvey = await fetch(
+                `${base}${prefix}/student/form/1234A`,
+            );
+            const publicHtml = await publicSurvey.text();
+            expect(publicSurvey.status).toBe(200);
+            expect(publicHtml).toContain('id="student-form"');
+            const selector = publicHtml.match(
+                /<select[^>]*id="studentSelect"[\s\S]*?<\/select>/,
+            )[0];
+            expect(selector.split('>')[0]).not.toContain('disabled');
+            expect(selector).toContain('Iker');
+            expect(selector).not.toContain('Absent Student');
+            const badLink = await fetch(
+                `${base}${prefix}/student/form/1234A?token=invalid`,
+            );
+            expect(await badLink.text()).not.toContain('id="student-form"');
             const identity = (
                 await db.execute(
                     'SELECT student_record_id FROM students WHERE id=2',
@@ -424,6 +440,9 @@ it('keeps class and dashboard actions available after a real login', async () =>
                 )[0],
             ).not.toContain('Absent Student');
             expect(html).toContain('Iker');
+            expect(
+                html.match(/<select[^>]*id="studentSelect"[^>]*>/)[0],
+            ).toContain('disabled');
             const missing = await fetch(`${base}${prefix}/student/form/9999Z`, {
                 redirect: 'manual',
             });
@@ -482,6 +501,89 @@ it('keeps class and dashboard actions available after a real login', async () =>
                 { method: 'POST', headers: { cookie, origin: base } },
             );
             expect(reset.status).toBe(200);
+            const publicData = new URLSearchParams(data);
+            publicData.delete('requestToken');
+            publicData.set('accessCode', '1234A');
+            for (const patch of [
+                { accessCode: '' },
+                { accessCode: '9999Z' },
+                { projectId: '2' },
+                { studentId: '3' },
+                { requestToken: 'invalid' },
+            ]) {
+                const rejected = await fetch(
+                    `${base}/api/student/submit-form`,
+                    {
+                        method: 'POST',
+                        headers: { origin: base },
+                        body: new URLSearchParams({
+                            ...Object.fromEntries(publicData),
+                            ...patch,
+                        }),
+                        redirect: 'manual',
+                    },
+                );
+                expect(rejected.status).toBeGreaterThanOrEqual(400);
+            }
+            const publicSubmitted = await fetch(
+                `${base}/api/student/submit-form`,
+                {
+                    method: 'POST',
+                    headers: { origin: base },
+                    body: publicData,
+                    redirect: 'manual',
+                },
+            );
+            expect(publicSubmitted.status).toBe(302);
+            expect(publicSubmitted.headers.get('location')).toBe(
+                `${prefix}/student/confirmation`,
+            );
+            const studentEntry = await db.execute(
+                'SELECT entry_provenance FROM responses WHERE student_id=2',
+            );
+            expect(JSON.parse(studentEntry.rows[0].entry_provenance)).toEqual({
+                kind: 'student',
+            });
+            const publicDuplicate = await fetch(
+                `${base}/api/student/submit-form`,
+                {
+                    method: 'POST',
+                    headers: { origin: base },
+                    body: publicData,
+                    redirect: 'manual',
+                },
+            );
+            expect(publicDuplicate.status).toBe(400);
+            expect(
+                (
+                    await fetch(
+                        `${base}/api/admin/reset-student?projectId=1&studentId=2`,
+                        { method: 'POST', headers: { cookie, origin: base } },
+                    )
+                ).status,
+            ).toBe(200);
+            // Old archived projects may have a status without an archived_at date.
+            await db.execute(
+                "UPDATE projects SET status='archived' WHERE id=1",
+            );
+            const archived = await fetch(
+                `${base}${prefix}/student/form/1234A`,
+                { redirect: 'manual' },
+            );
+            expect(archived.headers.get('location')).toBe(
+                `${prefix}/?error=not_found`,
+            );
+            expect(
+                (
+                    await fetch(`${base}/api/student/submit-form`, {
+                        method: 'POST',
+                        headers: { origin: base },
+                        body: publicData,
+                        redirect: 'manual',
+                    })
+                ).status,
+            ).toBe(400);
+            await db.execute("UPDATE projects SET status='active' WHERE id=1");
         }
 
         const standaloneGraph = await (

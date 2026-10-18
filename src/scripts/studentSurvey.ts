@@ -25,7 +25,7 @@ if (form) {
     function validateIdentity() {
         next.disabled =
             !studentSelect.value || !emailPrefix.value.trim() || !terms.checked;
-        if (form!.dataset.mode === 'trial')
+        if (!studentSelect.disabled)
             form!.querySelector<HTMLInputElement>('[name="studentId"]')!.value =
                 studentSelect.value;
         fullEmail.value = `${emailPrefix.value.trim()}@alumni.mondragon.edu`;

@@ -117,6 +117,13 @@ export async function submitSurvey(
             ? await currentTeacher(tx, teacher.actor)
             : undefined;
         if (actor) requireProject(actor.access, data.projectId);
+        const project = await tx.query.projects.findFirst({
+            where: eq(projects.id, data.projectId),
+        });
+        if (!project || isArchivedProject(project))
+            throw new InputError('Proiektua ez dago erabilgarri.');
+        if (data.accessCode && data.accessCode !== project.accessCode)
+            throw new InputError('Proiektuaren kodea ez da balioduna.', 403);
         const participants = await tx.query.students.findMany({
             where: eq(students.projectId, data.projectId),
         });
@@ -139,7 +146,9 @@ export async function submitSurvey(
         }
         const entryProvenance =
             actor?.entry ??
-            (requestId ? { kind: 'student' as const } : undefined);
+            (requestId || data.accessCode
+                ? { kind: 'student' as const }
+                : undefined);
         const ids = new Set(participants.map((row) => row.id));
         if (
             [...data.comfort, ...data.preferWith, ...data.preferAvoid].some(
@@ -182,10 +191,7 @@ export async function submitSurvey(
                 preferAvoid: data.preferAvoid,
             })
             .returning();
-        const project = await tx.query.projects.findFirst({
-            where: eq(projects.id, data.projectId),
-        });
-        if (!project || isArchivedProject(project) || !student.studentRecordId)
+        if (!student.studentRecordId)
             throw new InputError(
                 'Proiektua edo ikaslearen identitatea ez dago erabilgarri.',
             );
@@ -219,7 +225,10 @@ export async function submitSurvey(
                 preferWith: remap(data.preferWith),
                 preferAvoid: remap(data.preferAvoid),
             },
-            source: requestId || actor ? 'project-survey' : 'legacy-survey',
+            source:
+                requestId || actor || data.accessCode
+                    ? 'project-survey'
+                    : 'legacy-survey',
             scope: 'project',
             academicPeriod: project.academicPeriod || academicPeriod(),
             projectId: project.id,

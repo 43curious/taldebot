@@ -22,6 +22,8 @@ Ausazko taldeak modulurako gordetzeko, prestatu eta berretsi klaseko jarduera ba
 
 Proiektu berrian aukeratu gradua, klasea eta dagoen zerrendako parte-hartzaileak. Eskuzko eta CSV sarrerak ere badaude; izen anbiguoak ez dira automatikoki lotzen. Masterrak **Identitateak berrikusi** orrian ebazten ditu aurretiko lotura zalantzagarriak.
 
+Ikasleek hasierako orrian proiektuaren kodea sartu, **Hasi** sakatu, beren izena aukeratu eta inkesta bete dezakete. Ez dute esteka pertsonalik behar. Betetako erantzuna ezin da berriz bidali irakasleak berrabiarazi arte; absentzia gisa markatutako ikasleak ez dira hautatzeko zerrendan agertzen. Proiektua artxibatzeak kode bidezko sarbidea ere ixten du.
+
 **Kudeatu** orriko ikaslearen aukeretan hautatu **Bete inkesta ikaslearen partez**. Berrikusi ikaslearen izena eta proiektua, bete erantzunak eta berretsi ikaslearen partez sartzen ari zarela. Euskaraz eta ingelesez bete daiteke. Gaitasunak 1–10 eskalan baloratzen dira; proiektuarekiko motibazioa eta proiektuko aukerak proiektu horretan mantentzen dira. Irakasleak sartutako erantzuna eta ikasleak sartutakoa bereizita etiketatzen dira. Aurreko esteka pertsonal baliodunek lanean jarraitzen dute.
 
 Enter teklak ez du automatikoki bidaltzen. Huts egitean sartutako datuak mantentzen dira. Absentzia proiektu horretarako bakarrik da: ikaslea talde-sorkuntzatik eta inkestaren bete-mailatik kanpo uzten du. Erantzuna berrabiarazteak uneko erantzuna erretiratzen du eta inkesta berriz irekitzen du, baieztapenaren ondoren; datatutako historia gordetzen da.

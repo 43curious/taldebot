@@ -1,13 +1,14 @@
 import { eq } from 'drizzle-orm';
 import { projects, students } from '../../db/schema';
 import { db } from './db';
+import { isArchivedProject } from './projectLifecycle';
 
 export async function loadSurvey(accessCode: string | undefined) {
     if (!accessCode) return undefined;
     const project = await db.query.projects.findFirst({
         where: eq(projects.accessCode, accessCode),
     });
-    if (!project || project.archivedAt) return undefined;
+    if (!project || isArchivedProject(project)) return undefined;
     const allStudents = await db.query.students.findMany({
         where: eq(students.projectId, project.id),
         orderBy: (row, { asc }) => [asc(row.name)],
