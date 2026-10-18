@@ -92,7 +92,7 @@ const tr = t(lang);
                     data-lang={lang}
                 >
                     <fieldset aria-describedby="code-help">
-                        <legend>{tr.landing.codeLabel}</legend>
+                        <legend class="sr-only">{tr.landing.codeLabel}</legend>
                         <div id="otp-container" class="landing-code-fields">
                             {[1, 2, 3, 4].map((position) => (
                                 <input
@@ -129,7 +129,9 @@ const tr = t(lang);
                                 spellcheck="false"
                             />
                         </div>
-                        <p id="code-help">{tr.landing.codeHint}</p>
+                        <p id="code-help" class="sr-only">
+                            {tr.landing.codeHint}
+                        </p>
                     </fieldset>
                     <p id="error-message" role="alert" hidden>
                         {tr.landing.codeError}
@@ -139,11 +141,11 @@ const tr = t(lang);
                         <svg
                             aria-hidden="true"
                             viewBox="0 0 24 24"
-                            width="19"
-                            height="19"
+                            width="24"
+                            height="24"
                             fill="none"
                             stroke="currentColor"
-                            stroke-width="1.8"
+                            stroke-width="3"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                         >
@@ -262,101 +264,112 @@ const tr = t(lang);
         margin: 1rem auto 0;
         max-width: 28rem;
         font-size: clamp(1rem, 3.5vw, 1.25rem);
+        font-style: italic;
         line-height: 1.6;
         color: #64748b;
     }
     .landing-code-panel {
-        max-width: 28rem;
+        max-width: 26rem;
         margin-inline: auto;
-        padding: clamp(1rem, 4vw, 2rem);
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        background: #fff;
     }
     .landing-code-panel fieldset {
         min-width: 0;
     }
-    .landing-code-panel legend {
-        margin-bottom: 1rem;
-        color: #334155;
-        font-size: 0.9rem;
-        font-weight: 600;
-    }
     .landing-code-fields {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr)) 0.5rem minmax(0, 1fr);
-        gap: clamp(0.25rem, 1vw, 0.5rem);
+        grid-template-columns: repeat(4, minmax(0, 1fr)) 0.8rem minmax(0, 1fr);
+        gap: clamp(0.5rem, 2vw, 0.75rem);
         align-items: center;
     }
     .otp-input {
         width: 100%;
         min-width: 0;
-        height: clamp(3.125rem, 14vw, 4rem);
+        height: clamp(3.5rem, 16vw, 5rem);
         padding: 0;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
+        border: 2px solid #e2e8f0;
+        border-radius: 16px;
         background: #fff;
         color: #0f172a;
-        font-size: clamp(1.5rem, 7vw, 2rem);
-        font-weight: 600;
+        font-size: clamp(1.75rem, 7vw, 1.875rem);
+        font-weight: 900;
         font-variant-numeric: tabular-nums;
         text-align: center;
         caret-color: #0f766e;
+        box-shadow:
+            0 10px 15px -3px rgb(226 232 240 / 50%),
+            0 4px 6px -4px rgb(226 232 240 / 50%);
+        transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
     }
     .otp-input::placeholder {
-        color: #cbd5e1;
+        color: #9ca3af;
         opacity: 1;
     }
     .otp-input:focus::placeholder {
         color: transparent;
     }
     .otp-input.filled {
-        background: #f0fdfa;
-        border-color: #5eead4;
-        color: #0f766e;
+        background: #f8fafc;
+        border-color: #0d9488;
+        color: #0d9488;
     }
     .landing-code-letter {
         text-transform: uppercase;
+        border-color: #ccfbf1;
+        color: #0d9488;
+        box-shadow:
+            0 10px 15px -3px rgb(204 251 241 / 50%),
+            0 4px 6px -4px rgb(204 251 241 / 50%);
+    }
+    .otp-input:focus {
+        border-color: #14b8a6;
+        box-shadow: 0 0 0 4px rgb(20 184 166 / 10%);
+        outline: none;
     }
     .landing-code-separator {
         text-align: center;
-        color: #94a3b8;
-    }
-    #code-help {
-        margin-top: 1rem;
-        color: #64748b;
-        font-size: 0.75rem;
-        line-height: 1.6;
+        color: #cbd5e1;
+        font-size: 2.25rem;
+        font-weight: 100;
     }
     #hasi-button {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.75rem;
-        width: 100%;
         min-height: 48px;
-        margin-top: 1.5rem;
-        padding: 0.75rem 1rem;
-        border: 1px solid #0f766e;
-        border-radius: 8px;
-        background: #0f766e;
+        margin: 2rem auto 0;
+        padding: 1rem 3rem;
+        border-radius: 16px;
+        background: #0d9488;
         color: #fff;
-        font-size: 0.95rem;
-        font-weight: 600;
+        font-size: 1.25rem;
+        font-weight: 900;
+        box-shadow: 0 20px 25px -5px rgb(13 148 136 / 30%);
+        transition:
+            opacity 0.3s,
+            transform 0.3s,
+            visibility 0.3s,
+            background-color 0.2s;
     }
     #hasi-button:hover:enabled {
-        background: #115e59;
+        background: #0f766e;
+    }
+    #hasi-button:active:enabled {
+        transform: scale(0.95);
     }
     #hasi-button:disabled {
-        border-color: #e2e8f0;
-        background: #f1f5f9;
-        color: #94a3b8;
-        cursor: not-allowed;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(1rem);
     }
     #error-message {
         margin-top: 1rem;
         font-size: 0.85rem;
         color: #b91c1c;
+        text-align: center;
     }
     .landing-footer {
         padding: 1rem;
@@ -364,9 +377,19 @@ const tr = t(lang);
         color: #94a3b8;
         font-size: 0.75rem;
     }
-    .landing-page :is(a, input, select, button):focus-visible {
+    .landing-page :is(a, select, button):focus-visible {
         outline: 2px solid #0d9488;
         outline-offset: 3px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .otp-input,
+        #hasi-button {
+            transition: none;
+        }
+        #hasi-button:disabled,
+        #hasi-button:active:enabled {
+            transform: none;
+        }
     }
     @media (min-width: 600px) {
         .landing-header {
